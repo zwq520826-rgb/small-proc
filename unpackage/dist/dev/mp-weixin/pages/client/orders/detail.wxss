@@ -1,0 +1,354 @@
+/**
+ * 这里是uni-app内置的常用样式变量
+ *
+ * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
+ * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
+ *
+ */
+/**
+ * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
+ *
+ * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
+ */
+/* 颜色变量 */
+/* 行为相关颜色 */
+/* 文字基本颜色 */
+/* 背景颜色（偏 iOS 简约风） */
+/* 边框颜色 */
+/* 尺寸变量 */
+/* 文字尺寸 */
+/* 图片尺寸 */
+/* Border Radius 更圆润的 iOS 风格 */
+/* 水平间距 */
+/* 垂直间距 */
+/* 透明度 */
+/* 文章场景相关 */
+.page.data-v-00b5e79f {
+  min-height: 100vh;
+  background: #f7f9fb;
+  padding-bottom: 140rpx;
+  box-sizing: border-box;
+}
+
+/* Header Status (Gradient Blue) */
+.status-header.data-v-00b5e79f {
+  padding: 60rpx 24rpx 40rpx;
+  background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+  color: #ffffff;
+}
+.status-header.delivering.data-v-00b5e79f {
+  background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+}
+.status-header.completed.data-v-00b5e79f {
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+}
+.status-header.pending_accept.data-v-00b5e79f {
+  background: linear-gradient(135deg, #ff8f00 0%, #ffa726 100%);
+}
+.status-header.cancelled.data-v-00b5e79f {
+  background: linear-gradient(135deg, #999999 0%, #bdbdbd 100%);
+}
+.status-title.data-v-00b5e79f {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  margin-bottom: 12rpx;
+}
+.status-subtitle.data-v-00b5e79f {
+  display: block;
+  font-size: 26rpx;
+  opacity: 0.9;
+}
+
+/* Timeline Section */
+.timeline-section.data-v-00b5e79f {
+  background: #ffffff;
+  margin: 24rpx;
+  border-radius: 16rpx;
+  padding: 32rpx 24rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+.timeline.data-v-00b5e79f {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+.timeline-item.data-v-00b5e79f {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+.timeline-dot.data-v-00b5e79f {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12rpx;
+  position: relative;
+  z-index: 2;
+}
+.timeline-item.active .timeline-dot.data-v-00b5e79f {
+  background: #1a73e8;
+  box-shadow: 0 0 0 8rpx rgba(26, 115, 232, 0.1);
+}
+.timeline-item.completed .timeline-dot.data-v-00b5e79f {
+  background: #4caf50;
+}
+.check-icon.data-v-00b5e79f {
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+.timeline-label.data-v-00b5e79f {
+  font-size: 24rpx;
+  color: #666666;
+}
+.timeline-item.active .timeline-label.data-v-00b5e79f {
+  color: #1a73e8;
+  font-weight: 600;
+}
+.timeline-item.completed .timeline-label.data-v-00b5e79f {
+  color: #4caf50;
+  font-weight: 600;
+}
+.timeline-line.data-v-00b5e79f {
+  position: absolute;
+  top: 24rpx;
+  left: 50%;
+  width: 100%;
+  height: 2rpx;
+  background: #e0e0e0;
+  z-index: 1;
+}
+.timeline-item:last-child .timeline-line.data-v-00b5e79f {
+  display: none;
+}
+.timeline-item.completed + .timeline-item .timeline-line.data-v-00b5e79f {
+  background: #4caf50;
+}
+
+/* Rider Card */
+.rider-card.data-v-00b5e79f {
+  background: #ffffff;
+  margin: 0 24rpx 24rpx;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+.rider-header.data-v-00b5e79f {
+  margin-bottom: 20rpx;
+}
+.card-title.data-v-00b5e79f {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #333333;
+}
+.rider-content.data-v-00b5e79f {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+.rider-avatar.data-v-00b5e79f {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background: #f5f5f5;
+}
+.rider-avatar.placeholder.data-v-00b5e79f {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+}
+.avatar-text.data-v-00b5e79f {
+  color: #ffffff;
+  font-size: 36rpx;
+  font-weight: 700;
+}
+.rider-info.data-v-00b5e79f {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.rider-name.data-v-00b5e79f {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333333;
+}
+.rider-phone.data-v-00b5e79f {
+  font-size: 24rpx;
+  color: #666666;
+}
+.call-btn.data-v-00b5e79f {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 16rpx 24rpx;
+  background: #1a73e8;
+  color: #ffffff;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  border: none;
+}
+.call-icon.data-v-00b5e79f {
+  font-size: 28rpx;
+}
+
+/* Order Info Card */
+.order-info-card.data-v-00b5e79f {
+  background: #ffffff;
+  margin: 0 24rpx 24rpx;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+.card-header.data-v-00b5e79f {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+.type-badge.data-v-00b5e79f {
+  padding: 8rpx 16rpx;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+.type-badge.pickup.data-v-00b5e79f {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+.type-badge.errand.data-v-00b5e79f {
+  background: #fff3e0;
+  color: #f57c00;
+}
+.order-price.data-v-00b5e79f {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #e53935;
+}
+.content-section.data-v-00b5e79f {
+  margin-bottom: 24rpx;
+}
+.image-grid.data-v-00b5e79f {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+}
+.content-image.data-v-00b5e79f {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+}
+.description-section.data-v-00b5e79f {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.description-label.data-v-00b5e79f {
+  font-size: 24rpx;
+  color: #999999;
+}
+.description-text.data-v-00b5e79f {
+  font-size: 28rpx;
+  color: #333333;
+  line-height: 1.6;
+}
+.address-section.data-v-00b5e79f {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+  padding: 20rpx;
+  background: #f7f9fb;
+  border-radius: 12rpx;
+}
+.address-item.data-v-00b5e79f {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.address-label.data-v-00b5e79f {
+  font-size: 24rpx;
+  color: #999999;
+}
+.address-value.data-v-00b5e79f {
+  font-size: 26rpx;
+  color: #333333;
+  font-weight: 500;
+}
+.address-arrow.data-v-00b5e79f {
+  font-size: 32rpx;
+  color: #1a73e8;
+  font-weight: 700;
+}
+.time-section.data-v-00b5e79f {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+.time-item.data-v-00b5e79f {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.time-label.data-v-00b5e79f {
+  font-size: 24rpx;
+  color: #999999;
+}
+.time-value.data-v-00b5e79f {
+  font-size: 26rpx;
+  color: #333333;
+}
+
+/* Bottom Action Bar */
+.bottom-bar.data-v-00b5e79f {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 16rpx;
+  padding: 20rpx 24rpx;
+  background: #ffffff;
+  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
+  z-index: 100;
+}
+.action-btn.data-v-00b5e79f {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  border: none;
+}
+.action-btn.btn-cancel.data-v-00b5e79f {
+  background: #f5f5f5;
+  color: #666666;
+}
+.action-btn.btn-urgent.data-v-00b5e79f {
+  background: #fff3e0;
+  color: #f57c00;
+}
+.action-btn.btn-primary.data-v-00b5e79f {
+  background: #1a73e8;
+  color: #ffffff;
+}
+.action-btn.btn-delete.data-v-00b5e79f {
+  background: #ffebee;
+  color: #e53935;
+}

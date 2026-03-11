@@ -1,0 +1,1 @@
+{"version":3,"file":"post.js","sources":["F:/software/HB/HBuilderX/plugins/uniapp-cli-vite/uniPage:/cGFnZXMvY2xpZW50L2Zvcm1zL3Bvc3QudnVl"],"sourcesContent":["import MiniProgramPage from 'G:/small/zwg-version/campus-small-proc-main/pages/client/forms/post.vue'\nwx.createPage(MiniProgramPage)"],"names":[],"mappings":";;;;;;;AACA,GAAG,WAAW,eAAe;"}

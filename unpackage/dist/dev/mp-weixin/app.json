@@ -1,0 +1,69 @@
+{
+  "pages": [
+    "pages/client/home",
+    "pages/client/orders/list",
+    "pages/client/orders/detail",
+    "pages/client/forms/pickup",
+    "pages/client/forms/post",
+    "pages/client/forms/errand",
+    "pages/client/forms/print",
+    "pages/common/address/list",
+    "pages/common/address/edit",
+    "pages/common/wallet/index",
+    "pages/mine/index",
+    "pages/rider/hall",
+    "pages/rider/tasks/list",
+    "pages/rider/tasks/detail",
+    "pages/rider/verify",
+    "uni_modules/uni-id-pages/pages/userinfo/deactivate/deactivate",
+    "uni_modules/uni-id-pages/pages/userinfo/userinfo",
+    "uni_modules/uni-id-pages/pages/userinfo/bind-mobile/bind-mobile",
+    "uni_modules/uni-id-pages/pages/login/login-withoutpwd",
+    "uni_modules/uni-id-pages/pages/login/login-withpwd",
+    "uni_modules/uni-id-pages/pages/login/login-smscode",
+    "uni_modules/uni-id-pages/pages/register/register",
+    "uni_modules/uni-id-pages/pages/register/register-by-email",
+    "uni_modules/uni-id-pages/pages/retrieve/retrieve",
+    "uni_modules/uni-id-pages/pages/retrieve/retrieve-by-email",
+    "uni_modules/uni-id-pages/pages/common/webview/webview",
+    "uni_modules/uni-id-pages/pages/userinfo/change_pwd/change_pwd",
+    "uni_modules/uni-id-pages/pages/userinfo/set-pwd/set-pwd",
+    "uni_modules/uni-id-pages/pages/userinfo/realname-verify/realname-verify"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "uni-app",
+    "navigationBarBackgroundColor": "#FFF",
+    "backgroundColor": "#F8F8F8"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#7A7E83",
+    "selectedColor": "#007AFF",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/client/home",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/client/orders/list",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/rider/hall",
+        "text": "大厅"
+      },
+      {
+        "pagePath": "pages/rider/tasks/list",
+        "text": "任务"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "usingComponents": {}
+}

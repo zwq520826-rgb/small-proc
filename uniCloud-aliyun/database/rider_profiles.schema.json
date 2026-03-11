@@ -1,0 +1,82 @@
+// 文档教程: https://uniapp.dcloud.net.cn/uniCloud/schema
+{
+  "bsonType": "object",
+  "required": [
+    "user_id",
+    "name",
+    "student_no",
+    "college_class",
+    "id_card",
+    "mobile",
+    "status"
+  ],
+  "permission": {
+    "read": "doc.user_id == auth.uid",
+    "create": "auth.uid != null",
+    "update": "doc.user_id == auth.uid",
+    "delete": false
+  },
+  "properties": {
+    "_id": {
+      "description": "认证记录ID，系统自动生成"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "用户ID",
+      "foreignKey": "uni-id-users._id"
+    },
+    "name": {
+      "bsonType": "string",
+      "description": "姓名"
+    },
+    "student_no": {
+      "bsonType": "string",
+      "description": "学号"
+    },
+    "college_class": {
+      "bsonType": "string",
+      "description": "学院+班级，如 计算机学院 21级计科1班"
+    },
+    "id_card": {
+      "bsonType": "string",
+      "description": "身份证号"
+    },
+    "mobile": {
+      "bsonType": "string",
+      "description": "手机号（已通过短信验证）"
+    },
+    "status": {
+      "bsonType": "string",
+      "enum": ["pending", "approved", "rejected"],
+      "description": "审核状态"
+    },
+    "remark": {
+      "bsonType": "string",
+      "description": "审核备注（管理员填写）"
+    },
+    "create_time": {
+      "bsonType": "timestamp",
+      "description": "创建时间",
+      "forceDefaultValue": {
+        "$env": "now"
+      }
+    },
+    "update_time": {
+      "bsonType": "timestamp",
+      "description": "最近更新时间"
+    },
+    "real_name_verified": {
+      "bsonType": "bool",
+      "description": "是否已通过实名认证",
+      "default": false
+    },
+    "real_name_verify_time": {
+      "bsonType": "timestamp",
+      "description": "实名认证通过时间"
+    },
+    "real_name_verify_message": {
+      "bsonType": "string",
+      "description": "实名认证结果说明（可选，用于记录详细信息）"
+    }
+  }
+}

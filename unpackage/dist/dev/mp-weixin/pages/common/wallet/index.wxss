@@ -1,0 +1,305 @@
+/**
+ * 这里是uni-app内置的常用样式变量
+ *
+ * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
+ * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
+ *
+ */
+/**
+ * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
+ *
+ * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
+ */
+/* 颜色变量 */
+/* 行为相关颜色 */
+/* 文字基本颜色 */
+/* 背景颜色（偏 iOS 简约风） */
+/* 边框颜色 */
+/* 尺寸变量 */
+/* 文字尺寸 */
+/* 图片尺寸 */
+/* Border Radius 更圆润的 iOS 风格 */
+/* 水平间距 */
+/* 垂直间距 */
+/* 透明度 */
+/* 文章场景相关 */
+.wallet-page.data-v-2e9d1a34 {
+  min-height: 100vh;
+  background: #f5f6f7;
+  padding-bottom: 40rpx;
+}
+.balance-card.data-v-2e9d1a34 {
+  margin: 24rpx;
+  padding: 32rpx;
+  background: linear-gradient(135deg, #1a73e8 0%, #4fc3f7 100%);
+  border-radius: 24rpx;
+  color: #ffffff;
+  box-shadow: 0 8rpx 32rpx rgba(26, 115, 232, 0.3);
+}
+.balance-header.data-v-2e9d1a34 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+.balance-title.data-v-2e9d1a34 {
+  font-size: 28rpx;
+  opacity: 0.9;
+}
+.balance-refresh.data-v-2e9d1a34 {
+  font-size: 24rpx;
+  padding: 8rpx 16rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20rpx;
+}
+.balance-amount.data-v-2e9d1a34 {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 32rpx;
+}
+.currency.data-v-2e9d1a34 {
+  font-size: 36rpx;
+  font-weight: 600;
+  margin-right: 8rpx;
+}
+.amount.data-v-2e9d1a34 {
+  font-size: 72rpx;
+  font-weight: 700;
+}
+.balance-stats.data-v-2e9d1a34 {
+  display: flex;
+  align-items: center;
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.2);
+}
+.stat-item.data-v-2e9d1a34 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.stat-value.data-v-2e9d1a34 {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+.stat-label.data-v-2e9d1a34 {
+  font-size: 24rpx;
+  opacity: 0.8;
+  margin-top: 8rpx;
+}
+.stat-divider.data-v-2e9d1a34 {
+  width: 1rpx;
+  height: 60rpx;
+  background: rgba(255, 255, 255, 0.3);
+}
+.action-row.data-v-2e9d1a34 {
+  display: flex;
+  gap: 24rpx;
+  margin: 0 24rpx 24rpx;
+}
+.action-btn.data-v-2e9d1a34 {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  height: 100rpx;
+  border-radius: 16rpx;
+  border: none;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.recharge-btn.data-v-2e9d1a34 {
+  background: #1a73e8;
+  color: #ffffff;
+}
+.withdraw-btn.data-v-2e9d1a34 {
+  background: #ffffff;
+  color: #1a73e8;
+  border: 2rpx solid #1a73e8;
+}
+.action-icon.data-v-2e9d1a34 {
+  font-size: 36rpx;
+}
+.action-text.data-v-2e9d1a34 {
+  font-size: 30rpx;
+}
+.transaction-section.data-v-2e9d1a34 {
+  margin: 0 24rpx;
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 24rpx;
+}
+.section-header.data-v-2e9d1a34 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+.section-title.data-v-2e9d1a34 {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333333;
+}
+.section-more.data-v-2e9d1a34 {
+  font-size: 26rpx;
+  color: #1a73e8;
+}
+.empty-state.data-v-2e9d1a34 {
+  padding: 60rpx 0;
+  text-align: center;
+}
+.empty-text.data-v-2e9d1a34 {
+  font-size: 28rpx;
+  color: #999999;
+}
+.transaction-list.data-v-2e9d1a34 {
+  display: flex;
+  flex-direction: column;
+}
+.transaction-item.data-v-2e9d1a34 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+.transaction-item.data-v-2e9d1a34:last-child {
+  border-bottom: none;
+}
+.trans-left.data-v-2e9d1a34 {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.trans-icon.data-v-2e9d1a34 {
+  font-size: 40rpx;
+}
+.trans-info.data-v-2e9d1a34 {
+  display: flex;
+  flex-direction: column;
+}
+.trans-title.data-v-2e9d1a34 {
+  font-size: 28rpx;
+  color: #333333;
+}
+.trans-time.data-v-2e9d1a34 {
+  font-size: 24rpx;
+  color: #999999;
+  margin-top: 4rpx;
+}
+.trans-amount.data-v-2e9d1a34 {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #e53935;
+}
+.trans-amount.income.data-v-2e9d1a34 {
+  color: #4caf50;
+}
+.popup-content.data-v-2e9d1a34 {
+  background: #ffffff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 32rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+}
+.popup-header.data-v-2e9d1a34 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+.popup-title.data-v-2e9d1a34 {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333333;
+}
+.popup-close.data-v-2e9d1a34 {
+  font-size: 48rpx;
+  color: #999999;
+  line-height: 1;
+}
+.withdraw-balance.data-v-2e9d1a34 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx;
+  background: #f5f6f7;
+  border-radius: 16rpx;
+  margin-bottom: 24rpx;
+}
+.wb-label.data-v-2e9d1a34 {
+  font-size: 28rpx;
+  color: #666666;
+}
+.wb-amount.data-v-2e9d1a34 {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1a73e8;
+}
+.amount-options.data-v-2e9d1a34 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+.amount-option.data-v-2e9d1a34 {
+  width: calc(33.33% - 12rpx);
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f6f7;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  color: #333333;
+  border: 2rpx solid transparent;
+}
+.amount-option.active.data-v-2e9d1a34 {
+  background: #e8f2ff;
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+.amount-option.disabled.data-v-2e9d1a34 {
+  opacity: 0.5;
+}
+.custom-amount.data-v-2e9d1a34 {
+  margin-bottom: 24rpx;
+}
+.input-label.data-v-2e9d1a34 {
+  font-size: 28rpx;
+  color: #666666;
+  margin-bottom: 12rpx;
+  display: block;
+}
+.amount-input.data-v-2e9d1a34 {
+  width: 100%;
+  height: 88rpx;
+  background: #f5f6f7;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
+  font-size: 30rpx;
+  box-sizing: border-box;
+}
+.withdraw-tip.data-v-2e9d1a34 {
+  margin-bottom: 24rpx;
+  padding: 16rpx;
+  background: #fff8e6;
+  border-radius: 12rpx;
+}
+.tip-text.data-v-2e9d1a34 {
+  font-size: 24rpx;
+  color: #ff9800;
+}
+.confirm-btn.data-v-2e9d1a34 {
+  width: 100%;
+  height: 96rpx;
+  background: #1a73e8;
+  color: #ffffff;
+  border-radius: 48rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+}
+.withdraw-confirm.data-v-2e9d1a34 {
+  background: #ff6b00;
+}

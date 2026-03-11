@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "我的",
+  "usingComponents": {
+    "the-tab-bar": "../../components/TheTabBar",
+    "uni-id-pages-avatar": "../../uni_modules/uni-id-pages/components/uni-id-pages-avatar/uni-id-pages-avatar",
+    "uni-popup-dialog": "../../uni_modules/uni-popup/components/uni-popup-dialog/uni-popup-dialog",
+    "uni-popup": "../../uni_modules/uni-popup/components/uni-popup/uni-popup",
+    "uni-id-pages-bind-mobile": "../../uni_modules/uni-id-pages/components/uni-id-pages-bind-mobile/uni-id-pages-bind-mobile"
+  }
+}

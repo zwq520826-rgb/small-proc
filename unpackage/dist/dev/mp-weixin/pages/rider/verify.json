@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "骑手实名认证",
+  "usingComponents": {
+    "uni-captcha": "../../uni_modules/uni-captcha/components/uni-captcha/uni-captcha"
+  }
+}

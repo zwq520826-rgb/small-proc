@@ -1,0 +1,246 @@
+/**
+ * 这里是uni-app内置的常用样式变量
+ *
+ * uni-app 官方扩展插件及插件市场（https://ext.dcloud.net.cn）上很多三方插件均使用了这些样式变量
+ * 如果你是插件开发者，建议你使用scss预处理，并在插件代码中直接使用这些变量（无需 import 这个文件），方便用户通过搭积木的方式开发整体风格一致的App
+ *
+ */
+/**
+ * 如果你是App开发者（插件使用者），你可以通过修改这些变量来定制自己的插件主题，实现自定义主题功能
+ *
+ * 如果你的项目同样使用了scss预处理，你也可以直接在你的 scss 代码中使用如下变量，同时无需 import 这个文件
+ */
+/* 颜色变量 */
+/* 行为相关颜色 */
+/* 文字基本颜色 */
+/* 背景颜色（偏 iOS 简约风） */
+/* 边框颜色 */
+/* 尺寸变量 */
+/* 文字尺寸 */
+/* 图片尺寸 */
+/* Border Radius 更圆润的 iOS 风格 */
+/* 水平间距 */
+/* 垂直间距 */
+/* 透明度 */
+/* 文章场景相关 */
+.page.data-v-1cb17a62 {
+  padding: 24rpx 24rpx 140rpx;
+  background: #f7f9fb;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding-bottom: 120rpx;
+}
+.tabs.data-v-1cb17a62 {
+  display: flex;
+  background: #ffffff;
+  border-radius: 12rpx;
+  overflow: hidden;
+  margin-bottom: 16rpx;
+}
+.tab.data-v-1cb17a62 {
+  flex: 1;
+  text-align: center;
+  padding: 18rpx 0;
+  font-size: 28rpx;
+  color: #666666;
+  transition: all 0.3s;
+}
+.tab.active.data-v-1cb17a62 {
+  color: #1a73e8;
+  font-weight: 700;
+  background: #e8f2ff;
+  border-bottom: 4rpx solid #1a73e8;
+}
+.task-list.data-v-1cb17a62 {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.card.data-v-1cb17a62 {
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 6rpx 18rpx rgba(0, 0, 0, 0.06);
+}
+.completed-card.data-v-1cb17a62 {
+  background: #fafbfc;
+  opacity: 0.9;
+}
+.card-header.data-v-1cb17a62 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+.route.data-v-1cb17a62 {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex: 1;
+}
+.pickup.data-v-1cb17a62 {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1f2f4a;
+}
+.arrow.data-v-1cb17a62 {
+  font-size: 24rpx;
+  color: #9aa6b8;
+}
+.delivery.data-v-1cb17a62 {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1f2f4a;
+}
+.price.data-v-1cb17a62 {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #ff6b00;
+}
+.income.data-v-1cb17a62 {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #e53935;
+}
+.info-row.data-v-1cb17a62 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+.type.data-v-1cb17a62 {
+  font-size: 24rpx;
+  color: #7a8499;
+  background: #f4f5f7;
+  padding: 6rpx 12rpx;
+  border-radius: 8rpx;
+}
+.status.data-v-1cb17a62 {
+  font-size: 24rpx;
+  color: #888888;
+}
+.delivering-status.data-v-1cb17a62 {
+  color: #1a73e8;
+  font-weight: 600;
+}
+.completed-time.data-v-1cb17a62 {
+  font-size: 24rpx;
+  color: #9aa6b8;
+}
+.contact-info.data-v-1cb17a62 {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-bottom: 16rpx;
+  padding: 12rpx;
+  background: #f4f5f7;
+  border-radius: 8rpx;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.contact-info.data-v-1cb17a62:active {
+  background: #e5e7eb;
+}
+.phone-label.data-v-1cb17a62 {
+  font-size: 24rpx;
+  color: #7a8499;
+}
+.phone.data-v-1cb17a62 {
+  font-size: 26rpx;
+  color: #1a73e8;
+  font-weight: 600;
+  flex: 1;
+}
+.copy-hint.data-v-1cb17a62 {
+  font-size: 22rpx;
+  color: #9aa6b8;
+  margin-left: auto;
+}
+.actions.data-v-1cb17a62 {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+.view-btn.data-v-1cb17a62 {
+  flex: 1;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #1a73e8;
+  color: #ffffff;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+.view-btn-small.data-v-1cb17a62 {
+  width: 160rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #1a73e8;
+  color: #ffffff;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  border: none;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+}
+.confirm-btn.data-v-1cb17a62 {
+  flex: 1;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #1a73e8;
+  color: #ffffff;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+.call-btn.data-v-1cb17a62 {
+  flex: 1;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #f4f5f7;
+  color: #1a73e8;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: 1rpx solid #e5e7eb;
+}
+.call-btn-small.data-v-1cb17a62 {
+  width: 72rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #f4f5f7;
+  color: #1a73e8;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  border: 1rpx solid #e5e7eb;
+  padding: 0;
+  margin: 0;
+}
+.deliver-btn.data-v-1cb17a62 {
+  flex: 1;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #4caf50;
+  color: #ffffff;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+.delivery-proof.data-v-1cb17a62 {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #e5e7eb;
+}
+.proof-label.data-v-1cb17a62 {
+  font-size: 24rpx;
+  color: #7a8499;
+}
+.proof-img.data-v-1cb17a62 {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 8rpx;
+  border: 1rpx solid #e5e7eb;
+}

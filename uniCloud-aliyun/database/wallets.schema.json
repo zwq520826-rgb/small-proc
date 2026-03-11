@@ -1,0 +1,59 @@
+{
+	"bsonType": "object",
+	"required": ["user_id", "balance"],
+	"permission": {
+		"read": "doc.user_id == auth.uid",
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"properties": {
+		"_id": {
+			"description": "ID，系统自动生成"
+		},
+		"user_id": {
+			"bsonType": "string",
+			"description": "用户ID",
+			"foreignKey": "uni-id-users._id",
+			"title": "用户ID"
+		},
+		"balance": {
+			"bsonType": "double",
+			"description": "账户余额",
+			"minimum": 0,
+			"defaultValue": 0,
+			"title": "余额"
+		},
+		"frozen_balance": {
+			"bsonType": "double",
+			"description": "冻结金额（用于提现中的金额）",
+			"minimum": 0,
+			"defaultValue": 0,
+			"title": "冻结金额"
+		},
+		"total_income": {
+			"bsonType": "double",
+			"description": "累计收入（骑手收入）",
+			"minimum": 0,
+			"defaultValue": 0,
+			"title": "累计收入"
+		},
+		"total_expense": {
+			"bsonType": "double",
+			"description": "累计支出",
+			"minimum": 0,
+			"defaultValue": 0,
+			"title": "累计支出"
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"description": "创建时间",
+			"title": "创建时间"
+		},
+		"update_time": {
+			"bsonType": "timestamp",
+			"description": "更新时间",
+			"title": "更新时间"
+		}
+	}
+}

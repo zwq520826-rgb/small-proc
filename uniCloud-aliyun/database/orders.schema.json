@@ -1,0 +1,166 @@
+{
+	"bsonType": "object",
+	"required": ["user_id", "type", "status", "price"],
+	"permission": {
+		"read": "doc.user_id == auth.uid || doc.rider_id == auth.uid",
+		"create": "auth.uid != null",
+		"update": "doc.user_id == auth.uid || doc.rider_id == auth.uid",
+		"delete": "doc.user_id == auth.uid"
+	},
+	"properties": {
+		"_id": {
+			"description": "订单ID，系统自动生成"
+		},
+		"user_id": {
+			"bsonType": "string",
+			"description": "下单用户ID",
+			"foreignKey": "uni-id-users._id",
+			"title": "用户ID"
+		},
+		"rider_id": {
+			"bsonType": "string",
+			"description": "接单骑手ID（可选）",
+			"foreignKey": "uni-id-users._id",
+			"title": "骑手ID"
+		},
+		"type": {
+			"bsonType": "string",
+			"description": "订单类型",
+			"enum": ["pickup", "errand", "post", "print"],
+			"enumDesc": {
+				"pickup": "快递代取",
+				"errand": "跑腿服务",
+				"post": "帮我寄件",
+				"print": "打印服务"
+			},
+			"title": "订单类型"
+		},
+		"type_label": {
+			"bsonType": "string",
+			"description": "订单类型标签",
+			"title": "类型标签"
+		},
+		"status": {
+			"bsonType": "string",
+			"description": "订单状态",
+			"enum": ["pending_accept", "pending_pickup", "delivering", "completed", "cancelled"],
+			"enumDesc": {
+				"pending_accept": "待接单",
+				"pending_pickup": "待取货",
+				"delivering": "配送中",
+				"completed": "已完成",
+				"cancelled": "已取消"
+			},
+			"title": "订单状态"
+		},
+		"price": {
+			"bsonType": "double",
+			"description": "订单金额",
+			"minimum": 0,
+			"title": "订单金额"
+		},
+		"pickup_location": {
+			"bsonType": "string",
+			"description": "取件地址",
+			"title": "取件地址"
+		},
+		"delivery_location": {
+			"bsonType": "string",
+			"description": "送达地址",
+			"title": "送达地址"
+		},
+		"address": {
+			"bsonType": "string",
+			"description": "收货地址（兼容字段）",
+			"title": "收货地址"
+		},
+		"content": {
+			"bsonType": "object",
+			"description": "订单内容详情",
+			"properties": {
+				"description": {
+					"bsonType": "string",
+					"description": "订单描述"
+				},
+				"images": {
+					"bsonType": "array",
+					"description": "图片URL数组",
+					"items": {
+						"bsonType": "string"
+					}
+				},
+				"phone": {
+					"bsonType": "string",
+					"description": "联系电话"
+				},
+				"pickup_images": {
+					"bsonType": "array",
+					"description": "取件凭证图片",
+					"items": {
+						"bsonType": "string"
+					}
+				},
+				"delivery_images": {
+					"bsonType": "array",
+					"description": "送达凭证图片",
+					"items": {
+						"bsonType": "string"
+					}
+				},
+				"runner_fee": {
+					"bsonType": "double",
+					"description": "跑腿费"
+				},
+				"is_urgent": {
+					"bsonType": "bool",
+					"description": "是否加急"
+				},
+				"is_delivery": {
+					"bsonType": "bool",
+					"description": "是否送货上门"
+				},
+				"dorm_number": {
+					"bsonType": "string",
+					"description": "寝室号"
+				}
+			},
+			"title": "订单内容"
+		},
+		"tags": {
+			"bsonType": "array",
+			"description": "订单标签",
+			"items": {
+				"bsonType": "string"
+			},
+			"title": "标签"
+		},
+		"pickup_distance": {
+			"bsonType": "double",
+			"description": "取件距离（公里）",
+			"title": "取件距离"
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"description": "创建时间",
+			"forceDefaultValue": {
+				"$env": "now"
+			},
+			"title": "创建时间"
+		},
+		"accept_time": {
+			"bsonType": "timestamp",
+			"description": "接单时间",
+			"title": "接单时间"
+		},
+		"pickup_time": {
+			"bsonType": "timestamp",
+			"description": "取货时间",
+			"title": "取货时间"
+		},
+		"complete_time": {
+			"bsonType": "timestamp",
+			"description": "完成时间",
+			"title": "完成时间"
+		}
+	}
+}

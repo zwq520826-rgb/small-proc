@@ -1,0 +1,76 @@
+{
+	"bsonType": "object",
+	"required": ["user_id", "type", "amount", "status"],
+	"permission": {
+		"read": "doc.user_id == auth.uid",
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"properties": {
+		"_id": {
+			"description": "ID，系统自动生成"
+		},
+		"user_id": {
+			"bsonType": "string",
+			"description": "用户ID",
+			"foreignKey": "uni-id-users._id",
+			"title": "用户ID"
+		},
+		"type": {
+			"bsonType": "string",
+			"description": "交易类型",
+			"enum": ["recharge", "withdraw", "pay", "income", "refund"],
+			"enumDesc": {
+				"recharge": "充值",
+				"withdraw": "提现",
+				"pay": "支付",
+				"income": "收入",
+				"refund": "退款"
+			},
+			"title": "交易类型"
+		},
+		"amount": {
+			"bsonType": "double",
+			"description": "交易金额",
+			"title": "金额"
+		},
+		"balance_before": {
+			"bsonType": "double",
+			"description": "交易前余额",
+			"title": "交易前余额"
+		},
+		"balance_after": {
+			"bsonType": "double",
+			"description": "交易后余额",
+			"title": "交易后余额"
+		},
+		"order_id": {
+			"bsonType": "string",
+			"description": "关联订单ID（可选）",
+			"foreignKey": "orders._id",
+			"title": "订单ID"
+		},
+		"status": {
+			"bsonType": "string",
+			"description": "交易状态",
+			"enum": ["pending", "success", "failed"],
+			"enumDesc": {
+				"pending": "处理中",
+				"success": "成功",
+				"failed": "失败"
+			},
+			"title": "状态"
+		},
+		"remark": {
+			"bsonType": "string",
+			"description": "备注",
+			"title": "备注"
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"description": "创建时间",
+			"title": "创建时间"
+		}
+	}
+}

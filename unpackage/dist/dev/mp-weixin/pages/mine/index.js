@@ -1,0 +1,342 @@
+"use strict";
+const common_vendor = require("../../common/vendor.js");
+const uni_modules_uniIdPages_common_store = require("../../uni_modules/uni-id-pages/common/store.js");
+const store_user = require("../../store/user.js");
+const store_wallet = require("../../store/wallet.js");
+const common_assets = require("../../common/assets.js");
+const uniIdCo = common_vendor.tr.importObject("uni-id-co");
+const riderService = common_vendor.tr.importObject("rider-service");
+const TheTabBar = () => "../../components/TheTabBar.js";
+const _sfc_main = {
+  components: {
+    TheTabBar
+  },
+  computed: {
+    userInfo() {
+      return uni_modules_uniIdPages_common_store.store.userInfo;
+    },
+    isRiderMode() {
+      return store_user.isRiderMode();
+    },
+    displayName() {
+      if (this.userInfo.nickname)
+        return this.userInfo.nickname;
+      if (this.userInfo.mobile)
+        return this.userInfo.mobile;
+      return "点击登录/完善资料";
+    },
+    realNameStatus() {
+      if (!this.userInfo.realNameAuth) {
+        return 0;
+      }
+      return this.userInfo.realNameAuth.authStatus;
+    },
+    walletAmount() {
+      return this.walletStore ? this.walletStore.balance : 0;
+    }
+  },
+  data() {
+    return {
+      univerifyStyle: {
+        authButton: {
+          "title": "本机号码一键绑定"
+          // 授权按钮文案
+        },
+        otherLoginButton: {
+          "title": "其他号码绑定"
+        }
+      },
+      hasPwd: false,
+      showLoginManage: true,
+      setNicknameIng: false,
+      stats: {
+        totalOrders: 23,
+        credit: 4.9,
+        points: 580
+      },
+      walletStore: null,
+      couponCount: 3
+    };
+  },
+  async onShow() {
+    this.univerifyStyle.authButton.title = "本机号码一键绑定";
+    this.univerifyStyle.otherLoginButton.title = "其他号码绑定";
+    if (this.walletStore) {
+      await this.walletStore.loadFromCloud();
+    }
+  },
+  async onLoad(e) {
+    if (e.showLoginManage) {
+      this.showLoginManage = true;
+    }
+    let res = await uniIdCo.getAccountInfo();
+    this.hasPwd = res.isPasswordSet;
+    this.walletStore = store_wallet.useWalletStore();
+  },
+  methods: {
+    login() {
+      common_vendor.index.navigateTo({
+        url: "/uni_modules/uni-id-pages/pages/login/login-withoutpwd",
+        complete: (e) => {
+        }
+      });
+    },
+    logout() {
+      uni_modules_uniIdPages_common_store.mutations.logout();
+    },
+    bindMobileSuccess() {
+      uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
+    },
+    changePassword() {
+      common_vendor.index.navigateTo({
+        url: "/uni_modules/uni-id-pages/pages/userinfo/change_pwd/change_pwd",
+        complete: (e) => {
+        }
+      });
+    },
+    bindMobile() {
+      this.$refs["bind-mobile-by-sms"].open();
+    },
+    univerify() {
+      common_vendor.index.login({
+        "provider": "univerify",
+        "univerifyStyle": this.univerifyStyle,
+        success: async (e) => {
+          uniIdCo.bindMobileByUniverify(e.authResult).then((res) => {
+            uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
+          }).catch((e2) => {
+            common_vendor.index.__f__("log", "at pages/mine/index.vue:234", e2);
+          }).finally((e2) => {
+            common_vendor.index.closeAuthView();
+          });
+        },
+        fail: (err) => {
+          common_vendor.index.__f__("log", "at pages/mine/index.vue:241", err);
+          if (err.code == "30002" || err.code == "30001") {
+            this.bindMobileBySmsCode();
+          }
+        }
+      });
+    },
+    bindMobileBySmsCode() {
+      common_vendor.index.navigateTo({
+        url: "/uni_modules/uni-id-pages/pages/userinfo/bind-mobile/bind-mobile"
+      });
+    },
+    setNickname(nickname) {
+      if (nickname) {
+        uni_modules_uniIdPages_common_store.mutations.updateUserInfo({
+          nickname
+        });
+        this.setNicknameIng = false;
+        this.$refs.dialog.close();
+      } else {
+        this.$refs.dialog.open();
+      }
+    },
+    deactivate() {
+      common_vendor.index.navigateTo({
+        url: "/uni_modules/uni-id-pages/pages/userinfo/deactivate/deactivate"
+      });
+    },
+    goOrders() {
+      common_vendor.index.reLaunch({
+        url: "/pages/client/orders/list"
+      });
+    },
+    goWallet() {
+      common_vendor.index.navigateTo({ url: "/pages/common/wallet/index" });
+    },
+    goAddress() {
+      common_vendor.index.navigateTo({
+        url: "/pages/common/address/list"
+      });
+    },
+    goFavorite() {
+      common_vendor.index.showToast({ title: "我的收藏（待实现）", icon: "none" });
+    },
+    goCoupon() {
+      common_vendor.index.showToast({ title: "优惠券（待实现）", icon: "none" });
+    },
+    goMessages() {
+      common_vendor.index.showToast({ title: "消息通知（待实现）", icon: "none" });
+    },
+    goService() {
+      common_vendor.index.showToast({ title: "在线客服（待实现）", icon: "none" });
+    },
+    goHelp() {
+      common_vendor.index.showToast({ title: "帮助中心（待实现）", icon: "none" });
+    },
+    goSettings() {
+      common_vendor.index.showToast({ title: "设置（待实现）", icon: "none" });
+    },
+    /**
+     * 切换到骑手端
+     * - 如果未完成骑手实名认证，则先跳转到认证页面
+     * - 只有认证通过(approved)后才真正切换模式
+     */
+    async goBecomeRider() {
+      if (!this.userInfo || !this.userInfo._id) {
+        common_vendor.index.showToast({ title: "请先登录", icon: "none" });
+        return;
+      }
+      try {
+        const res = await riderService.getMyProfile();
+        const profile = res && res.code === 0 ? res.data : null;
+        if (!profile) {
+          common_vendor.index.navigateTo({ url: "/pages/rider/verify" });
+          return;
+        }
+        store_user.switchToRider();
+        common_vendor.index.reLaunch({
+          url: "/pages/rider/hall",
+          success: () => {
+            common_vendor.index.showToast({
+              title: "已切换到骑手端",
+              icon: "success",
+              duration: 1500
+            });
+          }
+        });
+      } catch (e) {
+        common_vendor.index.showToast({ title: "获取认证信息失败，请稍后重试", icon: "none" });
+      }
+    },
+    /**
+     * 切回用户端
+     * 1. 修改本地存储 user_mode 为 'client'
+     * 2. 使用 reLaunch 跳转到用户端首页
+     */
+    goClientMode() {
+      store_user.switchToClient();
+      common_vendor.index.reLaunch({
+        url: "/pages/client/home",
+        success: () => {
+          common_vendor.index.showToast({
+            title: "已切换到用户端",
+            icon: "success",
+            duration: 1500
+          });
+        }
+      });
+    },
+    async bindThirdAccount(provider) {
+      const uniIdCo2 = common_vendor.tr.importObject("uni-id-co");
+      const bindField = {
+        weixin: "wx_openid",
+        alipay: "ali_openid",
+        apple: "apple_openid",
+        qq: "qq_openid"
+      }[provider.toLowerCase()];
+      if (this.userInfo[bindField]) {
+        await uniIdCo2["unbind" + provider]();
+        await uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
+      } else {
+        common_vendor.index.login({
+          provider: provider.toLowerCase(),
+          onlyAuthorize: true,
+          success: async (e) => {
+            const res = await uniIdCo2["bind" + provider]({
+              code: e.code
+            });
+            if (res.errCode) {
+              common_vendor.index.showToast({
+                title: res.errMsg || "绑定失败",
+                duration: 3e3
+              });
+            }
+            await uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
+          },
+          fail: async (err) => {
+            common_vendor.index.__f__("log", "at pages/mine/index.vue:384", err);
+            common_vendor.index.hideLoading();
+          }
+        });
+      }
+    },
+    realNameVerify() {
+      common_vendor.index.navigateTo({
+        url: "/uni_modules/uni-id-pages/pages/userinfo/realname-verify/realname-verify"
+      });
+    }
+  }
+};
+if (!Array) {
+  const _easycom_uni_id_pages_avatar2 = common_vendor.resolveComponent("uni-id-pages-avatar");
+  const _easycom_uni_popup_dialog2 = common_vendor.resolveComponent("uni-popup-dialog");
+  const _easycom_uni_popup2 = common_vendor.resolveComponent("uni-popup");
+  const _easycom_uni_id_pages_bind_mobile2 = common_vendor.resolveComponent("uni-id-pages-bind-mobile");
+  const _component_TheTabBar = common_vendor.resolveComponent("TheTabBar");
+  (_easycom_uni_id_pages_avatar2 + _easycom_uni_popup_dialog2 + _easycom_uni_popup2 + _easycom_uni_id_pages_bind_mobile2 + _component_TheTabBar)();
+}
+const _easycom_uni_id_pages_avatar = () => "../../uni_modules/uni-id-pages/components/uni-id-pages-avatar/uni-id-pages-avatar.js";
+const _easycom_uni_popup_dialog = () => "../../uni_modules/uni-popup/components/uni-popup-dialog/uni-popup-dialog.js";
+const _easycom_uni_popup = () => "../../uni_modules/uni-popup/components/uni-popup/uni-popup.js";
+const _easycom_uni_id_pages_bind_mobile = () => "../../uni_modules/uni-id-pages/components/uni-id-pages-bind-mobile/uni-id-pages-bind-mobile.js";
+if (!Math) {
+  (_easycom_uni_id_pages_avatar + _easycom_uni_popup_dialog + _easycom_uni_popup + _easycom_uni_id_pages_bind_mobile)();
+}
+function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
+  return common_vendor.e({
+    a: common_vendor.p({
+      width: "120rpx",
+      height: "120rpx"
+    }),
+    b: common_vendor.t($options.displayName),
+    c: $options.userInfo.studentNo
+  }, $options.userInfo.studentNo ? {
+    d: common_vendor.t($options.userInfo.studentNo)
+  } : $options.userInfo._id ? {
+    f: common_vendor.t($options.userInfo._id)
+  } : {}, {
+    e: $options.userInfo._id,
+    g: common_vendor.o(($event) => $options.setNickname("")),
+    h: !$options.isRiderMode
+  }, !$options.isRiderMode ? {
+    i: common_assets._imports_0$2,
+    j: common_vendor.o((...args) => $options.goBecomeRider && $options.goBecomeRider(...args))
+  } : {}, {
+    k: common_assets._imports_1$1,
+    l: common_vendor.t($options.walletAmount),
+    m: common_vendor.o((...args) => $options.goWallet && $options.goWallet(...args)),
+    n: common_assets._imports_2,
+    o: common_vendor.o((...args) => $options.goAddress && $options.goAddress(...args)),
+    p: common_assets._imports_3,
+    q: common_vendor.o((...args) => $options.goMessages && $options.goMessages(...args)),
+    r: common_assets._imports_4,
+    s: common_vendor.o((...args) => $options.goService && $options.goService(...args)),
+    t: common_assets._imports_5,
+    v: common_vendor.o((...args) => $options.goHelp && $options.goHelp(...args)),
+    w: common_assets._imports_6,
+    x: common_vendor.o((...args) => $options.goSettings && $options.goSettings(...args)),
+    y: $options.isRiderMode
+  }, $options.isRiderMode ? {
+    z: common_vendor.o((...args) => $options.goClientMode && $options.goClientMode(...args))
+  } : {}, {
+    A: $data.showLoginManage
+  }, $data.showLoginManage ? common_vendor.e({
+    B: $options.userInfo._id
+  }, $options.userInfo._id ? {
+    C: common_vendor.o((...args) => $options.logout && $options.logout(...args))
+  } : {
+    D: common_vendor.o((...args) => $options.login && $options.login(...args))
+  }) : {}, {
+    E: common_vendor.o($options.setNickname),
+    F: common_vendor.p({
+      mode: "input",
+      value: $options.userInfo.nickname,
+      inputType: $data.setNicknameIng ? "nickname" : "text",
+      title: "设置昵称",
+      placeholder: "请输入要设置的昵称"
+    }),
+    G: common_vendor.sr("dialog", "569e925a-1"),
+    H: common_vendor.p({
+      type: "dialog"
+    }),
+    I: common_vendor.sr("bind-mobile-by-sms", "569e925a-3"),
+    J: common_vendor.o($options.bindMobileSuccess)
+  });
+}
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-569e925a"]]);
+wx.createPage(MiniProgramPage);
+//# sourceMappingURL=../../../.sourcemap/mp-weixin/pages/mine/index.js.map

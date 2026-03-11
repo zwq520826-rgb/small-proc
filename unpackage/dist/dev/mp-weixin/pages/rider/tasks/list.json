@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "骑手任务",
+  "usingComponents": {
+    "the-tab-bar": "../../../components/TheTabBar"
+  }
+}

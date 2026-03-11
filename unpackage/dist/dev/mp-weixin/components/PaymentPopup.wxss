@@ -1,0 +1,51 @@
+
+.popup.data-v-9d891b99 {
+  background: #ffffff;
+  border-top-left-radius: 20rpx;
+  border-top-right-radius: 20rpx;
+  padding: 24rpx;
+}
+.header.data-v-9d891b99 {
+  text-align: center;
+  margin-bottom: 12rpx;
+}
+.title.data-v-9d891b99 {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.amount-row.data-v-9d891b99,
+.balance-row.data-v-9d891b99 {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12rpx;
+}
+.label.data-v-9d891b99 {
+  font-size: 26rpx;
+  color: #666666;
+}
+.amount.data-v-9d891b99 {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #e53935;
+}
+.balance.data-v-9d891b99 {
+  font-size: 28rpx;
+  color: #333333;
+}
+.btn-row.data-v-9d891b99 {
+  display: flex;
+  margin-top: 24rpx;
+  gap: 16rpx;
+}
+.btn.data-v-9d891b99 {
+  flex: 1;
+  border-radius: 999rpx;
+}
+.cancel.data-v-9d891b99 {
+  background: #f5f5f5;
+  color: #666666;
+}
+.confirm.data-v-9d891b99 {
+  background: #007aff;
+  color: #ffffff;
+}

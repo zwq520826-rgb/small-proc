@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "骑手端大厅",
+  "usingComponents": {
+    "the-tab-bar": "../../components/TheTabBar"
+  }
+}

@@ -1,0 +1,24 @@
+"use strict";
+const _imports_0$3 = "/static/empty-order.png";
+const _imports_0$2 = "/static/tabbar/jiajichuli.png";
+const _imports_1$1 = "/static/tabbar/sonhuoshangmen.png";
+const _imports_0$1 = "/static/tabbar/chengweiqishou.png";
+const _imports_1 = "/static/tabbar/wodeqianbao.png";
+const _imports_2 = "/static/tabbar/wodedizhi.png";
+const _imports_3 = "/static/tabbar/xiaoxitonzhi.png";
+const _imports_4 = "/static/tabbar/zaixiankefu.png";
+const _imports_5 = "/static/tabbar/bangzhuzhonxin.png";
+const _imports_6 = "/static/tabbar/shezhi.png";
+const _imports_0 = "/assets/face-verify-icon.d6cf9da3.svg";
+exports._imports_0 = _imports_0$3;
+exports._imports_0$1 = _imports_0$2;
+exports._imports_0$2 = _imports_0$1;
+exports._imports_0$3 = _imports_0;
+exports._imports_1 = _imports_1$1;
+exports._imports_1$1 = _imports_1;
+exports._imports_2 = _imports_2;
+exports._imports_3 = _imports_3;
+exports._imports_4 = _imports_4;
+exports._imports_5 = _imports_5;
+exports._imports_6 = _imports_6;
+//# sourceMappingURL=../../.sourcemap/mp-weixin/common/assets.js.map
