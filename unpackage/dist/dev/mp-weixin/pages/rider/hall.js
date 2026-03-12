@@ -9,10 +9,6 @@ const _sfc_main = {
   __name: "hall",
   setup(__props) {
     const store = store_riderTask.useRiderTaskStore();
-    const filterOptions = [
-      { label: "距离最近", value: "distance" },
-      { label: "金额最高", value: "price" }
-    ];
     const activeFilter = common_vendor.ref("distance");
     const stats = common_vendor.computed(() => {
       const completed = store.myTasks.filter((t) => t.status === "completed");
@@ -46,9 +42,6 @@ const _sfc_main = {
         };
       });
     });
-    const refresh = () => {
-      common_vendor.index.showToast({ title: "已刷新定位", icon: "none" });
-    };
     const viewDetail = (task) => {
       const taskId = task.id || task._id;
       if (!taskId) {
@@ -58,7 +51,7 @@ const _sfc_main = {
       common_vendor.index.navigateTo({
         url: `/pages/rider/tasks/detail?id=${taskId}`,
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/rider/hall.vue:130", "跳转失败:", err);
+          common_vendor.index.__f__("error", "at pages/rider/hall.vue:117", "跳转失败:", err);
           common_vendor.index.showToast({ title: "页面不存在，请重新编译", icon: "none" });
         }
       });
@@ -77,7 +70,7 @@ const _sfc_main = {
           });
           urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
         } catch (e) {
-          common_vendor.index.__f__("error", "at pages/rider/hall.vue:158", "获取临时文件 URL 失败:", e);
+          common_vendor.index.__f__("error", "at pages/rider/hall.vue:145", "获取临时文件 URL 失败:", e);
           common_vendor.index.showToast({ title: "图片加载失败，请稍后重试", icon: "none" });
           return;
         }
@@ -121,7 +114,7 @@ const _sfc_main = {
       try {
         await store.loadFromStorage();
       } catch (error) {
-        common_vendor.index.__f__("error", "at pages/rider/hall.vue:214", "加载任务失败:", error);
+        common_vendor.index.__f__("error", "at pages/rider/hall.vue:201", "加载任务失败:", error);
         common_vendor.index.hideLoading();
       }
     });
@@ -129,16 +122,7 @@ const _sfc_main = {
       return {
         a: common_vendor.t(stats.value.orders),
         b: common_vendor.t(stats.value.income.toFixed(1)),
-        c: common_vendor.o(refresh),
-        d: common_vendor.f(filterOptions, (item, k0, i0) => {
-          return {
-            a: common_vendor.t(item.label),
-            b: item.value,
-            c: item.value === activeFilter.value ? 1 : "",
-            d: common_vendor.o(($event) => activeFilter.value = item.value, item.value)
-          };
-        }),
-        e: common_vendor.f(filteredTasks.value, (task, k0, i0) => {
+        c: common_vendor.f(filteredTasks.value, (task, k0, i0) => {
           return {
             a: common_vendor.f(task.tags, (tag, k1, i1) => {
               return {

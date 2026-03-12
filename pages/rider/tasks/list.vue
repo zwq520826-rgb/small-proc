@@ -29,6 +29,20 @@
           <text class="status">{{ statusMap[task.status] }}</text>
         </view>
 
+        <view v-if="task.tags && task.tags.length" class="tag-row">
+          <text
+            v-for="tag in task.tags"
+            :key="tag"
+            class="tag"
+            :class="{
+              'tag-urgent': tag.includes('加急'),
+              'tag-delivery': tag.includes('送货上门')
+            }"
+          >
+            {{ tag }}
+          </text>
+        </view>
+
         <view class="contact-info" v-if="task.phone" @click="copyPhone(task.phone)">
           <text class="phone-label">客户电话：</text>
           <text class="phone">{{ task.phone }}</text>
@@ -37,7 +51,7 @@
 
         <view class="actions">
           <button class="view-btn" @click="viewPickupImages(task)">
-            👀 查看取件信息
+            查看取件信息
           </button>
           <button class="confirm-btn" type="primary" @click="confirmPickup(task)">
              已取货
@@ -63,6 +77,20 @@
           <text class="status delivering-status">配送中</text>
         </view>
 
+        <view v-if="task.tags && task.tags.length" class="tag-row">
+          <text
+            v-for="tag in task.tags"
+            :key="tag"
+            class="tag"
+            :class="{
+              'tag-urgent': tag.includes('加急'),
+              'tag-delivery': tag.includes('送货上门')
+            }"
+          >
+            {{ tag }}
+          </text>
+        </view>
+
         <view class="contact-info" v-if="task.phone" @click="copyPhone(task.phone)">
           <text class="phone-label">客户电话：</text>
           <text class="phone">{{ task.phone }}</text>
@@ -71,7 +99,7 @@
 
         <view class="actions">
           <button class="view-btn" @click="viewPickupImages(task)">
-            👀 查看取件信息
+            查看取件信息
           </button>
           <button class="deliver-btn" @click="confirmDelivery(task)">
             📸 拍照送达
@@ -95,6 +123,20 @@
         <view class="info-row">
           <text class="type">{{ task.type === 'pickup' ? '快递代取' : '跑腿服务' }}</text>
           <text class="completed-time">{{ formatTime(task.completedAt) }}</text>
+        </view>
+
+        <view v-if="task.tags && task.tags.length" class="tag-row">
+          <text
+            v-for="tag in task.tags"
+            :key="tag"
+            class="tag"
+            :class="{
+              'tag-urgent': tag.includes('加急'),
+              'tag-delivery': tag.includes('送货上门')
+            }"
+          >
+            {{ tag }}
+          </text>
         </view>
 
         <view v-if="task.deliveryImage" class="delivery-proof">
@@ -145,16 +187,27 @@ const taskList = computed(() => {
   const list = store.tasksByStatus(currentStatus)
 
   // 格式化数据以适配模板
-  return list.map((t) => ({
-    ...t,
-    pickup: t.pickupLocation || t.pickup || '取件点',
-    delivery: t.deliveryLocation || t.delivery || t.address || '送达地址',
-    // 用户上传的取件凭证在 content.images 中
-    pickupImages: t.content?.images || [],
-    deliveryImage: t.content?.deliveryImages?.[0] || t.content?.delivery_images?.[0] || '',
-    // 客户电话：优先从 content.phone 获取，如果没有则尝试从 address 字段解析
-    phone: t.content?.phone || t.phone || extractPhoneFromAddress(t.address) || ''
-  }))
+  return list.map((t) => {
+    const tags =
+      (t.tags && t.tags.length
+        ? t.tags
+        : [
+            t.content?.isUrgent ? '加急处理' : '',
+            t.content?.isDelivery ? '送货上门' : ''
+          ].filter(Boolean)) || []
+
+    return {
+      ...t,
+      pickup: t.pickupLocation || t.pickup || '取件点',
+      delivery: t.deliveryLocation || t.delivery || t.address || '送达地址',
+      // 用户上传的取件凭证在 content.images 中
+      pickupImages: t.content?.images || [],
+      deliveryImage: t.content?.deliveryImages?.[0] || t.content?.delivery_images?.[0] || '',
+      // 客户电话：优先从 content.phone 获取，如果没有则尝试从 address 字段解析
+      phone: t.content?.phone || t.phone || extractPhoneFromAddress(t.address) || '',
+      tags
+    }
+  })
 })
 
 const statusMap = {
@@ -467,6 +520,33 @@ const formatTime = (timestamp) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16rpx;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-bottom: 10rpx;
+}
+
+.tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: #f4f5f7;
+  color: #555555;
+}
+
+.tag-urgent {
+  background: #ffe8e6;
+  color: #e53935;
+  font-weight: 700;
+}
+
+.tag-delivery {
+  background: #e6f6ff;
+  color: #0288d1;
+  font-weight: 700;
 }
 
 .type {

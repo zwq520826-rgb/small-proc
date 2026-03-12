@@ -94,7 +94,7 @@ const saveAddress = async () => {
     name: name.value.trim(),
     phone: phone.value.trim(),
     detail: detail.value.trim(),
-    schoolArea: '紫荆校区',
+    // 不再固定写死校区字段，统一只用 detail 保存完整地址
     isDefault: isDefault.value
   }
 

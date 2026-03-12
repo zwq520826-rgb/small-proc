@@ -9,19 +9,6 @@
         <text class="label">今日收入</text>
         <text class="value">¥{{ stats.income.toFixed(1) }}</text>
       </view>
-      <button class="refresh" size="mini" @click="refresh">刷新定位</button>
-    </view>
-
-    <view class="filters">
-      <button
-        v-for="item in filterOptions"
-        :key="item.value"
-        size="mini"
-        :class="{ active: item.value === activeFilter }"
-        @click="activeFilter = item.value"
-      >
-        {{ item.label }}
-      </button>
     </view>
 
     <view class="task-card" v-for="task in filteredTasks" :key="task.id" @click="viewDetail(task)">
@@ -248,27 +235,6 @@ onShow(async () => {
   margin-top: 6rpx;
   font-size: 34rpx;
   font-weight: 700;
-}
-
-.refresh {
-  background: #ffffff;
-  color: #1e88e5;
-  border: none;
-}
-
-.filters {
-  margin: 18rpx 0;
-  display: flex;
-  gap: 12rpx;
-}
-
-.filters button {
-  flex: 1;
-}
-
-.filters .active {
-  background: #1e88e5;
-  color: #ffffff;
 }
 
 .task-card {

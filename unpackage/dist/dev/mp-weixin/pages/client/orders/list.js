@@ -28,7 +28,18 @@ const _sfc_main = {
     const loadStatus = common_vendor.ref("more");
     const displayList = common_vendor.computed(() => {
       const status = tabs[currentTab.value].status;
-      return store.ordersByStatus(status);
+      const list = store.ordersByStatus(status);
+      return list.map((o) => {
+        var _a, _b;
+        const tags = (o.tags && o.tags.length ? o.tags : [
+          ((_a = o.content) == null ? void 0 : _a.isUrgent) ? "加急处理" : "",
+          ((_b = o.content) == null ? void 0 : _b.isDelivery) ? "送货上门" : ""
+        ].filter(Boolean)) || [];
+        return {
+          ...o,
+          tags
+        };
+      });
     });
     const onTabChange = (index) => {
       currentTab.value = index;
@@ -119,23 +130,34 @@ const _sfc_main = {
             d: common_vendor.n(order.status),
             e: common_vendor.t(order.pickupLocation),
             f: common_vendor.t(order.deliveryLocation || order.address),
-            g: common_vendor.t(((_a = order.content) == null ? void 0 : _a.description) || "订单详情"),
-            h: common_vendor.t(Number(order.price || 0).toFixed(2)),
-            i: order.status === "completed"
-          }, order.status === "completed" ? {
-            j: common_vendor.o(($event) => handleViewPhotos(order), order.id)
+            g: order.tags && order.tags.length
+          }, order.tags && order.tags.length ? {
+            h: common_vendor.f(order.tags, (tag, k1, i1) => {
+              return {
+                a: common_vendor.t(tag),
+                b: tag,
+                c: tag.includes("加急") ? 1 : "",
+                d: tag.includes("送货上门") ? 1 : ""
+              };
+            })
           } : {}, {
-            k: order.status === "pending_accept"
+            i: common_vendor.t(((_a = order.content) == null ? void 0 : _a.description) || "订单详情"),
+            j: common_vendor.t(Number(order.price || 0).toFixed(2)),
+            k: order.status === "completed"
+          }, order.status === "completed" ? {
+            l: common_vendor.o(($event) => handleViewPhotos(order), order.id)
+          } : {}, {
+            m: order.status === "pending_accept"
           }, order.status === "pending_accept" ? {
-            l: common_vendor.o(($event) => handleCancel(order.id), order.id)
+            n: common_vendor.o(($event) => handleCancel(order.id), order.id)
           } : {}, {
-            m: order.status === "completed"
+            o: order.status === "completed"
           }, order.status === "completed" ? {
-            n: common_vendor.o(($event) => handleDelete(order.id), order.id)
+            p: common_vendor.o(($event) => handleDelete(order.id), order.id)
           } : {}, {
-            o: common_vendor.t(order.publishedAt || order.createTime),
-            p: order.id,
-            q: common_vendor.o(($event) => goDetail(order.id), order.id)
+            q: common_vendor.t(order.publishedAt || order.createTime),
+            r: order.id,
+            s: common_vendor.o(($event) => goDetail(order.id), order.id)
           });
         }),
         e: loadStatus.value === "loading"

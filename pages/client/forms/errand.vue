@@ -41,7 +41,12 @@
         </view>
         <view class="row-right">
           <button class="step-btn" @click="decreaseFee">-</button>
-          <text class="step-num">¥{{ runnerFee.toFixed(2) }}</text>
+          <input
+            class="step-num-input"
+            type="number"
+            v-model.number="runnerFee"
+            @blur="normalizeRunnerFee"
+          />
           <button class="step-btn" @click="increaseFee">+</button>
         </view>
       </view>
@@ -116,7 +121,7 @@ import { payForOrder } from '@/store/pay'
 
 // 状态
 const description = ref('')
-const runnerFee = ref(2.0)
+const runnerFee = ref(2) // 跑腿费，整数，最少 2 元
 const images = ref([])
 const isUrgent = ref(false)
 const isDelivery = ref(false)
@@ -178,12 +183,18 @@ const removeImage = (idx) => {
   images.value.splice(idx, 1)
 }
 
+const normalizeRunnerFee = () => {
+  let v = Number(runnerFee.value || 0)
+  if (!Number.isFinite(v) || v < 2) v = 2
+  runnerFee.value = Math.round(v)
+}
+
 const increaseFee = () => {
-  runnerFee.value = Math.max(2, runnerFee.value + 0.5)
+  runnerFee.value = Math.max(2, runnerFee.value + 1)
 }
 
 const decreaseFee = () => {
-  runnerFee.value = Math.max(2, runnerFee.value - 0.5)
+  runnerFee.value = Math.max(2, runnerFee.value - 1)
 }
 
 const goSelectAddress = () => {
@@ -245,12 +256,12 @@ const onPayConfirm = async (method = 'balance') => {
     const deliveryLocation = addr.schoolArea ? `${addr.schoolArea}・${addr.detail}` : addr.detail
     
     // 1. 先创建订单（状态为 pending_accept）
-    const payload = {
+      const payload = {
       type: 'errand',
       typeLabel: '跑腿代购',
       price: amount,
       status: 'pending_accept',
-      pickupLocation: description.value || '待指定',
+      pickupLocation: '', // 不再使用“待指定”，改为由图片说明取件信息
       deliveryLocation: deliveryLocation,
       address: `${addr.name || ''} ${addr.phone || ''}\n${deliveryLocation}`,
       content: {
@@ -518,6 +529,16 @@ onShow(() => {
   min-width: 120rpx;
   text-align: center;
   font-size: 28rpx;
+}
+
+.step-num-input {
+  min-width: 120rpx;
+  text-align: center;
+  font-size: 28rpx;
+  padding: 8rpx 12rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid #e5e7eb;
+  background: #f9fafb;
 }
 
 .dorm-row {

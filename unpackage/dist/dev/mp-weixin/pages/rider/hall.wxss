@@ -26,23 +26,6 @@
   font-size: 34rpx;
   font-weight: 700;
 }
-.refresh.data-v-7d101352 {
-  background: #ffffff;
-  color: #1e88e5;
-  border: none;
-}
-.filters.data-v-7d101352 {
-  margin: 18rpx 0;
-  display: flex;
-  gap: 12rpx;
-}
-.filters button.data-v-7d101352 {
-  flex: 1;
-}
-.filters .active.data-v-7d101352 {
-  background: #1e88e5;
-  color: #ffffff;
-}
 .task-card.data-v-7d101352 {
   background: #ffffff;
   border-radius: 14rpx;

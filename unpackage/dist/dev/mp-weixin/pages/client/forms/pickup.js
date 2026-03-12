@@ -134,8 +134,8 @@ const _sfc_main = {
           typeLabel: "快递代取",
           price: amount,
           status: "pending_accept",
-          pickupLocation: "待指定",
-          // 快递代取的取件地址通常是快递点，这里先设为待指定
+          pickupLocation: "",
+          // 不再使用“待指定”，改为通过取件凭证照片识别取件点
           deliveryLocation,
           address: `${addr.name || ""} ${addr.phone || ""}
 ${deliveryLocation}`,

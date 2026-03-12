@@ -45,18 +45,24 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:161", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:166", "选择图片失败:", err);
         }
       });
     };
     const removeImage = (idx) => {
       images.value.splice(idx, 1);
     };
+    const normalizeRunnerFee = () => {
+      let v = Number(runnerFee.value || 0);
+      if (!Number.isFinite(v) || v < 2)
+        v = 2;
+      runnerFee.value = Math.round(v);
+    };
     const increaseFee = () => {
-      runnerFee.value = Math.max(2, runnerFee.value + 0.5);
+      runnerFee.value = Math.max(2, runnerFee.value + 1);
     };
     const decreaseFee = () => {
-      runnerFee.value = Math.max(2, runnerFee.value - 0.5);
+      runnerFee.value = Math.max(2, runnerFee.value - 1);
     };
     const goSelectAddress = () => {
       common_vendor.index.navigateTo({ url: "/pages/common/address/list?source=select" });
@@ -113,7 +119,8 @@ const _sfc_main = {
           typeLabel: "跑腿代购",
           price: amount,
           status: "pending_accept",
-          pickupLocation: description.value || "待指定",
+          pickupLocation: "",
+          // 不再使用“待指定”，改为由图片说明取件信息
           deliveryLocation,
           address: `${addr.name || ""} ${addr.phone || ""}
 ${deliveryLocation}`,
@@ -163,7 +170,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:307", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:318", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -195,24 +202,28 @@ ${deliveryLocation}`,
         k: common_vendor.o(chooseImage)
       } : {}, {
         l: common_vendor.o(decreaseFee),
-        m: common_vendor.t(runnerFee.value.toFixed(2)),
-        n: common_vendor.o(increaseFee),
-        o: common_assets._imports_0$1,
-        p: isUrgent.value,
-        q: common_vendor.o((e) => isUrgent.value = e.detail.value),
-        r: common_assets._imports_1,
-        s: isDelivery.value,
-        t: common_vendor.o((e) => isDelivery.value = e.detail.value),
-        v: isDelivery.value
+        m: common_vendor.o(normalizeRunnerFee),
+        n: runnerFee.value,
+        o: common_vendor.o(common_vendor.m(($event) => runnerFee.value = $event.detail.value, {
+          number: true
+        })),
+        p: common_vendor.o(increaseFee),
+        q: common_assets._imports_0$1,
+        r: isUrgent.value,
+        s: common_vendor.o((e) => isUrgent.value = e.detail.value),
+        t: common_assets._imports_1,
+        v: isDelivery.value,
+        w: common_vendor.o((e) => isDelivery.value = e.detail.value),
+        x: isDelivery.value
       }, isDelivery.value ? {
-        w: dormNumber.value,
-        x: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
+        y: dormNumber.value,
+        z: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
       } : {}, {
-        y: common_vendor.t(totalPrice.value),
-        z: common_vendor.o(handlePayClick),
-        A: common_vendor.o(onPayConfirm),
-        B: common_vendor.o(($event) => showPayPopup.value = $event),
-        C: common_vendor.p({
+        A: common_vendor.t(totalPrice.value),
+        B: common_vendor.o(handlePayClick),
+        C: common_vendor.o(onPayConfirm),
+        D: common_vendor.o(($event) => showPayPopup.value = $event),
+        E: common_vendor.p({
           amount: Number(totalPrice.value),
           balance: balance.value,
           show: showPayPopup.value

@@ -60,14 +60,13 @@ const _sfc_main = {
           }, item.isDefault ? {} : {}, {
             d: common_vendor.o(($event) => editAddress(item.id), item.id),
             e: common_vendor.o(($event) => remove(item.id), item.id),
-            f: common_vendor.t(item.schoolArea),
-            g: common_vendor.t(item.detail),
-            h: !item.isDefault
+            f: common_vendor.t(item.detail),
+            g: !item.isDefault
           }, !item.isDefault ? {
-            i: common_vendor.o(($event) => setDefault(item.id), item.id)
+            h: common_vendor.o(($event) => setDefault(item.id), item.id)
           } : {}, {
-            j: item.id,
-            k: common_vendor.o(($event) => handleCardClick(item.id), item.id)
+            i: item.id,
+            j: common_vendor.o(($event) => handleCardClick(item.id), item.id)
           });
         }),
         b: common_vendor.o(addNew)

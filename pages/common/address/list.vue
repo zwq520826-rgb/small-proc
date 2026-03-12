@@ -32,7 +32,6 @@
           </view>
         </view>
         <view class="row-middle">
-          <text class="area">{{ item.schoolArea }}</text>
           <text class="detail">{{ item.detail }}</text>
         </view>
         <view class="row-bottom">
@@ -183,16 +182,14 @@ const handleCardClick = (id) => {
   margin: 0;
   background: transparent;
   border: none;
-  font-size: 26rpx;
+  font-size: 32rpx;
+  width: 48rpx;
+  height: 48rpx;
+  line-height: 48rpx;
 }
 
 .row-middle {
   margin-top: 6rpx;
-}
-
-.area {
-  font-size: 26rpx;
-  color: #333333;
 }
 
 .detail {

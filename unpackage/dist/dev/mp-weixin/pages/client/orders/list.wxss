@@ -91,6 +91,27 @@
   font-size: 24rpx;
   color: #666;
 }
+.tag-row.data-v-5857953e {
+  margin-top: 4rpx;
+  flex-wrap: wrap;
+}
+.tag.data-v-5857953e {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: #f4f5f7;
+  color: #555555;
+}
+.tag-urgent.data-v-5857953e {
+  background: #ffe8e6;
+  color: #e53935;
+  font-weight: 700;
+}
+.tag-delivery.data-v-5857953e {
+  background: #e6f6ff;
+  color: #0288d1;
+  font-weight: 700;
+}
 .footer-row.data-v-5857953e {
   margin-top: 12rpx;
   padding-top: 12rpx;

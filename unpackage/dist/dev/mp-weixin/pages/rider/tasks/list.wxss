@@ -108,6 +108,29 @@
   align-items: center;
   margin-bottom: 16rpx;
 }
+.tag-row.data-v-1cb17a62 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-bottom: 10rpx;
+}
+.tag.data-v-1cb17a62 {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: #f4f5f7;
+  color: #555555;
+}
+.tag-urgent.data-v-1cb17a62 {
+  background: #ffe8e6;
+  color: #e53935;
+  font-weight: 700;
+}
+.tag-delivery.data-v-1cb17a62 {
+  background: #e6f6ff;
+  color: #0288d1;
+  font-weight: 700;
+}
 .type.data-v-1cb17a62 {
   font-size: 24rpx;
   color: #7a8499;

@@ -41,6 +41,22 @@
           <text class="arrow">→</text>
           <text class="place">{{ order.deliveryLocation || order.address }}</text>
         </view>
+        <view
+          v-if="order.tags && order.tags.length"
+          class="row tag-row"
+        >
+          <text
+            v-for="tag in order.tags"
+            :key="tag"
+            class="tag"
+            :class="{
+              'tag-urgent': tag.includes('加急'),
+              'tag-delivery': tag.includes('送货上门')
+            }"
+          >
+            {{ tag }}
+          </text>
+        </view>
         <view class="row">
           <text class="desc">{{ order.content?.description || '订单详情' }}</text>
         </view>
@@ -124,7 +140,22 @@ const loadStatus = ref('more') // 'more' | 'loading' | 'noMore'
 const displayList = computed(() => {
   const status = tabs[currentTab.value].status
   // 使用 clientOrder store 提供的 getter
-  return store.ordersByStatus(status)
+  const list = store.ordersByStatus(status)
+
+  return list.map((o) => {
+    const tags =
+      (o.tags && o.tags.length
+        ? o.tags
+        : [
+            o.content?.isUrgent ? '加急处理' : '',
+            o.content?.isDelivery ? '送货上门' : ''
+          ].filter(Boolean)) || []
+
+    return {
+      ...o,
+      tags
+    }
+  })
 })
 
 // 【修改点4】简化加载逻辑 (因为改成了 computed，不需要手动 loadData)
@@ -317,6 +348,31 @@ onShow(async () => {
 .desc {
   font-size: 24rpx;
   color: #666;
+}
+
+.tag-row {
+  margin-top: 4rpx;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 999rpx;
+  background: #f4f5f7;
+  color: #555555;
+}
+
+.tag-urgent {
+  background: #ffe8e6;
+  color: #e53935;
+  font-weight: 700;
+}
+
+.tag-delivery {
+  background: #e6f6ff;
+  color: #0288d1;
+  font-weight: 700;
 }
 .footer-row {
   margin-top: 12rpx;
