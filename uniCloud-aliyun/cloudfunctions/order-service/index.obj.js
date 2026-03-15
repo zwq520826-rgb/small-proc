@@ -530,14 +530,26 @@ module.exports = {
 				}
 			}
 
-			// 更新订单：设置骑手ID和状态（接单后状态变为待取货）
-			await db.collection('orders')
-				.doc(orderId)
+			// 使用“带条件的更新”实现原子抢单，避免并发下多个骑手同时成功
+			const updateRes = await db.collection('orders')
+				.where({
+					_id: orderId,
+					status: 'pending_accept',
+					rider_id: dbCmd.exists(false).or(dbCmd.eq(null))
+				})
 				.update({
 					rider_id: uid,
 					status: 'pending_pickup',
 					accept_time: Date.now()
 				})
+
+			if (updateRes.updated === 0) {
+				// 说明在本次操作前后，订单状态或骑手信息已被其他请求修改
+				return {
+					code: 'ALREADY_GRABBED',
+					message: '订单已被其他骑手接单'
+				}
+			}
 
 			return {
 				code: 0,

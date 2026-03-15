@@ -361,9 +361,6 @@ module.exports = {
    * @param {number} orderPrice 订单金额
    */
   async afterOrderCompleted(orderId, riderId, orderPrice) {
-    const auth = checkAuth(this)
-    if (auth.code) return auth
-
     if (!orderId || !riderId) {
       return {
         code: 'INVALID_PARAM',
@@ -411,13 +408,20 @@ module.exports = {
 
     // 4. 计算骑手收入与平台抽成，并调用钱包服务给骑手入账
     const riderIncome = price * rider_share
-    // const platformIncome = price * commission_rate // 如需可写入平台账户
+    const platformIncome = price * commission_rate
+
+    // 将骑手实际收入与平台抽成写回订单，方便前端展示
+    await db.collection('orders')
+      .doc(orderId)
+      .update({
+        'content.rider_income': riderIncome,
+        'content.platform_income': platformIncome
+      })
 
     const walletService = uniCloud.importObject('wallet-service')
     if (riderIncome > 0) {
-      // 通过云对象上下文切换到骑手身份入账：此处直接调用，对应钱包服务会使用当前 token 的 uid
-      // 因此需要在客户端以骑手身份调用 confirmDelivery（当前逻辑就是这样）
-      await walletService.addIncome(riderIncome, orderId)
+      // 服务端内部调用：直接指定骑手 userId 入账
+      await walletService.addIncomeForUser(riderId, riderIncome, orderId)
     }
 
     return {

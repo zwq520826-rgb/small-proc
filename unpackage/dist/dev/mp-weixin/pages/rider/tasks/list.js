@@ -85,7 +85,7 @@ const _sfc_main = {
           });
           urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
         } catch (e) {
-          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:265", "获取临时文件 URL 失败:", e);
+          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:267", "获取临时文件 URL 失败:", e);
           common_vendor.index.showToast({ title: "图片加载失败，请稍后重试", icon: "none" });
           return;
         }
@@ -179,7 +179,7 @@ const _sfc_main = {
             } else {
             }
           } catch (e) {
-            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:398", "上传/送达确认失败:", e);
+            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:400", "上传/送达确认失败:", e);
             common_vendor.index.hideLoading();
             common_vendor.index.showToast({ title: e.message || "上传失败，请重试", icon: "none" });
           }
@@ -282,7 +282,7 @@ const _sfc_main = {
         g: common_vendor.f(taskList.value, (task, k0, i0) => {
           return common_vendor.e({
             a: common_vendor.t(task.delivery),
-            b: common_vendor.t(task.price.toFixed(2)),
+            b: common_vendor.t(((task.content && task.content.rider_income) != null ? Number(task.content.rider_income) : Number(task.price || 0)).toFixed(2)),
             c: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
             d: common_vendor.t(formatTime(task.completedAt)),
             e: task.tags && task.tags.length

@@ -439,6 +439,90 @@ module.exports = {
 	},
 
 	/**
+	 * 【服务端内部调用】给指定用户入账（不依赖当前登录态）
+	 * @param {string} userId 用户ID（例如骑手 uid）
+	 * @param {number} amount 收入金额
+	 * @param {string} orderId 订单ID
+	 */
+	async addIncomeForUser(userId, amount, orderId) {
+		amount = Number(amount)
+		if (!userId || isNaN(amount) || amount <= 0) {
+			return {
+				code: 'INVALID_PARAM',
+				message: '用户ID或金额不合法'
+			}
+		}
+
+		try {
+			// 获取当前钱包
+			let walletRes = await db.collection('wallets')
+				.where({ user_id: userId })
+				.get()
+
+			const now = Date.now()
+			let wallet
+
+			// 如果钱包不存在，创建一个
+			if (walletRes.data.length === 0) {
+				const addRes = await db.collection('wallets').add({
+					user_id: userId,
+					balance: 0,
+					frozen_balance: 0,
+					total_income: 0,
+					total_expense: 0,
+					create_time: now,
+					update_time: now
+				})
+				wallet = {
+					_id: addRes.id,
+					balance: 0
+				}
+			} else {
+				wallet = walletRes.data[0]
+			}
+
+			const balanceBefore = wallet.balance || 0
+			const balanceAfter = balanceBefore + amount
+
+			// 更新钱包余额和累计收入
+			await db.collection('wallets')
+				.doc(wallet._id)
+				.update({
+					balance: balanceAfter,
+					total_income: dbCmd.inc(amount),
+					update_time: now
+				})
+
+			// 记录交易流水
+			await db.collection('transactions').add({
+				user_id: userId,
+				type: 'income',
+				amount: amount,
+				balance_before: balanceBefore,
+				balance_after: balanceAfter,
+				order_id: orderId || '',
+				status: 'success',
+				remark: '订单收入',
+				create_time: now
+			})
+
+			return {
+				code: 0,
+				message: '收入入账成功',
+				data: {
+					balance: balanceAfter
+				}
+			}
+		} catch (error) {
+			console.error('收入入账失败(addIncomeForUser):', error)
+			return {
+				code: 'DB_ERROR',
+				message: '收入入账失败：' + error.message
+			}
+		}
+	},
+
+	/**
 	 * 获取交易记录
 	 * @param {object} params 查询参数
 	 * @param {string} params.type 交易类型（可选）

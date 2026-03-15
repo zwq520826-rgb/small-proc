@@ -103,11 +103,23 @@ async function loadMyTasksFromCloud(status = 'all') {
  */
 function hallTasksSorted(sortBy) {
   const list = [...state.hallTasks]
-  if (sortBy === 'price') {
-    list.sort((a, b) => (b.price || 0) - (a.price || 0))
-  } else {
-    list.sort((a, b) => (a.pickupDistance || 0) - (b.pickupDistance || 0))
-  }
+  // 加急优先：先根据 content.isUrgent 排序（true 在前），再按原有规则排序
+  list.sort((a, b) => {
+    const aUrgent = !!(a.content && a.content.isUrgent)
+    const bUrgent = !!(b.content && b.content.isUrgent)
+
+    if (aUrgent !== bUrgent) {
+      // 加急的排前面
+      return aUrgent ? -1 : 1
+    }
+
+    // 在同一优先级内再按原来的规则排序
+    if (sortBy === 'price') {
+      return (b.price || 0) - (a.price || 0)
+    } else {
+      return (a.pickupDistance || 0) - (b.pickupDistance || 0)
+    }
+  })
   return list
 }
 

@@ -108,7 +108,9 @@
           <view class="route">
             <text class="delivery">{{ task.delivery }}</text>
           </view>
-          <text class="income">收入 ¥{{ task.price.toFixed(2) }}</text>
+          <text class="income">
+            收入 ¥{{ ((task.content && task.content.rider_income) != null ? Number(task.content.rider_income) : Number(task.price || 0)).toFixed(2) }}
+          </text>
         </view>
         
         <view class="info-row">

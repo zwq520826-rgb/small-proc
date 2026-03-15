@@ -81,11 +81,18 @@ async function loadMyTasksFromCloud(status = "all") {
 }
 function hallTasksSorted(sortBy) {
   const list = [...state.hallTasks];
-  if (sortBy === "price") {
-    list.sort((a, b) => (b.price || 0) - (a.price || 0));
-  } else {
-    list.sort((a, b) => (a.pickupDistance || 0) - (b.pickupDistance || 0));
-  }
+  list.sort((a, b) => {
+    const aUrgent = !!(a.content && a.content.isUrgent);
+    const bUrgent = !!(b.content && b.content.isUrgent);
+    if (aUrgent !== bUrgent) {
+      return aUrgent ? -1 : 1;
+    }
+    if (sortBy === "price") {
+      return (b.price || 0) - (a.price || 0);
+    } else {
+      return (a.pickupDistance || 0) - (b.pickupDistance || 0);
+    }
+  });
   return list;
 }
 async function grabTask(id) {
@@ -104,7 +111,7 @@ async function grabTask(id) {
       };
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:135", "抢单失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:147", "抢单失败:", error);
     common_vendor.index.hideLoading();
     return {
       success: false,
@@ -136,7 +143,7 @@ async function confirmPickup(id, images = []) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:184", "确认取货失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:196", "确认取货失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -158,7 +165,7 @@ async function confirmDelivery(id, images) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:213", "确认送达失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:225", "确认送达失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
