@@ -18,6 +18,7 @@ const _sfc_main = {
     const isUrgent = common_vendor.ref(false);
     const isDelivery = common_vendor.ref(false);
     const dormNumber = common_vendor.ref("");
+    const deliveryDormType = common_vendor.ref("");
     const showPayPopup = common_vendor.ref(false);
     const walletStore = store_wallet.useWalletStore();
     const balance = common_vendor.computed(() => walletStore.balance);
@@ -45,7 +46,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:166", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:187", "选择图片失败:", err);
         }
       });
     };
@@ -64,6 +65,15 @@ const _sfc_main = {
     const decreaseFee = () => {
       runnerFee.value = Math.max(2, runnerFee.value - 1);
     };
+    const onDeliveryToggle = (e) => {
+      var _a;
+      const checked = (_a = e == null ? void 0 : e.detail) == null ? void 0 : _a.value;
+      isDelivery.value = !!checked;
+      if (!isDelivery.value) {
+        dormNumber.value = "";
+        deliveryDormType.value = "";
+      }
+    };
     const goSelectAddress = () => {
       common_vendor.index.navigateTo({ url: "/pages/common/address/list?source=select" });
     };
@@ -81,9 +91,15 @@ const _sfc_main = {
         common_vendor.index.showToast({ title: "请填写任务描述", icon: "none" });
         return;
       }
-      if (isDelivery.value && !dormNumber.value.trim()) {
-        common_vendor.index.showToast({ title: "请填写寝室号", icon: "none" });
-        return;
+      if (isDelivery.value) {
+        if (!deliveryDormType.value) {
+          common_vendor.index.showToast({ title: "请选择男女宿舍", icon: "none" });
+          return;
+        }
+        if (!dormNumber.value.trim()) {
+          common_vendor.index.showToast({ title: "请填写寝室号", icon: "none" });
+          return;
+        }
       }
       showPayPopup.value = true;
     };
@@ -134,11 +150,13 @@ ${deliveryLocation}`,
             runnerFee: runnerFee.value,
             isUrgent: isUrgent.value,
             isDelivery: isDelivery.value,
-            dormNumber: dormNumber.value
+            dormNumber: dormNumber.value,
+            // 送货上门时要求的骑手性别（male/female）
+            requiredRiderGender: isDelivery.value ? deliveryDormType.value || "" : ""
           },
           tags: [
             isUrgent.value ? "加急" : "",
-            isDelivery.value ? "送货上门" : ""
+            isDelivery.value ? deliveryDormType.value === "male" ? "男生宿舍送货上门" : deliveryDormType.value === "female" ? "女生宿舍送货上门" : "送货上门" : ""
           ].filter(Boolean),
           createTime: (/* @__PURE__ */ new Date()).toLocaleString()
         };
@@ -170,7 +188,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:318", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:363", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -213,17 +231,21 @@ ${deliveryLocation}`,
         s: common_vendor.o((e) => isUrgent.value = e.detail.value),
         t: common_assets._imports_1,
         v: isDelivery.value,
-        w: common_vendor.o((e) => isDelivery.value = e.detail.value),
+        w: common_vendor.o(onDeliveryToggle),
         x: isDelivery.value
       }, isDelivery.value ? {
-        y: dormNumber.value,
-        z: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
+        y: deliveryDormType.value === "male" ? 1 : "",
+        z: common_vendor.o(($event) => deliveryDormType.value = "male"),
+        A: deliveryDormType.value === "female" ? 1 : "",
+        B: common_vendor.o(($event) => deliveryDormType.value = "female"),
+        C: dormNumber.value,
+        D: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
       } : {}, {
-        A: common_vendor.t(totalPrice.value),
-        B: common_vendor.o(handlePayClick),
-        C: common_vendor.o(onPayConfirm),
-        D: common_vendor.o(($event) => showPayPopup.value = $event),
-        E: common_vendor.p({
+        E: common_vendor.t(totalPrice.value),
+        F: common_vendor.o(handlePayClick),
+        G: common_vendor.o(onPayConfirm),
+        H: common_vendor.o(($event) => showPayPopup.value = $event),
+        I: common_vendor.p({
           amount: Number(totalPrice.value),
           balance: balance.value,
           show: showPayPopup.value

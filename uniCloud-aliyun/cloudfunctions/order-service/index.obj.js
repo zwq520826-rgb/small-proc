@@ -490,6 +490,46 @@ module.exports = {
 				}
 			}
 
+			// 如果是送货上门订单，校验骑手性别是否符合要求
+			const isDelivery = !!(order.content && order.content.isDelivery)
+			const requiredGender = order.content && order.content.requiredRiderGender
+
+			if (isDelivery && requiredGender) {
+				// 查询骑手认证资料
+				const riderProfileRes = await db.collection('rider_profiles')
+					.where({
+						user_id: uid,
+						status: 'approved'
+					})
+					.limit(1)
+					.get()
+
+				if (!riderProfileRes.data.length) {
+					return {
+						code: 'NO_RIDER_PROFILE',
+						message: '请先完成骑手认证后再接送货上门订单'
+					}
+				}
+
+				const riderProfile = riderProfileRes.data[0] || {}
+				const riderGender = riderProfile.gender // male / female
+
+				if (!riderGender) {
+					return {
+						code: 'NO_RIDER_GENDER',
+						message: '骑手性别信息缺失，请重新提交认证资料'
+					}
+				}
+
+				if (riderGender !== requiredGender) {
+					const genderText = requiredGender === 'male' ? '男生' : '女生'
+					return {
+						code: 'GENDER_NOT_MATCH',
+						message: `该订单要求 ${genderText} 骑手送货上门`
+					}
+				}
+			}
+
 			// 更新订单：设置骑手ID和状态（接单后状态变为待取货）
 			await db.collection('orders')
 				.doc(orderId)
@@ -715,6 +755,15 @@ module.exports = {
 					complete_time: Date.now(),
 					'content.delivery_images': images
 				})
+
+			// 调用骑手服务，更新累计单数和等级抽成，并给骑手入账
+			try {
+				const riderService = uniCloud.importObject('rider-service')
+				await riderService.afterOrderCompleted(orderId, order.rider_id, order.price)
+			} catch (e) {
+				console.error('调用骑手结算服务失败:', e)
+				// 不影响送达成功本身，只记录错误日志
+			}
 
 			return {
 				code: 0,

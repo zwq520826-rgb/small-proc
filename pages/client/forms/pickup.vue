@@ -78,11 +78,30 @@
         </view>
         <switch
           :checked="isDelivery"
-          @change="(e) => (isDelivery = e.detail.value)"
+          @change="onDeliveryToggle"
           color="#007AFF"
         />
       </view>
       <view v-if="isDelivery" class="dorm-row">
+        <view class="gender-row">
+          <text class="gender-label">宿舍类型</text>
+          <view class="gender-tags">
+            <view
+              class="gender-tag"
+              :class="{ active: deliveryDormType === 'male' }"
+              @click="deliveryDormType = 'male'"
+            >
+              男生宿舍
+            </view>
+            <view
+              class="gender-tag"
+              :class="{ active: deliveryDormType === 'female' }"
+              @click="deliveryDormType = 'female'"
+            >
+              女生宿舍
+            </view>
+          </view>
+        </view>
         <input
           class="input"
           v-model="dormNumber"
@@ -120,21 +139,24 @@ import { payForOrder } from '@/store/pay'
 
 const images = ref([])
 const quantities = ref({ small: 0, medium: 0, large: 0 })
-const rates = { small: 0.01, medium: 1.99, large: 2.99 }
+// 从后端配置读取的小/中/大件价格，初始给个兜底值
+const rates = ref({ small: 0.1, medium: 0.2, large: 0.3 })
 const isUrgent = ref(false)
 const isDelivery = ref(false)
 const dormNumber = ref('')
+// 男生宿舍 / 女生宿舍，对应 male / female
+const deliveryDormType = ref('') // 'male' | 'female'
 const addressStore = useAddressStore()
 const store = useClientOrderStore()
 const walletStore = useWalletStore()
 const showPayPopup = ref(false)
 const balance = computed(() => walletStore.balance)
 
-const sizeOptions = [
-  { key: 'small', label: '小件（手机壳、饰品等）', price: rates.small },
-  { key: 'medium', label: '中件（衣服、鞋子等）', price: rates.medium },
-  { key: 'large', label: '大件（床上用品、架子等）', price: rates.large }
-]
+const sizeOptions = computed(() => ([
+  { key: 'small', label: '小件（手机壳、饰品等）', price: rates.value.small },
+  { key: 'medium', label: '中件（衣服、鞋子等）', price: rates.value.medium },
+  { key: 'large', label: '大件（床上用品、架子等）', price: rates.value.large }
+]))
 
 const currentAddress = computed(() => {
   return (
@@ -147,17 +169,17 @@ const currentAddress = computed(() => {
 const goodsPrice = computed(() => {
   const q = quantities.value
   return (
-    q.small * rates.small +
-    q.medium * rates.medium +
-    q.large * rates.large
+    q.small * rates.value.small +
+    q.medium * rates.value.medium +
+    q.large * rates.value.large
   )
 })
 
 const totalPrice = computed(() => {
   let price =
-    quantities.value.small * rates.small +
-    quantities.value.medium * rates.medium +
-    quantities.value.large * rates.large
+    quantities.value.small * rates.value.small +
+    quantities.value.medium * rates.value.medium +
+    quantities.value.large * rates.value.large
 
   if (isUrgent.value) price += 1
   if (isDelivery.value) price += 1
@@ -206,6 +228,16 @@ const decrease = (key) => {
   quantities.value[key] = Math.max(0, quantities.value[key] - 1)
 }
 
+// 送货上门开关切换时，关闭则清空相关字段
+const onDeliveryToggle = (e) => {
+  const checked = e?.detail?.value
+  isDelivery.value = !!checked
+  if (!isDelivery.value) {
+    dormNumber.value = ''
+    deliveryDormType.value = ''
+  }
+}
+
 const handlePayClick = () => {
   if (!currentAddress.value) {
     uni.showToast({ title: '请选择收货地址', icon: 'none' })
@@ -219,9 +251,15 @@ const handlePayClick = () => {
     uni.showToast({ title: '请选择代取物品数量', icon: 'none' })
     return
   }
-  if (isDelivery.value && !dormNumber.value.trim()) {
-    uni.showToast({ title: '请填写寝室号', icon: 'none' })
-    return
+  if (isDelivery.value) {
+    if (!deliveryDormType.value) {
+      uni.showToast({ title: '请选择男女宿舍', icon: 'none' })
+      return
+    }
+    if (!dormNumber.value.trim()) {
+      uni.showToast({ title: '请填写寝室号', icon: 'none' })
+      return
+    }
   }
 
   const amount = Number(totalPrice.value).toFixed(2)
@@ -291,11 +329,19 @@ const onPayConfirm = async (method = 'balance') => {
         quantities: quantities.value,
         isUrgent: isUrgent.value,
         isDelivery: isDelivery.value,
-        dormNumber: dormNumber.value
+        dormNumber: dormNumber.value,
+        // 送货上门时要求的骑手性别（male/female）
+        requiredRiderGender: isDelivery.value ? (deliveryDormType.value || '') : ''
       },
       tags: [
         isUrgent.value ? '加急' : '',
-        isDelivery.value ? '送货上门' : ''
+        isDelivery.value
+          ? (deliveryDormType.value === 'male'
+              ? '男生宿舍送货上门'
+              : deliveryDormType.value === 'female'
+              ? '女生宿舍送货上门'
+              : '送货上门')
+          : ''
       ].filter(Boolean),
       createTime: new Date().toLocaleString()
     }
@@ -348,7 +394,21 @@ const formatPhone = (phone = '') => {
   return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
 }
 
-onLoad(() => {
+onLoad(async () => {
+  // 从后端配置服务加载快递代取价格
+  try {
+    const configService = uniCloud.importObject('config-service')
+    const res = await configService.getPickupRates()
+    if (res && res.code === 0 && res.data) {
+      rates.value = {
+        small: Number(res.data.small) || rates.value.small,
+        medium: Number(res.data.medium) || rates.value.medium,
+        large: Number(res.data.large) || rates.value.large
+      }
+    }
+  } catch (e) {
+    console.error('加载快递代取价格失败，将使用默认价格:', e)
+  }
   // 预留扩展：可从路由参数预填数量或服务选项
 })
 </script>
@@ -546,6 +606,42 @@ onLoad(() => {
   border: 1rpx solid #e5e7eb;
   border-radius: 12rpx;
   padding: 12rpx;
+}
+
+.gender-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.gender-label {
+  font-size: 26rpx;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.gender-tags {
+  display: flex;
+  gap: 16rpx;
+}
+
+.gender-tag {
+  flex: 1;
+  text-align: center;
+  padding: 14rpx 0;
+  border-radius: 999rpx;
+  border: 1rpx solid #e5e7eb;
+  font-size: 26rpx;
+  color: #4b5563;
+  background-color: #f9fafb;
+}
+
+.gender-tag.active {
+  border-color: #1a73e8;
+  background-color: #e0edff;
+  color: #1a73e8;
+  font-weight: 600;
 }
 
 .input {

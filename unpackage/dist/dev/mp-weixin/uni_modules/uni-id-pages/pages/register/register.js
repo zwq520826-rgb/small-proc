@@ -155,13 +155,13 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       required: true,
       modelValue: $data.formData.password2
     }),
-    t: common_vendor.sr("captcha", "b9c8f99c-10,b9c8f99c-9"),
+    t: common_vendor.sr("captcha", "d64e9344-10,d64e9344-9"),
     v: common_vendor.o(($event) => $data.formData.captcha = $event),
     w: common_vendor.p({
       scene: "register",
       modelValue: $data.formData.captcha
     }),
-    x: common_vendor.sr("agreements", "b9c8f99c-11,b9c8f99c-0"),
+    x: common_vendor.sr("agreements", "d64e9344-11,d64e9344-0"),
     y: common_vendor.p({
       scope: "register"
     }),
@@ -169,7 +169,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     A: common_vendor.o((...args) => $options.navigateBack && $options.navigateBack(...args)),
     B: common_vendor.o((...args) => $options.registerByEmail && $options.registerByEmail(...args)),
     C: common_vendor.o((...args) => $options.toLogin && $options.toLogin(...args)),
-    D: common_vendor.sr("form", "b9c8f99c-0"),
+    D: common_vendor.sr("form", "d64e9344-0"),
     E: common_vendor.p({
       value: $data.formData,
       rules: $data.rules,

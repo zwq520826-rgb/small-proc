@@ -12,19 +12,36 @@
   border-radius: 16rpx;
   padding: 24rpx;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12rpx;
+  gap: 16rpx;
+}
+.metric.data-v-7d101352 {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.metric.wide.data-v-7d101352 {
+  flex: 1.4;
+}
+.metric.small.data-v-7d101352 {
+  flex: 1;
+  align-items: flex-end;
+  text-align: right;
 }
 .metric .label.data-v-7d101352 {
   font-size: 24rpx;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 .metric .value.data-v-7d101352 {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 4rpx;
   font-size: 34rpx;
   font-weight: 700;
+}
+.metric .sub.data-v-7d101352 {
+  font-size: 22rpx;
+  opacity: 0.9;
 }
 .task-card.data-v-7d101352 {
   background: #ffffff;

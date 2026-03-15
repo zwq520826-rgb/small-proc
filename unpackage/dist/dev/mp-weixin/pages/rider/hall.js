@@ -9,6 +9,7 @@ const _sfc_main = {
   __name: "hall",
   setup(__props) {
     const store = store_riderTask.useRiderTaskStore();
+    const levelInfo = common_vendor.ref(null);
     const activeFilter = common_vendor.ref("distance");
     const stats = common_vendor.computed(() => {
       const completed = store.myTasks.filter((t) => t.status === "completed");
@@ -21,7 +22,7 @@ const _sfc_main = {
     const filteredTasks = common_vendor.computed(() => {
       const list = store.hallTasksSorted ? store.hallTasksSorted(activeFilter.value) : [...store.hallTasks];
       return list.map((o) => {
-        var _a;
+        var _a, _b;
         let delivery = o.deliveryLocation || o.delivery || "";
         if (!delivery && o.address) {
           const lines = o.address.split("\n");
@@ -35,6 +36,7 @@ const _sfc_main = {
           delivery = "送达地址";
         }
         const dorm = (_a = o.content) == null ? void 0 : _a.dormNumber;
+        const requiredGender = (_b = o.content) == null ? void 0 : _b.requiredRiderGender;
         const rawTags = o.tags || [];
         const tags = rawTags.map((tag) => {
           if (tag.includes("送货上门") && dorm) {
@@ -42,6 +44,11 @@ const _sfc_main = {
           }
           return tag;
         });
+        if (requiredGender === "male") {
+          tags.push("限男骑手");
+        } else if (requiredGender === "female") {
+          tags.push("限女骑手");
+        }
         return {
           ...o,
           pickupDistance: o.pickupDistance || 1,
@@ -50,6 +57,20 @@ const _sfc_main = {
           tags
         };
       });
+    });
+    const displayLevel = common_vendor.computed(() => {
+      if (!levelInfo.value)
+        return null;
+      const info = levelInfo.value;
+      const currentRate = (info.current_commission_rate || 0) * 100;
+      const nextRate = info.next_commission_rate != null ? info.next_commission_rate * 100 : null;
+      return {
+        name: info.level_name || info.level || "未知等级",
+        totalOrders: info.total_completed_orders || 0,
+        needMore: info.need_more_orders || 0,
+        currentRate,
+        nextRate
+      };
     });
     const viewDetail = (task) => {
       const taskId = task.id || task._id;
@@ -60,7 +81,7 @@ const _sfc_main = {
       common_vendor.index.navigateTo({
         url: `/pages/rider/tasks/detail?id=${taskId}`,
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/rider/hall.vue:133", "跳转失败:", err);
+          common_vendor.index.__f__("error", "at pages/rider/hall.vue:175", "跳转失败:", err);
           common_vendor.index.showToast({ title: "页面不存在，请重新编译", icon: "none" });
         }
       });
@@ -80,15 +101,44 @@ const _sfc_main = {
       try {
         await store.loadFromStorage();
       } catch (error) {
-        common_vendor.index.__f__("error", "at pages/rider/hall.vue:217", "加载任务失败:", error);
+        common_vendor.index.__f__("error", "at pages/rider/hall.vue:259", "加载任务失败:", error);
         common_vendor.index.hideLoading();
+      }
+      try {
+        const riderService = common_vendor.tr.importObject("rider-service");
+        const res = await riderService.getMyStats();
+        if (res && res.code === 0) {
+          levelInfo.value = res.data;
+        } else if (res && res.code === "NO_RIDER_PROFILE") {
+          levelInfo.value = null;
+        } else if (res && res.message) {
+          common_vendor.index.__f__("warn", "at pages/rider/hall.vue:273", "获取骑手等级信息失败:", res.message);
+        }
+      } catch (e) {
+        common_vendor.index.__f__("error", "at pages/rider/hall.vue:276", "调用 rider-service.getMyStats 失败:", e);
       }
     });
     return (_ctx, _cache) => {
-      return {
-        a: common_vendor.t(stats.value.orders),
-        b: common_vendor.t(stats.value.income.toFixed(1)),
-        c: common_vendor.f(filteredTasks.value, (task, k0, i0) => {
+      return common_vendor.e({
+        a: displayLevel.value
+      }, displayLevel.value ? common_vendor.e({
+        b: common_vendor.t(displayLevel.value.name),
+        c: common_vendor.t(displayLevel.value.totalOrders),
+        d: displayLevel.value.needMore > 0
+      }, displayLevel.value.needMore > 0 ? {
+        e: common_vendor.t(displayLevel.value.needMore)
+      } : {}) : {}, {
+        f: common_vendor.t(stats.value.orders),
+        g: common_vendor.t(stats.value.income.toFixed(1)),
+        h: displayLevel.value
+      }, displayLevel.value ? {
+        i: common_vendor.t(displayLevel.value.currentRate.toFixed(0))
+      } : {}, {
+        j: displayLevel.value && displayLevel.value.nextRate !== null
+      }, displayLevel.value && displayLevel.value.nextRate !== null ? {
+        k: common_vendor.t(displayLevel.value.nextRate.toFixed(0))
+      } : {}, {
+        l: common_vendor.f(filteredTasks.value, (task, k0, i0) => {
           return {
             a: common_vendor.f(task.tags, (tag, k1, i1) => {
               return {
@@ -103,7 +153,7 @@ const _sfc_main = {
             f: common_vendor.o(($event) => viewDetail(task), task.id)
           };
         })
-      };
+      });
     };
   }
 };

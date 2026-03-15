@@ -1,7 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
 const orderService = common_vendor.tr.importObject("order-service");
-const walletService = common_vendor.tr.importObject("wallet-service");
 const state = common_vendor.reactive({
   hallTasks: [],
   myTasks: []
@@ -39,7 +38,7 @@ async function loadHallTasksFromCloud(sortBy = "distance") {
       state.hallTasks = (res.data || []).map(formatTaskFromDB);
       return true;
     } else {
-      common_vendor.index.__f__("error", "at store/riderTask.js:54", "加载大厅任务失败:", res.message);
+      common_vendor.index.__f__("error", "at store/riderTask.js:52", "加载大厅任务失败:", res.message);
       if (res.code !== "NO_LOGIN") {
         common_vendor.index.showToast({
           title: res.message || "加载失败",
@@ -49,7 +48,7 @@ async function loadHallTasksFromCloud(sortBy = "distance") {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:64", "加载大厅任务失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:62", "加载大厅任务失败:", error);
     common_vendor.index.hideLoading();
     return false;
   }
@@ -65,7 +64,7 @@ async function loadMyTasksFromCloud(status = "all") {
       state.myTasks = (res.data || []).map(formatTaskFromDB);
       return true;
     } else {
-      common_vendor.index.__f__("error", "at store/riderTask.js:86", "加载我的任务失败:", res.message);
+      common_vendor.index.__f__("error", "at store/riderTask.js:84", "加载我的任务失败:", res.message);
       if (res.code !== "NO_LOGIN") {
         common_vendor.index.showToast({
           title: res.message || "加载失败",
@@ -75,7 +74,7 @@ async function loadMyTasksFromCloud(status = "all") {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:96", "加载我的任务失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:94", "加载我的任务失败:", error);
     common_vendor.index.hideLoading();
     return false;
   }
@@ -105,7 +104,7 @@ async function grabTask(id) {
       };
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:137", "抢单失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:135", "抢单失败:", error);
     common_vendor.index.hideLoading();
     return {
       success: false,
@@ -137,7 +136,7 @@ async function confirmPickup(id, images = []) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:186", "确认取货失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:184", "确认取货失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -149,15 +148,6 @@ async function confirmDelivery(id, images) {
   try {
     const res = await orderService.confirmDelivery(id, images);
     if (res.code === 0) {
-      try {
-        const task = state.myTasks.find((t) => t._id === id || t.id === id);
-        const price = task ? Number(task.price || 0) : 0;
-        if (price > 0) {
-          await walletService.addIncome(price, id);
-        }
-      } catch (e) {
-        common_vendor.index.__f__("warn", "at store/riderTask.js:211", "入账失败，但送达已成功", e);
-      }
       await loadMyTasksFromCloud("all");
       return true;
     } else {
@@ -168,7 +158,7 @@ async function confirmDelivery(id, images) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:224", "确认送达失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:213", "确认送达失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"

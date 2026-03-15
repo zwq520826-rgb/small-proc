@@ -1,13 +1,28 @@
 <template>
   <view class="page">
     <view class="stats-card">
-      <view class="metric">
+      <!-- 左侧：等级与累计订单 -->
+      <view class="metric wide" v-if="displayLevel">
+        <text class="label">我的等级</text>
+        <text class="value">{{ displayLevel.name }}</text>
+        <text class="sub">累计订单：{{ displayLevel.totalOrders }}单</text>
+        <text class="sub" v-if="displayLevel.needMore > 0">
+          距离升级：还差{{ displayLevel.needMore }}单
+        </text>
+        <text class="sub" v-else>已是最高等级</text>
+      </view>
+
+      <!-- 右侧：今日数据 & 抽成信息 -->
+      <view class="metric small">
         <text class="label">今日单数</text>
         <text class="value">{{ stats.orders }}</text>
-      </view>
-      <view class="metric">
-        <text class="label">今日收入</text>
-        <text class="value">¥{{ stats.income.toFixed(1) }}</text>
+        <text class="sub">今日收入：¥{{ stats.income.toFixed(1) }}</text>
+        <text class="sub" v-if="displayLevel">
+          当前抽成：{{ displayLevel.currentRate.toFixed(0) }}%
+        </text>
+        <text class="sub" v-if="displayLevel && displayLevel.nextRate !== null">
+          升级后抽成：{{ displayLevel.nextRate.toFixed(0) }}%
+        </text>
       </view>
     </view>
 
@@ -51,6 +66,8 @@ import { useRiderTaskStore } from '@/store/riderTask'
 
 // 【修改点2】初始化 store
 const store = useRiderTaskStore()
+// 骑手等级与统计信息
+const levelInfo = ref(null)
 
 const filterOptions = [
   { label: '距离最近', value: 'distance' },
@@ -94,8 +111,9 @@ const filteredTasks = computed(() => {
       delivery = '送达地址'
     }
 
-    // 处理标签：给“送货上门”拼接寝室号
+    // 处理标签：给“送货上门”拼接寝室号，并展示性别限制
     const dorm = o.content?.dormNumber
+    const requiredGender = o.content?.requiredRiderGender
     const rawTags = o.tags || []
     const tags = rawTags.map(tag => {
       if (tag.includes('送货上门') && dorm) {
@@ -103,6 +121,13 @@ const filteredTasks = computed(() => {
       }
       return tag
     })
+
+    // 如果有性别限制，额外追加一个标签
+    if (requiredGender === 'male') {
+      tags.push('限男骑手')
+    } else if (requiredGender === 'female') {
+      tags.push('限女骑手')
+    }
     
     return {
       ...o,
@@ -112,6 +137,23 @@ const filteredTasks = computed(() => {
       tags
     }
   })
+})
+
+// 显示用的等级与抽成信息
+const displayLevel = computed(() => {
+  if (!levelInfo.value) return null
+  const info = levelInfo.value
+
+  const currentRate = (info.current_commission_rate || 0) * 100
+  const nextRate = info.next_commission_rate != null ? info.next_commission_rate * 100 : null
+
+  return {
+    name: info.level_name || info.level || '未知等级',
+    totalOrders: info.total_completed_orders || 0,
+    needMore: info.need_more_orders || 0,
+    currentRate,
+    nextRate
+  }
 })
 
 const refresh = () => {
@@ -215,8 +257,23 @@ onShow(async () => {
     await store.loadFromStorage()
   } catch (error) {
     console.error('加载任务失败:', error)
-    // 确保 loading 被隐藏
     uni.hideLoading()
+  }
+
+  // 加载当前骑手等级与统计信息
+  try {
+    const riderService = uniCloud.importObject('rider-service')
+    const res = await riderService.getMyStats()
+    if (res && res.code === 0) {
+      levelInfo.value = res.data
+    } else if (res && res.code === 'NO_RIDER_PROFILE') {
+      // 未认证骑手，不提示错误
+      levelInfo.value = null
+    } else if (res && res.message) {
+      console.warn('获取骑手等级信息失败:', res.message)
+    }
+  } catch (e) {
+    console.error('调用 rider-service.getMyStats 失败:', e)
   }
 })
 </script>
@@ -236,21 +293,42 @@ onShow(async () => {
   border-radius: 16rpx;
   padding: 24rpx;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12rpx;
+  gap: 16rpx;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.metric.wide {
+  flex: 1.4;
+}
+
+.metric.small {
+  flex: 1;
+  align-items: flex-end;
+  text-align: right;
 }
 
 .metric .label {
   font-size: 24rpx;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .metric .value {
   display: block;
-  margin-top: 6rpx;
+  margin-top: 4rpx;
   font-size: 34rpx;
   font-weight: 700;
+}
+
+.metric .sub {
+  font-size: 22rpx;
+  opacity: 0.9;
 }
 
 .task-card {

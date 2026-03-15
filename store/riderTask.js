@@ -2,8 +2,6 @@ import { reactive } from 'vue'
 
 // 导入云对象
 const orderService = uniCloud.importObject('order-service')
-// 骑手送达后入账
-const walletService = uniCloud.importObject('wallet-service')
 
 const state = reactive({
   hallTasks: [],
@@ -200,16 +198,7 @@ async function confirmDelivery(id, images) {
     const res = await orderService.confirmDelivery(id, images)
 
     if (res.code === 0) {
-      // 送达成功后给骑手入账（按订单金额）
-      try {
-        const task = state.myTasks.find(t => t._id === id || t.id === id)
-        const price = task ? Number(task.price || 0) : 0
-        if (price > 0) {
-          await walletService.addIncome(price, id)
-        }
-      } catch (e) {
-        console.warn('入账失败，但送达已成功', e)
-      }
+      // 送达成功后，骑手收入与等级升级由后端 rider-service 统一处理
       // 确认成功后，重新加载我的任务
       await loadMyTasksFromCloud('all')
       return true

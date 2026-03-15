@@ -79,11 +79,30 @@
         </view>
         <switch
           :checked="isDelivery"
-          @change="(e) => (isDelivery = e.detail.value)"
+          @change="onDeliveryToggle"
           color="#007AFF"
         />
       </view>
       <view v-if="isDelivery" class="dorm-row">
+        <view class="gender-row">
+          <text class="gender-label">宿舍类型</text>
+          <view class="gender-tags">
+            <view
+              class="gender-tag"
+              :class="{ active: deliveryDormType === 'male' }"
+              @click="deliveryDormType = 'male'"
+            >
+              男生宿舍
+            </view>
+            <view
+              class="gender-tag"
+              :class="{ active: deliveryDormType === 'female' }"
+              @click="deliveryDormType = 'female'"
+            >
+              女生宿舍
+            </view>
+          </view>
+        </view>
         <input
           class="input"
           v-model="dormNumber"
@@ -126,6 +145,8 @@ const images = ref([])
 const isUrgent = ref(false)
 const isDelivery = ref(false)
 const dormNumber = ref('')
+// 男生宿舍 / 女生宿舍，对应 male / female
+const deliveryDormType = ref('') // 'male' | 'female'
 const showPayPopup = ref(false)
 const walletStore = useWalletStore()
 const balance = computed(() => walletStore.balance)
@@ -197,6 +218,16 @@ const decreaseFee = () => {
   runnerFee.value = Math.max(2, runnerFee.value - 1)
 }
 
+// 送货上门开关切换时，关闭则清空相关信息
+const onDeliveryToggle = (e) => {
+  const checked = e?.detail?.value
+  isDelivery.value = !!checked
+  if (!isDelivery.value) {
+    dormNumber.value = ''
+    deliveryDormType.value = ''
+  }
+}
+
 const goSelectAddress = () => {
   uni.navigateTo({ url: '/pages/common/address/list?source=select' })
 }
@@ -215,9 +246,15 @@ const handlePayClick = () => {
     uni.showToast({ title: '请填写任务描述', icon: 'none' })
     return
   }
-  if (isDelivery.value && !dormNumber.value.trim()) {
-    uni.showToast({ title: '请填写寝室号', icon: 'none' })
-    return
+  if (isDelivery.value) {
+    if (!deliveryDormType.value) {
+      uni.showToast({ title: '请选择男女宿舍', icon: 'none' })
+      return
+    }
+    if (!dormNumber.value.trim()) {
+      uni.showToast({ title: '请填写寝室号', icon: 'none' })
+      return
+    }
   }
 
   showPayPopup.value = true
@@ -272,11 +309,19 @@ const onPayConfirm = async (method = 'balance') => {
         runnerFee: runnerFee.value,
         isUrgent: isUrgent.value,
         isDelivery: isDelivery.value,
-        dormNumber: dormNumber.value
+        dormNumber: dormNumber.value,
+        // 送货上门时要求的骑手性别（male/female）
+        requiredRiderGender: isDelivery.value ? (deliveryDormType.value || '') : ''
       },
       tags: [
         isUrgent.value ? '加急' : '',
-        isDelivery.value ? '送货上门' : ''
+        isDelivery.value
+          ? (deliveryDormType.value === 'male'
+              ? '男生宿舍送货上门'
+              : deliveryDormType.value === 'female'
+              ? '女生宿舍送货上门'
+              : '送货上门')
+          : ''
       ].filter(Boolean),
       createTime: new Date().toLocaleString()
     }
@@ -546,6 +591,42 @@ onShow(() => {
   border: 1rpx solid #e5e7eb;
   border-radius: 12rpx;
   padding: 20rpx;
+}
+
+.gender-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.gender-label {
+  font-size: 26rpx;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.gender-tags {
+  display: flex;
+  gap: 16rpx;
+}
+
+.gender-tag {
+  flex: 1;
+  text-align: center;
+  padding: 14rpx 0;
+  border-radius: 999rpx;
+  border: 1rpx solid #e5e7eb;
+  font-size: 26rpx;
+  color: #4b5563;
+  background-color: #f9fafb;
+}
+
+.gender-tag.active {
+  border-color: #1a73e8;
+  background-color: #e0edff;
+  color: #1a73e8;
+  font-weight: 600;
 }
 
 .bottom-bar {

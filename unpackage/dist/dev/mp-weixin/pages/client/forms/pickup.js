@@ -14,29 +14,30 @@ const _sfc_main = {
   setup(__props) {
     const images = common_vendor.ref([]);
     const quantities = common_vendor.ref({ small: 0, medium: 0, large: 0 });
-    const rates = { small: 0.01, medium: 1.99, large: 2.99 };
+    const rates = common_vendor.ref({ small: 0.1, medium: 0.2, large: 0.3 });
     const isUrgent = common_vendor.ref(false);
     const isDelivery = common_vendor.ref(false);
     const dormNumber = common_vendor.ref("");
+    const deliveryDormType = common_vendor.ref("");
     const addressStore = store_address.useAddressStore();
     const store = store_clientOrder.useClientOrderStore();
     const walletStore = store_wallet.useWalletStore();
     const showPayPopup = common_vendor.ref(false);
     const balance = common_vendor.computed(() => walletStore.balance);
-    const sizeOptions = [
-      { key: "small", label: "小件（手机壳、饰品等）", price: rates.small },
-      { key: "medium", label: "中件（衣服、鞋子等）", price: rates.medium },
-      { key: "large", label: "大件（床上用品、架子等）", price: rates.large }
-    ];
+    const sizeOptions = common_vendor.computed(() => [
+      { key: "small", label: "小件（手机壳、饰品等）", price: rates.value.small },
+      { key: "medium", label: "中件（衣服、鞋子等）", price: rates.value.medium },
+      { key: "large", label: "大件（床上用品、架子等）", price: rates.value.large }
+    ]);
     const currentAddress = common_vendor.computed(() => {
       return addressStore.selectedAddress || addressStore.addressList.find((item) => item.isDefault) || null;
     });
     const goodsPrice = common_vendor.computed(() => {
       const q = quantities.value;
-      return q.small * rates.small + q.medium * rates.medium + q.large * rates.large;
+      return q.small * rates.value.small + q.medium * rates.value.medium + q.large * rates.value.large;
     });
     const totalPrice = common_vendor.computed(() => {
-      let price = quantities.value.small * rates.small + quantities.value.medium * rates.medium + quantities.value.large * rates.large;
+      let price = quantities.value.small * rates.value.small + quantities.value.medium * rates.value.medium + quantities.value.large * rates.value.large;
       if (isUrgent.value)
         price += 1;
       if (isDelivery.value)
@@ -54,7 +55,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:181", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:203", "选择图片失败:", err);
         }
       });
     };
@@ -66,6 +67,15 @@ const _sfc_main = {
     };
     const decrease = (key) => {
       quantities.value[key] = Math.max(0, quantities.value[key] - 1);
+    };
+    const onDeliveryToggle = (e) => {
+      var _a;
+      const checked = (_a = e == null ? void 0 : e.detail) == null ? void 0 : _a.value;
+      isDelivery.value = !!checked;
+      if (!isDelivery.value) {
+        dormNumber.value = "";
+        deliveryDormType.value = "";
+      }
     };
     const handlePayClick = () => {
       if (!currentAddress.value) {
@@ -80,9 +90,15 @@ const _sfc_main = {
         common_vendor.index.showToast({ title: "请选择代取物品数量", icon: "none" });
         return;
       }
-      if (isDelivery.value && !dormNumber.value.trim()) {
-        common_vendor.index.showToast({ title: "请填写寝室号", icon: "none" });
-        return;
+      if (isDelivery.value) {
+        if (!deliveryDormType.value) {
+          common_vendor.index.showToast({ title: "请选择男女宿舍", icon: "none" });
+          return;
+        }
+        if (!dormNumber.value.trim()) {
+          common_vendor.index.showToast({ title: "请填写寝室号", icon: "none" });
+          return;
+        }
       }
       const amount = Number(totalPrice.value).toFixed(2);
       common_vendor.index.showActionSheet({
@@ -148,11 +164,13 @@ ${deliveryLocation}`,
             quantities: quantities.value,
             isUrgent: isUrgent.value,
             isDelivery: isDelivery.value,
-            dormNumber: dormNumber.value
+            dormNumber: dormNumber.value,
+            // 送货上门时要求的骑手性别（male/female）
+            requiredRiderGender: isDelivery.value ? deliveryDormType.value || "" : ""
           },
           tags: [
             isUrgent.value ? "加急" : "",
-            isDelivery.value ? "送货上门" : ""
+            isDelivery.value ? deliveryDormType.value === "male" ? "男生宿舍送货上门" : deliveryDormType.value === "female" ? "女生宿舍送货上门" : "送货上门" : ""
           ].filter(Boolean),
           createTime: (/* @__PURE__ */ new Date()).toLocaleString()
         };
@@ -184,7 +202,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:337", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:383", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -196,7 +214,20 @@ ${deliveryLocation}`,
         return "";
       return phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
     };
-    common_vendor.onLoad(() => {
+    common_vendor.onLoad(async () => {
+      try {
+        const configService = common_vendor.tr.importObject("config-service");
+        const res = await configService.getPickupRates();
+        if (res && res.code === 0 && res.data) {
+          rates.value = {
+            small: Number(res.data.small) || rates.value.small,
+            medium: Number(res.data.medium) || rates.value.medium,
+            large: Number(res.data.large) || rates.value.large
+          };
+        }
+      } catch (e) {
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:410", "加载快递代取价格失败，将使用默认价格:", e);
+      }
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
@@ -219,7 +250,7 @@ ${deliveryLocation}`,
       }, images.value.length < 9 ? {
         i: common_vendor.o(chooseImage)
       } : {}, {
-        j: common_vendor.f(sizeOptions, (item, k0, i0) => {
+        j: common_vendor.f(sizeOptions.value, (item, k0, i0) => {
           return {
             a: common_vendor.t(item.label),
             b: common_vendor.t(item.price),
@@ -234,17 +265,21 @@ ${deliveryLocation}`,
         m: common_vendor.o((e) => isUrgent.value = e.detail.value),
         n: common_assets._imports_1,
         o: isDelivery.value,
-        p: common_vendor.o((e) => isDelivery.value = e.detail.value),
+        p: common_vendor.o(onDeliveryToggle),
         q: isDelivery.value
       }, isDelivery.value ? {
-        r: dormNumber.value,
-        s: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
+        r: deliveryDormType.value === "male" ? 1 : "",
+        s: common_vendor.o(($event) => deliveryDormType.value = "male"),
+        t: deliveryDormType.value === "female" ? 1 : "",
+        v: common_vendor.o(($event) => deliveryDormType.value = "female"),
+        w: dormNumber.value,
+        x: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
       } : {}, {
-        t: common_vendor.t(totalPrice.value),
-        v: common_vendor.o(handlePayClick),
-        w: common_vendor.o(onPayConfirm),
-        x: common_vendor.o(($event) => showPayPopup.value = $event),
-        y: common_vendor.p({
+        y: common_vendor.t(totalPrice.value),
+        z: common_vendor.o(handlePayClick),
+        A: common_vendor.o(onPayConfirm),
+        B: common_vendor.o(($event) => showPayPopup.value = $event),
+        C: common_vendor.p({
           amount: Number(totalPrice.value),
           balance: balance.value,
           show: showPayPopup.value
