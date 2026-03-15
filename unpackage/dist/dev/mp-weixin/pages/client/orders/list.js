@@ -143,19 +143,19 @@ const _sfc_main = {
           } : {}, {
             i: common_vendor.t(((_a = order.content) == null ? void 0 : _a.description) || "订单详情"),
             j: common_vendor.t(Number(order.price || 0).toFixed(2)),
-            k: order.status === "completed"
+            k: common_vendor.t(order.publishedAt || order.createTime),
+            l: order.status === "completed"
           }, order.status === "completed" ? {
-            l: common_vendor.o(($event) => handleViewPhotos(order), order.id)
+            m: common_vendor.o(($event) => handleViewPhotos(order), order.id)
           } : {}, {
-            m: order.status === "pending_accept"
+            n: order.status === "pending_accept"
           }, order.status === "pending_accept" ? {
-            n: common_vendor.o(($event) => handleCancel(order.id), order.id)
+            o: common_vendor.o(($event) => handleCancel(order.id), order.id)
           } : {}, {
-            o: order.status === "completed"
+            p: order.status === "completed"
           }, order.status === "completed" ? {
-            p: common_vendor.o(($event) => handleDelete(order.id), order.id)
+            q: common_vendor.o(($event) => handleDelete(order.id), order.id)
           } : {}, {
-            q: common_vendor.t(order.publishedAt || order.createTime),
             r: order.id,
             s: common_vendor.o(($event) => goDetail(order.id), order.id)
           });

@@ -17,8 +17,6 @@
       <view v-for="task in taskList" :key="task.id" class="card">
         <view class="card-header">
           <view class="route">
-            <text class="pickup">{{ task.pickup }}</text>
-            <text class="arrow">→</text>
             <text class="delivery">{{ task.delivery }}</text>
           </view>
           <text class="price">¥{{ task.price.toFixed(2) }}</text>
@@ -65,8 +63,6 @@
       <view v-for="task in taskList" :key="task.id" class="card">
         <view class="card-header">
           <view class="route">
-            <text class="pickup">{{ task.pickup }}</text>
-            <text class="arrow">→</text>
             <text class="delivery">{{ task.delivery }}</text>
           </view>
           <text class="price">¥{{ task.price.toFixed(2) }}</text>
@@ -98,11 +94,8 @@
         </view>
 
         <view class="actions">
-          <button class="view-btn" @click="viewPickupImages(task)">
-            查看取件信息
-          </button>
           <button class="deliver-btn" @click="confirmDelivery(task)">
-            📸 拍照送达
+            拍照送达
           </button>
         </view>
       </view>
@@ -113,8 +106,6 @@
       <view v-for="task in taskList" :key="task.id" class="card completed-card">
         <view class="card-header">
           <view class="route">
-            <text class="pickup">{{ task.pickup }}</text>
-            <text class="arrow">→</text>
             <text class="delivery">{{ task.delivery }}</text>
           </view>
           <text class="income">收入 ¥{{ task.price.toFixed(2) }}</text>
@@ -188,18 +179,35 @@ const taskList = computed(() => {
 
   // 格式化数据以适配模板
   return list.map((t) => {
-    const tags =
+    // 基础送达地址
+    let delivery = t.deliveryLocation || t.delivery || t.address || ''
+    if (!delivery) {
+      delivery = '送达地址'
+    }
+
+    // 寝室号（客户端“送货上门”填写的 dormNumber）
+    const dorm = t.content?.dormNumber
+
+    // 处理标签：原始标签或根据内容生成，再把寝室号拼在“送货上门”后面
+    const rawTags =
       (t.tags && t.tags.length
         ? t.tags
         : [
-            t.content?.isUrgent ? '加急处理' : '',
+            t.content?.isUrgent ? '加急' : '',
             t.content?.isDelivery ? '送货上门' : ''
           ].filter(Boolean)) || []
+
+    const tags = rawTags.map((tag) => {
+      if (tag.includes('送货上门') && dorm) {
+        return `${tag} ${dorm}`
+      }
+      return tag
+    })
 
     return {
       ...t,
       pickup: t.pickupLocation || t.pickup || '取件点',
-      delivery: t.deliveryLocation || t.delivery || t.address || '送达地址',
+      delivery,
       // 用户上传的取件凭证在 content.images 中
       pickupImages: t.content?.images || [],
       deliveryImage: t.content?.deliveryImages?.[0] || t.content?.delivery_images?.[0] || '',
@@ -530,11 +538,12 @@ const formatTime = (timestamp) => {
 }
 
 .tag {
-  font-size: 22rpx;
-  padding: 4rpx 12rpx;
+  font-size: 24rpx;
+  padding: 8rpx 18rpx;
   border-radius: 999rpx;
   background: #f4f5f7;
   color: #555555;
+  font-weight: 600;
 }
 
 .tag-urgent {

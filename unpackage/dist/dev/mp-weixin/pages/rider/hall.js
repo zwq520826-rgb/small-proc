@@ -21,6 +21,7 @@ const _sfc_main = {
     const filteredTasks = common_vendor.computed(() => {
       const list = store.hallTasksSorted ? store.hallTasksSorted(activeFilter.value) : [...store.hallTasks];
       return list.map((o) => {
+        var _a;
         let delivery = o.deliveryLocation || o.delivery || "";
         if (!delivery && o.address) {
           const lines = o.address.split("\n");
@@ -33,12 +34,20 @@ const _sfc_main = {
         if (!delivery) {
           delivery = "送达地址";
         }
+        const dorm = (_a = o.content) == null ? void 0 : _a.dormNumber;
+        const rawTags = o.tags || [];
+        const tags = rawTags.map((tag) => {
+          if (tag.includes("送货上门") && dorm) {
+            return `${tag} ${dorm}`;
+          }
+          return tag;
+        });
         return {
           ...o,
           pickupDistance: o.pickupDistance || 1,
           pickup: o.pickupLocation || o.pickup || "取件点",
           delivery,
-          tags: o.tags || []
+          tags
         };
       });
     });
@@ -51,53 +60,10 @@ const _sfc_main = {
       common_vendor.index.navigateTo({
         url: `/pages/rider/tasks/detail?id=${taskId}`,
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/rider/hall.vue:117", "跳转失败:", err);
+          common_vendor.index.__f__("error", "at pages/rider/hall.vue:133", "跳转失败:", err);
           common_vendor.index.showToast({ title: "页面不存在，请重新编译", icon: "none" });
         }
       });
-    };
-    const previewCloudImages = async (images = []) => {
-      if (!images || images.length === 0) {
-        common_vendor.index.showToast({ title: "暂无取件凭证", icon: "none" });
-        return;
-      }
-      let urls = [...images];
-      const hasCloudFile = urls.some((url) => url && url.startsWith("cloud://"));
-      if (hasCloudFile) {
-        try {
-          const res = await common_vendor.tr.getTempFileURL({
-            fileList: urls
-          });
-          urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
-        } catch (e) {
-          common_vendor.index.__f__("error", "at pages/rider/hall.vue:145", "获取临时文件 URL 失败:", e);
-          common_vendor.index.showToast({ title: "图片加载失败，请稍后重试", icon: "none" });
-          return;
-        }
-      }
-      common_vendor.index.showModal({
-        title: "图片调试链接",
-        content: urls[0] || "无可用图片 URL",
-        confirmText: "预览",
-        cancelText: "复制",
-        success: (res) => {
-          if (res.confirm) {
-            common_vendor.index.previewImage({
-              urls,
-              current: urls[0]
-            });
-          } else if (res.cancel && urls[0]) {
-            common_vendor.index.setClipboardData({
-              data: urls[0]
-            });
-          }
-        }
-      });
-    };
-    const viewPickupInfo = async (task) => {
-      var _a;
-      const images = ((_a = task.content) == null ? void 0 : _a.images) || [];
-      await previewCloudImages(images);
     };
     const grab = async (task) => {
       common_vendor.index.showLoading({ title: "抢单中..." });
@@ -114,7 +80,7 @@ const _sfc_main = {
       try {
         await store.loadFromStorage();
       } catch (error) {
-        common_vendor.index.__f__("error", "at pages/rider/hall.vue:201", "加载任务失败:", error);
+        common_vendor.index.__f__("error", "at pages/rider/hall.vue:217", "加载任务失败:", error);
         common_vendor.index.hideLoading();
       }
     });
@@ -132,11 +98,9 @@ const _sfc_main = {
             }),
             b: common_vendor.t(task.delivery),
             c: common_vendor.t(task.price.toFixed(1)),
-            d: common_vendor.t(task.countdown || 30),
-            e: common_vendor.o(($event) => viewPickupInfo(task), task.id),
-            f: common_vendor.o(($event) => grab(task), task.id),
-            g: task.id,
-            h: common_vendor.o(($event) => viewDetail(task), task.id)
+            d: common_vendor.o(($event) => grab(task), task.id),
+            e: task.id,
+            f: common_vendor.o(($event) => viewDetail(task), task.id)
           };
         })
       };

@@ -26,10 +26,15 @@
       </view>
       <view class="footer">
         <view class="price">¥{{ task.price.toFixed(1) }}</view>
-        <view class="countdown">剩余 {{ task.countdown || 30 }} 分钟</view>
         <view class="actions">
-          <button type="default" size="mini" class="view-btn" @click.stop="viewPickupInfo(task)">👀 查看取件信息</button>
-          <button type="primary" size="mini" class="grab" @click.stop="grab(task)">⚡ 立即抢单</button>
+          <button
+            type="primary"
+            size="mini"
+            class="grab"
+            @click.stop="grab(task)"
+          >
+            ⚡ 立即抢单
+          </button>
         </view>
       </view>
     </view>
@@ -84,16 +89,27 @@ const filteredTasks = computed(() => {
         delivery = lines[0]
       }
     }
+
     if (!delivery) {
       delivery = '送达地址'
     }
+
+    // 处理标签：给“送货上门”拼接寝室号
+    const dorm = o.content?.dormNumber
+    const rawTags = o.tags || []
+    const tags = rawTags.map(tag => {
+      if (tag.includes('送货上门') && dorm) {
+        return `${tag} ${dorm}`
+      }
+      return tag
+    })
     
     return {
       ...o,
       pickupDistance: o.pickupDistance || 1,
       pickup: o.pickupLocation || o.pickup || '取件点',
-      delivery: delivery,
-      tags: o.tags || []
+      delivery,
+      tags
     }
   })
 })
@@ -261,9 +277,10 @@ onShow(async () => {
 .tag {
   background: #e8f2ff;
   color: #1e88e5;
-  border-radius: 10rpx;
-  padding: 6rpx 12rpx;
-  font-size: 22rpx;
+  border-radius: 999rpx;
+  padding: 8rpx 18rpx;
+  font-size: 24rpx;
+  font-weight: 600;
 }
 
 .route {
@@ -319,11 +336,14 @@ onShow(async () => {
   align-items: center;
 }
 
+.actions button {
+  font-size: 24rpx;
+}
+
 .view-btn {
   background: #f4f5f7;
   color: #1a73e8;
   border: 1rpx solid #e5e7eb;
-  font-size: 22rpx;
   padding: 0 16rpx;
 }
 

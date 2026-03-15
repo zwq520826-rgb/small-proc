@@ -55,13 +55,15 @@ const riderTabs = [
   { 
     key: 'hall', 
     text: '大厅', 
-    icon: '🏁', 
+    icon: '/static/tabbar/home-active-new.png', 
+    iconType: 'image',
     pagePath: '/pages/rider/hall' 
   },
   { 
     key: 'tasks', 
     text: '任务', 
-    icon: '📦', 
+    icon: '/static/tabbar/renwu.png', 
+    iconType: 'image',
     pagePath: '/pages/rider/tasks/list' 
   },
   { 

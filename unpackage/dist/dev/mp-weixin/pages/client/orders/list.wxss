@@ -135,6 +135,10 @@
   color: #888;
   font-size: 24rpx;
 }
+.actions-row.data-v-5857953e {
+  margin-top: 8rpx;
+  justify-content: flex-end;
+}
 .load-status.data-v-5857953e {
   text-align: center;
   padding: 20rpx 0 40rpx;
@@ -146,10 +150,23 @@
   align-items: center;
   gap: 12rpx;
 }
+.actions .btn.data-v-5857953e {
+  padding: 0 24rpx;
+  min-width: 120rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  font-size: 24rpx;
+  border-radius: 28rpx;
+  box-sizing: border-box;
+}
 .btn-photo.data-v-5857953e {
   background: #1a73e8;
   color: #ffffff;
   border: none;
+  padding: 0 36rpx;
+  min-width: 170rpx;
+  font-size: 26rpx;
+  white-space: nowrap;
 }
 .empty.data-v-5857953e {
   padding: 140rpx 0;

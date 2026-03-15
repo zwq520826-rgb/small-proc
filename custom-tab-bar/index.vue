@@ -7,7 +7,15 @@
       :class="{ active: isActive(tab) }"
       @click="switchTab(tab)"
     >
-      <text class="icon">{{ tab.icon }}</text>
+      <view class="icon-wrap">
+        <image
+          v-if="tab.iconType === 'image'"
+          :src="tab.icon"
+          class="icon-image"
+          mode="aspectFit"
+        />
+        <text v-else class="icon-text">{{ tab.icon }}</text>
+      </view>
       <text class="text">{{ tab.text }}</text>
     </view>
   </view>
@@ -23,10 +31,10 @@ const state = reactive({
 })
 
 const tabs = [
-  { key: 'home', mode: 'client', text: '首页', icon: '🏠', pagePath: '/pages/client/home' },
+  { key: 'home', mode: 'client', text: '首页', icon: '/static/tabbar/home-active-new.png', iconType: 'image', pagePath: '/pages/client/home' },
   { key: 'orders', mode: 'client', text: '订单', icon: '📋', pagePath: '/pages/client/orders/list' },
-  { key: 'hall', mode: 'rider', text: '大厅', icon: '🏁', pagePath: '/pages/rider/hall' },
-  { key: 'tasks', mode: 'rider', text: '任务', icon: '📦', pagePath: '/pages/rider/tasks/list' },
+  { key: 'hall', mode: 'rider', text: '大厅', icon: '/static/tabbar/home-active-new.png', iconType: 'image', pagePath: '/pages/rider/hall' },
+  { key: 'tasks', mode: 'rider', text: '任务', icon: '/static/tabbar/renwu.png', iconType: 'image', pagePath: '/pages/rider/tasks/list' },
   { key: 'mine', mode: 'both', text: '我的', icon: '👤', pagePath: '/pages/mine/index' }
 ]
 
@@ -93,9 +101,18 @@ onShow(() => {
   color: #7a7e83;
 }
 
-.tab-item .icon {
+.icon-wrap {
   font-size: 34rpx;
   margin-bottom: 4rpx;
+}
+
+.icon-text {
+  font-size: 34rpx;
+}
+
+.icon-image {
+  width: 48rpx;
+  height: 48rpx;
 }
 
 .tab-item.active {

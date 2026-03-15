@@ -115,11 +115,12 @@
   margin-bottom: 10rpx;
 }
 .tag.data-v-1cb17a62 {
-  font-size: 22rpx;
-  padding: 4rpx 12rpx;
+  font-size: 24rpx;
+  padding: 8rpx 18rpx;
   border-radius: 999rpx;
   background: #f4f5f7;
   color: #555555;
+  font-weight: 600;
 }
 .tag-urgent.data-v-1cb17a62 {
   background: #ffe8e6;

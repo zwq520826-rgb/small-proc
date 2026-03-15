@@ -80,13 +80,8 @@
         </view>
       </view>
 
-      <!-- Address Section -->
-      <view class="address-section">
-        <view class="address-item">
-          <text class="address-label">取件地址</text>
-          <text class="address-value">{{ order?.pickupLocation || '未指定' }}</text>
-        </view>
-        <view class="address-arrow">→</view>
+      <!-- Address Section (only delivery address) -->
+      <view class="address-section single">
         <view class="address-item">
           <text class="address-label">送达地址</text>
           <text class="address-value">{{ order?.address || order?.deliveryLocation || '未指定' }}</text>

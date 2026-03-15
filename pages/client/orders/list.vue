@@ -38,7 +38,6 @@
         </view>
         <view class="row">
           <text class="place">{{ order.pickupLocation }}</text>
-          <text class="arrow">→</text>
           <text class="place">{{ order.deliveryLocation || order.address }}</text>
         </view>
         <view
@@ -65,15 +64,18 @@
             <text class="price-label">合计</text>
             <text class="price-amount">¥{{ Number(order.price || 0).toFixed(2) }}</text>
           </view>
+          <text class="time">{{ order.publishedAt || order.createTime }}</text>
+        </view>
+        <view class="row actions-row">
           <view class="actions">
-          <button
-            v-if="order.status === 'completed'"
-            class="btn btn-photo"
-            size="mini"
-            @click.stop="handleViewPhotos(order)"
-          >
-            送达照片
-          </button>
+            <button
+              v-if="order.status === 'completed'"
+              class="btn btn-photo"
+              size="mini"
+              @click.stop="handleViewPhotos(order)"
+            >
+              送达照片
+            </button>
             <button
               v-if="order.status === 'pending_accept'"
               class="btn btn-cancel"
@@ -91,7 +93,6 @@
               删除
             </button>
           </view>
-          <text class="time">{{ order.publishedAt || order.createTime }}</text>
         </view>
       </view>
 
@@ -397,6 +398,10 @@ onShow(async () => {
   color: #888;
   font-size: 24rpx;
 }
+.actions-row {
+  margin-top: 8rpx;
+  justify-content: flex-end;
+}
 .load-status {
   text-align: center;
   padding: 20rpx 0 40rpx;
@@ -408,10 +413,23 @@ onShow(async () => {
   align-items: center;
   gap: 12rpx;
 }
+.actions .btn {
+  padding: 0 24rpx;
+  min-width: 120rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  font-size: 24rpx;
+  border-radius: 28rpx;
+  box-sizing: border-box;
+}
 .btn-photo {
   background: #1a73e8;
   color: #ffffff;
   border: none;
+  padding: 0 36rpx;
+  min-width: 170rpx;
+  font-size: 26rpx;
+  white-space: nowrap;
 }
 .empty {
   padding: 140rpx 0;

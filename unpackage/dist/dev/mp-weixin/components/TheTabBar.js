@@ -30,13 +30,15 @@ const _sfc_main = {
       {
         key: "hall",
         text: "大厅",
-        icon: "🏁",
+        icon: "/static/tabbar/home-active-new.png",
+        iconType: "image",
         pagePath: "/pages/rider/hall"
       },
       {
         key: "tasks",
         text: "任务",
-        icon: "📦",
+        icon: "/static/tabbar/renwu.png",
+        iconType: "image",
         pagePath: "/pages/rider/tasks/list"
       },
       {
@@ -77,7 +79,7 @@ const _sfc_main = {
       common_vendor.index.switchTab({
         url: tab.pagePath,
         fail: (err) => {
-          common_vendor.index.__f__("warn", "at components/TheTabBar.vue:119", "switchTab failed, use reLaunch:", err);
+          common_vendor.index.__f__("warn", "at components/TheTabBar.vue:121", "switchTab failed, use reLaunch:", err);
           common_vendor.index.reLaunch({ url: tab.pagePath });
         }
       });

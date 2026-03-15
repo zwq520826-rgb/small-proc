@@ -8,14 +8,6 @@
 
       <view class="card route-card">
         <view class="location-row">
-          <view class="dot green"></view>
-          <view class="info">
-            <text class="label">取货点</text>
-            <text class="addr">{{ task.pickupLocation || '未指定取货点' }}</text>
-          </view>
-        </view>
-        <view class="line"></view>
-        <view class="location-row">
           <view class="dot red"></view>
           <view class="info">
             <text class="label">送达点</text>
