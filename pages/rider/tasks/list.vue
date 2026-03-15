@@ -177,7 +177,16 @@ const taskList = computed(() => {
   const currentStatus = statusKeys[currentTab.value]
 
   // 直接调用 store 的 getter 获取数据
-  const list = store.tasksByStatus(currentStatus)
+  let list = store.tasksByStatus(currentStatus)
+
+  // 对“已送达”列表按完成时间倒序排序（最近完成的在最前面）
+  if (currentStatus === 'completed') {
+    list = [...list].sort((a, b) => {
+      const ta = a.complete_time || a.completedAt || 0
+      const tb = b.complete_time || b.completedAt || 0
+      return tb - ta
+    })
+  }
 
   // 格式化数据以适配模板
   return list.map((t) => {
