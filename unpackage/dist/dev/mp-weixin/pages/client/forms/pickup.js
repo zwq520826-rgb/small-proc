@@ -32,7 +32,7 @@ const _sfc_main = {
       { key: "large", label: "大件（床上用品、架子等）", price: fromFen(toFen(rates.value.large)).toFixed(2) }
     ]);
     const currentAddress = common_vendor.computed(() => {
-      return addressStore.selectedAddress || addressStore.addressList.find((item) => item.isDefault) || null;
+      return addressStore.selectedAddress || null;
     });
     const goodsPriceFen = common_vendor.computed(() => {
       const q = quantities.value;
@@ -63,7 +63,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:208", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:205", "选择图片失败:", err);
         }
       });
     };
@@ -210,7 +210,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:388", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:385", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -234,7 +234,7 @@ ${deliveryLocation}`,
           };
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:415", "加载快递代取价格失败，将使用默认价格:", e);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:412", "加载快递代取价格失败，将使用默认价格:", e);
       }
     });
     return (_ctx, _cache) => {

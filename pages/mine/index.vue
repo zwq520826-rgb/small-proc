@@ -7,18 +7,17 @@
           <uni-id-pages-avatar width="120rpx" height="120rpx"></uni-id-pages-avatar>
         </view>
         <view class="user-info">
-          <text class="nickname">{{ displayName }}</text>
+          <text class="nickname">{{ userInfo.nickname || '点击登录/完善资料' }}</text>
           <text class="uid" v-if="userInfo.studentNo">学号: {{ userInfo.studentNo }}</text>
-          <text class="uid" v-else-if="userInfo._id">ID: {{ userInfo._id }}</text>
-          <text class="uid" v-else>未登录</text>
+          <text class="uid" v-else-if="!userInfo._id">未登录</text>
         </view>
-        <text class="edit-btn" @click="setNickname('')">编辑</text>
+        <text class="edit-btn" @click="userInfo._id ? setNickname('') : login()">{{ userInfo._id ? '编辑名称' : '登录' }}</text>
       </view>
     </view>
 
     <view class="orange-card" v-if="!isRiderMode" @click="goBecomeRider">
       <view class="orange-left">
-        <image class="orange-icon-img" src="/static/tabbar/chengweiqishou.png" mode="aspectFit" />
+        <image class="orange-icon-img" src="/static/tabbar/kuaididaiqu.png" mode="aspectFit" />
       </view>
       <view class="orange-middle">
         <text class="orange-title">成为骑手</text>
@@ -84,7 +83,7 @@
 
     <view class="logout-row" v-if="showLoginManage">
       <button v-if="userInfo._id" class="logout-btn" @click="logout">退出登录</button>
-      <button v-else class="login-btn" @click="login">退出登录</button>
+      <button v-else class="login-btn" @click="login">去登录</button>
     </view>
 
     <uni-popup ref="dialog" type="dialog">
@@ -122,11 +121,6 @@ const riderService = uniCloud.importObject("rider-service")
       isRiderMode() {
         return checkRiderMode()
       },
-      displayName() {
-        if (this.userInfo.nickname) return this.userInfo.nickname
-        if (this.userInfo.mobile) return this.userInfo.mobile
-        return '点击登录/完善资料'
-      },
 	    realNameStatus () {
 		    if (!this.userInfo.realNameAuth) {
 			    return 0
@@ -160,6 +154,17 @@ const riderService = uniCloud.importObject("rider-service")
         couponCount: 3
 			}
 		},
+    watch: {
+      // 登录态变化后，重新拉一次钱包，避免首次进入时未登录导致钱包为 0 且后续不刷新
+      'userInfo._id': {
+        immediate: true,
+        handler: async function (val) {
+          if (!val) return
+          if (!this.walletStore) this.walletStore = useWalletStore()
+          await this.walletStore.loadFromCloud()
+        }
+      }
+    },
 		async onShow() {
 			this.univerifyStyle.authButton.title = "本机号码一键绑定"
 			this.univerifyStyle.otherLoginButton.title = "其他号码绑定"
@@ -420,6 +425,7 @@ const riderService = uniCloud.importObject("rider-service")
     align-items: center;
     justify-content: center;
     margin-right: 24rpx;
+    position: relative;
   }
 
   .user-info {
@@ -439,6 +445,7 @@ const riderService = uniCloud.importObject("rider-service")
     font-size: 24rpx;
     color: #6b7280;
   }
+  
 
   .edit-btn {
     font-size: 26rpx;

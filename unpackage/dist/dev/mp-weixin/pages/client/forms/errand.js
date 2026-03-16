@@ -5,10 +5,6 @@ const store_address = require("../../../store/address.js");
 const store_clientOrder = require("../../../store/clientOrder.js");
 const store_wallet = require("../../../store/wallet.js");
 const store_pay = require("../../../store/pay.js");
-if (!Math) {
-  PaymentPopup();
-}
-const PaymentPopup = () => "../../../components/PaymentPopup.js";
 const _sfc_main = {
   __name: "errand",
   setup(__props) {
@@ -19,13 +15,12 @@ const _sfc_main = {
     const isDelivery = common_vendor.ref(false);
     const dormNumber = common_vendor.ref("");
     const deliveryDormType = common_vendor.ref("");
-    const showPayPopup = common_vendor.ref(false);
     const walletStore = store_wallet.useWalletStore();
-    const balance = common_vendor.computed(() => walletStore.balance);
+    common_vendor.computed(() => walletStore.balance);
     const addressStore = store_address.useAddressStore();
     const store = store_clientOrder.useClientOrderStore();
     const currentAddress = common_vendor.computed(() => {
-      return addressStore.selectedAddress || addressStore.addressList.find((item) => item.isDefault) || null;
+      return addressStore.selectedAddress || null;
     });
     const totalPrice = common_vendor.computed(() => {
       let price = runnerFee.value;
@@ -46,7 +41,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:187", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:175", "选择图片失败:", err);
         }
       });
     };
@@ -101,7 +96,18 @@ const _sfc_main = {
           return;
         }
       }
-      showPayPopup.value = true;
+      const amount = Number(totalPrice.value).toFixed(2);
+      common_vendor.index.showActionSheet({
+        itemList: [`余额支付 ¥${amount}`, "微信支付"],
+        success: (res) => {
+          const index = res.tapIndex;
+          if (index === 0) {
+            onPayConfirm("balance");
+          } else if (index === 1) {
+            onPayConfirm("wechat");
+          }
+        }
+      });
     };
     const uploadImages = async (list = []) => {
       const uploaded = [];
@@ -123,7 +129,6 @@ const _sfc_main = {
       return uploaded;
     };
     const onPayConfirm = async (method = "balance") => {
-      showPayPopup.value = false;
       common_vendor.index.showLoading({ title: "处理中..." });
       try {
         const uploadedImages = await uploadImages(images.value || []);
@@ -188,7 +193,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:363", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:361", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -242,14 +247,7 @@ ${deliveryLocation}`,
         D: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
       } : {}, {
         E: common_vendor.t(totalPrice.value),
-        F: common_vendor.o(handlePayClick),
-        G: common_vendor.o(onPayConfirm),
-        H: common_vendor.o(($event) => showPayPopup.value = $event),
-        I: common_vendor.p({
-          amount: Number(totalPrice.value),
-          balance: balance.value,
-          show: showPayPopup.value
-        })
+        F: common_vendor.o(handlePayClick)
       });
     };
   }

@@ -107,12 +107,14 @@ const addNew = () => {
 // 整卡点击：如果是从下单页选择地址进来的，点击整行直接选中并返回
 const handleCardClick = (id) => {
   if (query.source === 'select') {
-    addressStore.setSelected(id).then((ok) => {
-      if (ok) {
-        uni.navigateBack()
-      }
-    })
+    // 下单选地址：只做本地选中，不改默认地址
+    const ok = addressStore.selectLocal(id)
+    if (ok) uni.navigateBack()
+    else uni.showToast({ title: '地址不存在或已删除', icon: 'none' })
+    return
   }
+  // 地址管理：点击整卡默认进入编辑
+  editAddress(id)
 }
 </script>
 

@@ -1,6 +1,4 @@
 {
   "navigationBarTitleText": "跑腿服务",
-  "usingComponents": {
-    "payment-popup": "../../../components/PaymentPopup"
-  }
+  "usingComponents": {}
 }

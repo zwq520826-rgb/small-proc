@@ -251,7 +251,7 @@ function extractPhoneFromAddress(address) {
   return ''
 }
 
-// 将 cloud:// fileID 转为可预览的 https 临时地址并预览（用弹窗显示调试信息）
+// 将 cloud:// fileID 转为可预览的 https 临时地址并直接预览图片
 const previewCloudImages = async (images = []) => {
   if (!images || images.length === 0) {
     uni.showToast({ title: '暂无取件凭证', icon: 'none' })
@@ -279,26 +279,10 @@ const previewCloudImages = async (images = []) => {
     }
   }
 
-  // 弹窗显示第一张图片 URL，方便你确认
-  uni.showModal({
-    title: '图片调试链接',
-    content: urls[0] || '无可用图片 URL',
-    confirmText: '预览',
-    cancelText: '复制',
-    success: (res) => {
-      if (res.confirm) {
-        // 点“预览”会真正打开预览
-        uni.previewImage({
-          urls,
-          current: urls[0]
-        })
-      } else if (res.cancel && urls[0]) {
-        // 点“复制”把 URL 复制到剪贴板
-        uni.setClipboardData({
-          data: urls[0]
-        })
-      }
-    }
+  // 直接预览图片（支持多张轮播）
+  uni.previewImage({
+    urls,
+    current: urls[0]
   })
 }
 

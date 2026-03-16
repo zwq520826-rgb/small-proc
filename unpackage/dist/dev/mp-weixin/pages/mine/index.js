@@ -18,13 +18,6 @@ const _sfc_main = {
     isRiderMode() {
       return store_user.isRiderMode();
     },
-    displayName() {
-      if (this.userInfo.nickname)
-        return this.userInfo.nickname;
-      if (this.userInfo.mobile)
-        return this.userInfo.mobile;
-      return "点击登录/完善资料";
-    },
     realNameStatus() {
       if (!this.userInfo.realNameAuth) {
         return 0;
@@ -57,6 +50,19 @@ const _sfc_main = {
       walletStore: null,
       couponCount: 3
     };
+  },
+  watch: {
+    // 登录态变化后，重新拉一次钱包，避免首次进入时未登录导致钱包为 0 且后续不刷新
+    "userInfo._id": {
+      immediate: true,
+      handler: async function(val) {
+        if (!val)
+          return;
+        if (!this.walletStore)
+          this.walletStore = store_wallet.useWalletStore();
+        await this.walletStore.loadFromCloud();
+      }
+    }
   },
   async onShow() {
     this.univerifyStyle.authButton.title = "本机号码一键绑定";
@@ -105,13 +111,13 @@ const _sfc_main = {
           uniIdCo.bindMobileByUniverify(e.authResult).then((res) => {
             uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
           }).catch((e2) => {
-            common_vendor.index.__f__("log", "at pages/mine/index.vue:234", e2);
+            common_vendor.index.__f__("log", "at pages/mine/index.vue:239", e2);
           }).finally((e2) => {
             common_vendor.index.closeAuthView();
           });
         },
         fail: (err) => {
-          common_vendor.index.__f__("log", "at pages/mine/index.vue:241", err);
+          common_vendor.index.__f__("log", "at pages/mine/index.vue:246", err);
           if (err.code == "30002" || err.code == "30001") {
             this.bindMobileBySmsCode();
           }
@@ -248,7 +254,7 @@ const _sfc_main = {
             await uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
           },
           fail: async (err) => {
-            common_vendor.index.__f__("log", "at pages/mine/index.vue:384", err);
+            common_vendor.index.__f__("log", "at pages/mine/index.vue:389", err);
             common_vendor.index.hideLoading();
           }
         });
@@ -282,15 +288,14 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       width: "120rpx",
       height: "120rpx"
     }),
-    b: common_vendor.t($options.displayName),
+    b: common_vendor.t($options.userInfo.nickname || "点击登录/完善资料"),
     c: $options.userInfo.studentNo
   }, $options.userInfo.studentNo ? {
     d: common_vendor.t($options.userInfo.studentNo)
-  } : $options.userInfo._id ? {
-    f: common_vendor.t($options.userInfo._id)
-  } : {}, {
-    e: $options.userInfo._id,
-    g: common_vendor.o(($event) => $options.setNickname("")),
+  } : !$options.userInfo._id ? {} : {}, {
+    e: !$options.userInfo._id,
+    f: common_vendor.t($options.userInfo._id ? "编辑名称" : "登录"),
+    g: common_vendor.o(($event) => $options.userInfo._id ? $options.setNickname("") : $options.login()),
     h: !$options.isRiderMode
   }, !$options.isRiderMode ? {
     i: common_assets._imports_0$2,

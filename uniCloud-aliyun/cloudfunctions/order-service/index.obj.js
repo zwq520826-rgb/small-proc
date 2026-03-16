@@ -5,6 +5,25 @@ const uniID = require('uni-id-common')
 const db = uniCloud.database()
 const dbCmd = db.command
 
+function pad2(n) {
+	return String(n).padStart(2, '0')
+}
+
+/**
+ * 生成可追踪订单号：YYYYMMDDHHmmss + 4位随机数
+ * 例：202603170915301234
+ */
+function generateOrderNo(now = new Date()) {
+	const yyyy = now.getFullYear()
+	const MM = pad2(now.getMonth() + 1)
+	const dd = pad2(now.getDate())
+	const HH = pad2(now.getHours())
+	const mm = pad2(now.getMinutes())
+	const ss = pad2(now.getSeconds())
+	const rand = String(Math.floor(Math.random() * 10000)).padStart(4, '0')
+	return `${yyyy}${MM}${dd}${HH}${mm}${ss}${rand}`
+}
+
 // 独立的登录检查函数，避免对 this 上方法的依赖
 function checkAuth(ctx) {
 	if (!ctx || !ctx.uid) {
@@ -84,6 +103,7 @@ module.exports = {
 
 		// 构建订单数据
 		const order = {
+			order_no: generateOrderNo(new Date()),
 			user_id: uid,
 			type: orderData.type,
 			type_label: orderData.type_label || '',
@@ -250,46 +270,99 @@ module.exports = {
 		}
 
 		try {
-			// 先查询订单
-			const orderResult = await db.collection('orders')
-				.doc(orderId)
-				.get()
+			const dbCmd = db.command
+			const now = Date.now()
 
-			if (orderResult.data.length === 0) {
-				return {
-					code: 'NOT_FOUND',
-					message: '订单不存在'
-				}
+			// 先读一遍订单，用于判断是否需要退款、以及返回更友好的提示
+			const orderResult = await db.collection('orders').doc(orderId).get()
+			if (!orderResult.data.length) {
+				return { code: 'NOT_FOUND', message: '订单不存在' }
 			}
-
 			const order = orderResult.data[0]
 
-			// 权限检查：只能取消自己的订单
 			if (order.user_id !== uid) {
-				return {
-					code: 'NO_PERMISSION',
-					message: '无权限取消此订单'
-				}
+				return { code: 'NO_PERMISSION', message: '无权限取消此订单' }
 			}
 
-			// 只能取消待接单状态的订单
-			if (order.status !== 'pending_accept') {
-				return {
-					code: 'INVALID_STATUS',
-					message: '只能取消待接单的订单'
-				}
-			}
-
-			// 更新订单状态
-			await db.collection('orders')
-				.doc(orderId)
-				.update({
-					status: 'cancelled'
+			// 原子取消：必须是待接单 & 未被骑手接单（互斥锁思路同抢单）
+			// rider_id 不存在或为 null 才允许取消
+			const updateRes = await db.collection('orders')
+				.where({
+					_id: orderId,
+					user_id: uid,
+					status: 'pending_accept',
+					rider_id: dbCmd.exists(false).or(dbCmd.eq(null))
 				})
+				.update({
+					status: 'cancelled',
+					cancel_time: now,
+					update_time: now
+				})
+
+			if (updateRes.updated === 0) {
+				// 重新读一次，给出明确原因
+				const latest = await db.collection('orders').doc(orderId).get()
+				const o = latest.data && latest.data[0]
+				if (o && o.rider_id) {
+					return { code: 'ALREADY_GRABBED', message: '订单已被骑手接单，无法取消' }
+				}
+				return { code: 'INVALID_STATUS', message: '当前订单状态无法取消' }
+			}
+
+			// === 退款：取消成功后，若已支付则退回余额 ===
+			let refunded = false
+			let refundAmount = 0
+
+			// 判断是否“已支付”
+			// - 微信支付：pay_status === 'paid'
+			// - 余额支付：transactions 里存在 type='pay' & status='success' & order_id=orderId
+			let isPaid = false
+			if (order.pay_status === 'paid') {
+				isPaid = true
+			} else {
+				const payTx = await db.collection('transactions')
+					.where({
+						user_id: uid,
+						type: 'pay',
+						status: 'success',
+						order_id: orderId
+					})
+					.limit(1)
+					.get()
+				if (payTx.data && payTx.data.length) isPaid = true
+			}
+
+			if (isPaid) {
+				refundAmount = Number(order.price || 0)
+				if (refundAmount > 0) {
+					const walletService = uniCloud.importObject('wallet-service')
+					const refundRes = await walletService.refundForUser(uid, refundAmount, orderId)
+					if (refundRes && refundRes.code === 0) {
+						refunded = true
+						await db.collection('orders').doc(orderId).update({
+							refund_status: 'refunded_to_balance',
+							refund_time: now
+						})
+					} else {
+						await db.collection('orders').doc(orderId).update({
+							refund_status: 'refund_failed',
+							refund_time: now
+						})
+						return {
+							code: 'REFUND_FAILED',
+							message: '订单已取消，但退款失败，请联系管理员处理'
+						}
+					}
+				}
+			}
 
 			return {
 				code: 0,
-				message: '取消成功'
+				message: refunded ? '取消成功，款项已退回余额' : '取消成功',
+				data: {
+					refunded,
+					refund_amount: refunded ? refundAmount : 0
+				}
 			}
 		} catch (error) {
 			console.error('取消订单失败:', error)

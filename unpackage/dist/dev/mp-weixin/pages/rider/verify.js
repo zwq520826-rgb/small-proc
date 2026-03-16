@@ -46,12 +46,12 @@ const _sfc_main = {
         const res = await riderService.submitApplication(form.value);
         common_vendor.index.hideLoading();
         if (res.code === 0) {
-          common_vendor.index.showToast({ title: res.message || "提交成功", icon: "success" });
-          form.value.captcha = "";
-          if (captchaRef.value) {
-            captchaRef.value.getImageCaptcha();
-          }
-          await loadProfile();
+          common_vendor.index.showToast({ title: res.message || "验证成功", icon: "success" });
+          setTimeout(() => {
+            common_vendor.index.reLaunch({
+              url: "/pages/mine/index"
+            });
+          }, 800);
         } else {
           common_vendor.index.showToast({ title: res.message || "提交失败", icon: "none" });
           if (res.code === "CAPTCHA_ERROR" || ((_a = res.message) == null ? void 0 : _a.includes("验证码"))) {

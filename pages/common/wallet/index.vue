@@ -23,12 +23,8 @@
       </view>
     </view>
 
-    <!-- 操作按钮 -->
+    <!-- 操作按钮（仅保留提现） -->
     <view class="action-row">
-      <button class="action-btn recharge-btn" @click="showRechargePopup">
-        <text class="action-icon">💰</text>
-        <text class="action-text">充值</text>
-      </button>
       <button class="action-btn withdraw-btn" @click="showWithdrawPopup">
         <text class="action-icon">💸</text>
         <text class="action-text">提现</text>
@@ -68,43 +64,6 @@
         </view>
       </view>
     </view>
-
-    <!-- 充值弹窗 -->
-    <uni-popup ref="rechargePopup" type="bottom">
-      <view class="popup-content">
-        <view class="popup-header">
-          <text class="popup-title">充值</text>
-          <text class="popup-close" @click="closeRechargePopup">×</text>
-        </view>
-        
-        <view class="amount-options">
-          <view 
-            v-for="amt in rechargeAmounts" 
-            :key="amt"
-            class="amount-option"
-            :class="{ active: rechargeAmount === amt }"
-            @click="selectRechargeAmount(amt)"
-          >
-            ¥{{ amt }}
-          </view>
-        </view>
-
-        <view class="custom-amount">
-          <text class="input-label">其他金额</text>
-          <input 
-            class="amount-input" 
-            type="digit" 
-            v-model="customRechargeAmount"
-            placeholder="请输入充值金额"
-            @input="onCustomAmountInput('recharge')"
-          />
-        </view>
-
-        <button class="confirm-btn" @click="handleRecharge">
-          确认充值 ¥{{ rechargeAmount || customRechargeAmount || 0 }}
-        </button>
-      </view>
-    </uni-popup>
 
     <!-- 提现弹窗 -->
     <uni-popup ref="withdrawPopup" type="bottom">
@@ -162,13 +121,7 @@ import { useWalletStore } from '@/store/wallet'
 const walletStore = useWalletStore()
 
 // 弹窗引用
-const rechargePopup = ref(null)
 const withdrawPopup = ref(null)
-
-// 充值相关
-const rechargeAmounts = [10, 20, 50, 100, 200, 500]
-const rechargeAmount = ref(0)
-const customRechargeAmount = ref('')
 
 // 提现相关
 const withdrawAmounts = [10, 20, 50, 100, 200]
@@ -197,48 +150,9 @@ const loadMoreTransactions = async () => {
   uni.hideLoading()
 }
 
-// 充值弹窗
-const showRechargePopup = () => {
-  rechargeAmount.value = 0
-  customRechargeAmount.value = ''
-  rechargePopup.value.open()
-}
-
-const closeRechargePopup = () => {
-  rechargePopup.value.close()
-}
-
-const selectRechargeAmount = (amt) => {
-  rechargeAmount.value = amt
-  customRechargeAmount.value = ''
-}
-
 const onCustomAmountInput = (type) => {
-  if (type === 'recharge') {
-    rechargeAmount.value = 0
-  } else {
+  if (type === 'withdraw') {
     withdrawAmount.value = 0
-  }
-}
-
-const handleRecharge = async () => {
-  const amount = rechargeAmount.value || Number(customRechargeAmount.value) || 0
-  if (amount <= 0) {
-    uni.showToast({ title: '请选择或输入金额', icon: 'none' })
-    return
-  }
-
-  uni.showLoading({ title: '充值中...' })
-  const result = await walletStore.recharge(amount)
-  uni.hideLoading()
-
-  if (result.success) {
-    uni.showToast({ title: '充值成功', icon: 'success' })
-    closeRechargePopup()
-    // 刷新交易记录
-    await walletStore.getTransactions({ page: 1, pageSize: 20 })
-  } else {
-    uni.showToast({ title: result.reason || '充值失败', icon: 'none' })
   }
 }
 

@@ -1,5 +1,11 @@
 <template>
-	<button open-type="chooseAvatar" @chooseavatar="bindchooseavatar" @click="uploadAvatarImg" class="box" :class="{'showBorder':border}"  :style="{width,height,lineHeight:height}">
+	<!-- #ifdef MP-WEIXIN -->
+	<!-- 小程序端使用微信原生 chooseAvatar，拿到本地临时路径，避免下载域名限制；同时尝试同步微信昵称（需用户授权） -->
+	<button open-type="chooseAvatar" @chooseavatar="bindchooseavatar" class="box" :class="{'showBorder':border}"  :style="{width,height,lineHeight:height}">
+	<!-- #endif -->
+	<!-- #ifndef MP-WEIXIN -->
+	<button @click="uploadAvatarImg" class="box" :class="{'showBorder':border}"  :style="{width,height,lineHeight:height}">
+	<!-- #endif -->
 		<cloud-image v-if="avatar_file" :src="avatar_file.url" :width="width" :height="height"></cloud-image>
 		<uni-icons v-else :style="{width,height,lineHeight:height}" class="chooseAvatar" type="plusempty" size="30"
 			color="#dddddd"></uni-icons>
@@ -67,7 +73,26 @@
 				mutations.updateUserInfo({avatar_file})
 			},
 			async bindchooseavatar(res){
+				if(!this.hasLogin){
+					return uni.navigateTo({
+						url:'/uni_modules/uni-id-pages/pages/login/login-withoutpwd'
+					})
+				}
 				let avatarUrl = res.detail.avatarUrl
+				// 先尝试同步昵称：尽量紧贴用户触发，避免在 await 网络请求之后被微信判定为非用户触发而不弹窗
+				let nickname = ''
+				try {
+					const profileRes = await new Promise((resolve, reject) => {
+						uni.getUserProfile({
+							desc: '用于完善个人资料（同步昵称）',
+							success: resolve,
+							fail: reject
+						})
+					})
+					nickname = profileRes && profileRes.userInfo && profileRes.userInfo.nickName
+				} catch (e) {
+					// 用户拒绝/失败，不影响后续头像更新
+				}
 				let avatar_file = {
 					extname: avatarUrl.split('.')[avatarUrl.split('.').length - 1],
 					name:'',
@@ -89,12 +114,16 @@
 						fileType: "image"
 					});
 					avatar_file.url = fileID
-					uni.hideLoading()
 				}catch(e){
-					console.error(e);
+					uni.hideLoading()
+					uni.showToast({ title: '头像上传失败', icon: 'none' })
+					return
 				}
-				console.log('avatar_file',avatar_file);
-				this.setAvatarFile(avatar_file)
+				uni.hideLoading()
+				mutations.updateUserInfo({
+					avatar_file,
+					...(nickname ? { nickname } : {})
+				})
 			},
 			uploadAvatarImg(res) {
 				// #ifdef MP-WEIXIN

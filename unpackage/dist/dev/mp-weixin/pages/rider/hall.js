@@ -101,7 +101,7 @@ const _sfc_main = {
       try {
         await store.loadFromStorage();
       } catch (error) {
-        common_vendor.index.__f__("error", "at pages/rider/hall.vue:259", "加载任务失败:", error);
+        common_vendor.index.__f__("error", "at pages/rider/hall.vue:246", "加载任务失败:", error);
         common_vendor.index.hideLoading();
       }
       try {
@@ -112,10 +112,10 @@ const _sfc_main = {
         } else if (res && res.code === "NO_RIDER_PROFILE") {
           levelInfo.value = null;
         } else if (res && res.message) {
-          common_vendor.index.__f__("warn", "at pages/rider/hall.vue:273", "获取骑手等级信息失败:", res.message);
+          common_vendor.index.__f__("warn", "at pages/rider/hall.vue:260", "获取骑手等级信息失败:", res.message);
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/rider/hall.vue:276", "调用 rider-service.getMyStats 失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/hall.vue:263", "调用 rider-service.getMyStats 失败:", e);
       }
     });
     return (_ctx, _cache) => {

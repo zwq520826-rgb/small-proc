@@ -97,23 +97,9 @@ const _sfc_main = {
           return;
         }
       }
-      common_vendor.index.showModal({
-        title: "图片调试链接",
-        content: urls[0] || "无可用图片 URL",
-        confirmText: "预览",
-        cancelText: "复制",
-        success: (res) => {
-          if (res.confirm) {
-            common_vendor.index.previewImage({
-              urls,
-              current: urls[0]
-            });
-          } else if (res.cancel && urls[0]) {
-            common_vendor.index.setClipboardData({
-              data: urls[0]
-            });
-          }
-        }
+      common_vendor.index.previewImage({
+        urls,
+        current: urls[0]
       });
     };
     const viewPickupImages = async (task) => {
@@ -186,7 +172,7 @@ const _sfc_main = {
             } else {
             }
           } catch (e) {
-            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:409", "上传/送达确认失败:", e);
+            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:393", "上传/送达确认失败:", e);
             common_vendor.index.hideLoading();
             common_vendor.index.showToast({ title: e.message || "上传失败，请重试", icon: "none" });
           }

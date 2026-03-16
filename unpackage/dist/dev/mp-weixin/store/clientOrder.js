@@ -91,6 +91,10 @@ async function cancelOrder(id) {
   try {
     const res = await orderService.cancelOrder(id);
     if (res.code === 0) {
+      common_vendor.index.showToast({
+        title: res.message || "取消成功",
+        icon: "none"
+      });
       await loadOrdersFromCloud();
       return true;
     } else {
@@ -101,7 +105,7 @@ async function cancelOrder(id) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:142", "取消订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:147", "取消订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -123,7 +127,7 @@ async function deleteOrder(id) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:170", "删除订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:175", "删除订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"

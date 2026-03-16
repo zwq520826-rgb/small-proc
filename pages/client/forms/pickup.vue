@@ -163,11 +163,8 @@ const sizeOptions = computed(() => ([
 ]))
 
 const currentAddress = computed(() => {
-  return (
-    addressStore.selectedAddress ||
-    addressStore.addressList.find((item) => item.isDefault) ||
-    null
-  )
+  // 只展示用户明确选择的地址，避免自动带出默认/历史地址
+  return addressStore.selectedAddress || null
 })
 
 // 物品金额（单位：分）

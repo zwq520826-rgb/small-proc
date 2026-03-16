@@ -13,11 +13,7 @@ const _sfc_main = {
   __name: "index",
   setup(__props) {
     const walletStore = store_wallet.useWalletStore();
-    const rechargePopup = common_vendor.ref(null);
     const withdrawPopup = common_vendor.ref(null);
-    const rechargeAmounts = [10, 20, 50, 100, 200, 500];
-    const rechargeAmount = common_vendor.ref(0);
-    const customRechargeAmount = common_vendor.ref("");
     const withdrawAmounts = [10, 20, 50, 100, 200];
     const withdrawAmount = common_vendor.ref(0);
     const customWithdrawAmount = common_vendor.ref("");
@@ -37,40 +33,9 @@ const _sfc_main = {
       await walletStore.getTransactions({ page: 1, pageSize: 50 });
       common_vendor.index.hideLoading();
     };
-    const showRechargePopup = () => {
-      rechargeAmount.value = 0;
-      customRechargeAmount.value = "";
-      rechargePopup.value.open();
-    };
-    const closeRechargePopup = () => {
-      rechargePopup.value.close();
-    };
-    const selectRechargeAmount = (amt) => {
-      rechargeAmount.value = amt;
-      customRechargeAmount.value = "";
-    };
     const onCustomAmountInput = (type) => {
-      if (type === "recharge") {
-        rechargeAmount.value = 0;
-      } else {
+      if (type === "withdraw") {
         withdrawAmount.value = 0;
-      }
-    };
-    const handleRecharge = async () => {
-      const amount = rechargeAmount.value || Number(customRechargeAmount.value) || 0;
-      if (amount <= 0) {
-        common_vendor.index.showToast({ title: "请选择或输入金额", icon: "none" });
-        return;
-      }
-      common_vendor.index.showLoading({ title: "充值中..." });
-      const result = await walletStore.recharge(amount);
-      common_vendor.index.hideLoading();
-      if (result.success) {
-        common_vendor.index.showToast({ title: "充值成功", icon: "success" });
-        closeRechargePopup();
-        await walletStore.getTransactions({ page: 1, pageSize: 20 });
-      } else {
-        common_vendor.index.showToast({ title: result.reason || "充值失败", icon: "none" });
       }
     };
     const showWithdrawPopup = () => {
@@ -153,12 +118,11 @@ const _sfc_main = {
         b: common_vendor.t(balance.value.toFixed(2)),
         c: common_vendor.t(totalIncome.value.toFixed(2)),
         d: common_vendor.t(totalExpense.value.toFixed(2)),
-        e: common_vendor.o(showRechargePopup),
-        f: common_vendor.o(showWithdrawPopup),
-        g: common_vendor.o(loadMoreTransactions),
-        h: transactions.value.length === 0
+        e: common_vendor.o(showWithdrawPopup),
+        f: common_vendor.o(loadMoreTransactions),
+        g: transactions.value.length === 0
       }, transactions.value.length === 0 ? {} : {
-        i: common_vendor.f(transactions.value, (item, k0, i0) => {
+        h: common_vendor.f(transactions.value, (item, k0, i0) => {
           return {
             a: common_vendor.t(getTransIcon(item.type)),
             b: common_vendor.t(getTransTitle(item.type)),
@@ -170,28 +134,9 @@ const _sfc_main = {
           };
         })
       }, {
-        j: common_vendor.o(closeRechargePopup),
-        k: common_vendor.f(rechargeAmounts, (amt, k0, i0) => {
-          return {
-            a: common_vendor.t(amt),
-            b: amt,
-            c: rechargeAmount.value === amt ? 1 : "",
-            d: common_vendor.o(($event) => selectRechargeAmount(amt), amt)
-          };
-        }),
-        l: common_vendor.o([($event) => customRechargeAmount.value = $event.detail.value, ($event) => onCustomAmountInput("recharge")]),
-        m: customRechargeAmount.value,
-        n: common_vendor.t(rechargeAmount.value || customRechargeAmount.value || 0),
-        o: common_vendor.o(handleRecharge),
-        p: common_vendor.sr(rechargePopup, "2e9d1a34-0", {
-          "k": "rechargePopup"
-        }),
-        q: common_vendor.p({
-          type: "bottom"
-        }),
-        r: common_vendor.o(closeWithdrawPopup),
-        s: common_vendor.t(balance.value.toFixed(2)),
-        t: common_vendor.f(withdrawAmounts, (amt, k0, i0) => {
+        i: common_vendor.o(closeWithdrawPopup),
+        j: common_vendor.t(balance.value.toFixed(2)),
+        k: common_vendor.f(withdrawAmounts, (amt, k0, i0) => {
           return {
             a: common_vendor.t(amt),
             b: amt,
@@ -200,14 +145,14 @@ const _sfc_main = {
             e: common_vendor.o(($event) => selectWithdrawAmount(amt), amt)
           };
         }),
-        v: common_vendor.o([($event) => customWithdrawAmount.value = $event.detail.value, ($event) => onCustomAmountInput("withdraw")]),
-        w: customWithdrawAmount.value,
-        x: common_vendor.t(withdrawAmount.value || customWithdrawAmount.value || 0),
-        y: common_vendor.o(handleWithdraw),
-        z: common_vendor.sr(withdrawPopup, "2e9d1a34-1", {
+        l: common_vendor.o([($event) => customWithdrawAmount.value = $event.detail.value, ($event) => onCustomAmountInput("withdraw")]),
+        m: customWithdrawAmount.value,
+        n: common_vendor.t(withdrawAmount.value || customWithdrawAmount.value || 0),
+        o: common_vendor.o(handleWithdraw),
+        p: common_vendor.sr(withdrawPopup, "2e9d1a34-0", {
           "k": "withdrawPopup"
         }),
-        A: common_vendor.p({
+        q: common_vendor.p({
           type: "bottom"
         })
       });

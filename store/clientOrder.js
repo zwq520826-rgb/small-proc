@@ -128,6 +128,11 @@ async function cancelOrder(id) {
     const res = await orderService.cancelOrder(id)
 
     if (res.code === 0) {
+      // 取消成功提示：若后端已退款，则明确告知“退回余额”
+      uni.showToast({
+        title: res.message || '取消成功',
+        icon: 'none'
+      })
       // 取消成功后，重新加载列表
       await loadOrdersFromCloud()
       return true

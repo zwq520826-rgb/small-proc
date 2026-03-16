@@ -25,8 +25,13 @@ async function loadFromCloud() {
     const res = await addressService.getAddressList()
     if (res && res.code === 0 && Array.isArray(res.data)) {
       state.addressList = res.data.map(normalize)
-      state.selectedAddress =
-        state.addressList.find((item) => item.isDefault) || state.addressList[0] || null
+      // 不要自动选中默认地址/第一条地址；必须由用户在页面里手动选择
+      // 仅当当前已选地址仍存在于列表中时才保留，否则置空
+      if (state.selectedAddress) {
+        const selId = state.selectedAddress.id || state.selectedAddress._id
+        const stillExists = state.addressList.find((a) => (a.id || a._id) === selId)
+        state.selectedAddress = stillExists || null
+      }
       save()
       return true
     }
@@ -51,8 +56,12 @@ async function ensureInit() {
       const parsed = JSON.parse(data)
       if (Array.isArray(parsed)) {
         state.addressList = parsed.map(normalize)
-        state.selectedAddress =
-          state.addressList.find((item) => item.isDefault) || state.addressList[0] || null
+        // 同上：不自动选中默认地址/第一条地址
+        if (state.selectedAddress) {
+          const selId = state.selectedAddress.id || state.selectedAddress._id
+          const stillExists = state.addressList.find((a) => (a.id || a._id) === selId)
+          state.selectedAddress = stillExists || null
+        }
       }
     }
   } catch (e) {
@@ -74,6 +83,17 @@ export function useAddressStore() {
 
   const reloadFromCloud = async () => {
     await loadFromCloud()
+  }
+
+  /**
+   * 仅在前端本地“选中地址”（用于下单页选择地址场景）
+   * 不触发云端“设为默认”，避免无感修改用户默认地址
+   */
+  const selectLocal = (id) => {
+    const target = state.addressList.find((a) => a.id === id || a._id === id)
+    if (!target) return false
+    state.selectedAddress = target
+    return true
   }
 
   const setSelected = async (id) => {
@@ -153,6 +173,8 @@ export function useAddressStore() {
     get addressList() {
       return state.addressList
     },
+    // 下单页选择地址：只本地选中
+    selectLocal,
     setSelected,
     addAddress,
     updateAddress,

@@ -86,13 +86,13 @@ const submit = async () => {
     uni.hideLoading()
     
     if (res.code === 0) {
-      uni.showToast({ title: res.message || '提交成功', icon: 'success' })
-      // 清空图形验证码并刷新
-      form.value.captcha = ''
-      if (captchaRef.value) {
-        captchaRef.value.getImageCaptcha()
-      }
-      await loadProfile()
+      // 认证成功后提示并返回“我的”页面
+      uni.showToast({ title: res.message || '验证成功', icon: 'success' })
+      setTimeout(() => {
+        uni.reLaunch({
+          url: '/pages/mine/index'
+        })
+      }, 800)
     } else {
       uni.showToast({ title: res.message || '提交失败', icon: 'none' })
       // 如果验证码错误，刷新图形验证码

@@ -535,6 +535,111 @@ module.exports = {
 	},
 
 	/**
+	 * 【服务端内部调用】订单退款退回余额（不依赖当前登录态）
+	 * - 写入 transactions(type='refund')
+	 * - 余额增加
+	 * - total_expense 做相应回滚（净支出减少）
+	 *
+	 * @param {string} userId 用户ID（下单用户 uid）
+	 * @param {number} amount 退款金额（元）
+	 * @param {string} orderId 订单ID
+	 */
+	async refundForUser(userId, amount, orderId) {
+		amount = normalizeAmount(amount)
+		if (!userId || amount <= 0) {
+			return {
+				code: 'INVALID_PARAM',
+				message: '用户ID或金额不合法'
+			}
+		}
+
+		try {
+			// 防重：同一订单只允许退款一次
+			if (orderId) {
+				const existed = await db.collection('transactions')
+					.where({
+						user_id: userId,
+						type: 'refund',
+						order_id: orderId,
+						status: 'success'
+					})
+					.limit(1)
+					.get()
+				if (existed.data && existed.data.length) {
+					return {
+						code: 0,
+						message: '已退款（幂等）',
+						data: { duplicated: true }
+					}
+				}
+			}
+
+			let walletRes = await db.collection('wallets')
+				.where({ user_id: userId })
+				.get()
+
+			const now = Date.now()
+			let wallet
+
+			if (walletRes.data.length === 0) {
+				const addRes = await db.collection('wallets').add({
+					user_id: userId,
+					balance: 0,
+					frozen_balance: 0,
+					total_income: 0,
+					total_expense: 0,
+					create_time: now,
+					update_time: now
+				})
+				wallet = {
+					_id: addRes.id,
+					balance: 0
+				}
+			} else {
+				wallet = walletRes.data[0]
+			}
+
+			const balanceBefore = normalizeAmount(wallet.balance || 0)
+			const balanceAfter = normalizeAmount(balanceBefore + amount)
+
+			await db.collection('wallets')
+				.doc(wallet._id)
+				.update({
+					balance: balanceAfter,
+					// 退款会抵扣净支出（避免 total_expense 越来越大但已退款）
+					total_expense: dbCmd.inc(-amount),
+					update_time: now
+				})
+
+			await db.collection('transactions').add({
+				user_id: userId,
+				type: 'refund',
+				amount: amount,
+				balance_before: balanceBefore,
+				balance_after: balanceAfter,
+				order_id: orderId || '',
+				status: 'success',
+				remark: '订单退款（退回余额）',
+				create_time: now
+			})
+
+			return {
+				code: 0,
+				message: '退款成功',
+				data: {
+					balance: balanceAfter
+				}
+			}
+		} catch (error) {
+			console.error('退款失败(refundForUser):', error)
+			return {
+				code: 'DB_ERROR',
+				message: '退款失败：' + error.message
+			}
+		}
+	},
+
+	/**
 	 * 获取交易记录
 	 * @param {object} params 查询参数
 	 * @param {string} params.type 交易类型（可选）

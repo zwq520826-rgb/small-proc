@@ -119,13 +119,6 @@
       </view>
       <button class="pay-btn" @click="handlePayClick">立即发布</button>
     </view>
-
-    <PaymentPopup
-      v-model:show="showPayPopup"
-      :amount="Number(totalPrice)"
-      :balance="balance"
-      @confirm="onPayConfirm"
-    />
   </view>
 </template>
 
@@ -134,7 +127,6 @@ import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useAddressStore } from '@/store/address'
 import { useClientOrderStore  } from '@/store/clientOrder'
-import PaymentPopup from '@/components/PaymentPopup.vue'
 import { useWalletStore } from '@/store/wallet'
 import { payForOrder } from '@/store/pay'
 
@@ -147,7 +139,6 @@ const isDelivery = ref(false)
 const dormNumber = ref('')
 // 男生宿舍 / 女生宿舍，对应 male / female
 const deliveryDormType = ref('') // 'male' | 'female'
-const showPayPopup = ref(false)
 const walletStore = useWalletStore()
 const balance = computed(() => walletStore.balance)
 
@@ -155,11 +146,8 @@ const balance = computed(() => walletStore.balance)
 const addressStore = useAddressStore()
 const store = useClientOrderStore()
 const currentAddress = computed(() => {
-  return (
-    addressStore.selectedAddress ||
-    addressStore.addressList.find((item) => item.isDefault) ||
-    null
-  )
+  // 只展示用户明确选择的地址，避免自动带出默认/历史地址
+  return addressStore.selectedAddress || null
 })
 
 // 价格
@@ -252,12 +240,23 @@ const handlePayClick = () => {
       return
     }
     if (!dormNumber.value.trim()) {
-    uni.showToast({ title: '请填写寝室号', icon: 'none' })
-    return
+      uni.showToast({ title: '请填写寝室号', icon: 'none' })
+      return
     }
   }
 
-  showPayPopup.value = true
+  const amount = Number(totalPrice.value).toFixed(2)
+  uni.showActionSheet({
+    itemList: [`余额支付 ¥${amount}`, '微信支付'],
+    success: (res) => {
+      const index = res.tapIndex
+      if (index === 0) {
+        onPayConfirm('balance')
+      } else if (index === 1) {
+        onPayConfirm('wechat')
+      }
+    }
+  })
 }
 
 // 上传任务图片（可选），返回可跨设备访问的 fileID
@@ -281,7 +280,6 @@ const uploadImages = async (list = []) => {
 }
 
 const onPayConfirm = async (method = 'balance') => {
-  showPayPopup.value = false
   uni.showLoading({ title: '处理中...' })
 
   try {

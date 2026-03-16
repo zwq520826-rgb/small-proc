@@ -43,12 +43,14 @@ const _sfc_main = {
     };
     const handleCardClick = (id) => {
       if (query.source === "select") {
-        addressStore.setSelected(id).then((ok) => {
-          if (ok) {
-            common_vendor.index.navigateBack();
-          }
-        });
+        const ok = addressStore.selectLocal(id);
+        if (ok)
+          common_vendor.index.navigateBack();
+        else
+          common_vendor.index.showToast({ title: "地址不存在或已删除", icon: "none" });
+        return;
       }
+      editAddress(id);
     };
     return (_ctx, _cache) => {
       return {

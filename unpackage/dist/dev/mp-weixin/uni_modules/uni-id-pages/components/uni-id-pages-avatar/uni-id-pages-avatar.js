@@ -47,7 +47,24 @@ const _sfc_main = {
       uni_modules_uniIdPages_common_store.mutations.updateUserInfo({ avatar_file });
     },
     async bindchooseavatar(res) {
+      if (!this.hasLogin) {
+        return common_vendor.index.navigateTo({
+          url: "/uni_modules/uni-id-pages/pages/login/login-withoutpwd"
+        });
+      }
       let avatarUrl = res.detail.avatarUrl;
+      let nickname = "";
+      try {
+        const profileRes = await new Promise((resolve, reject) => {
+          common_vendor.index.getUserProfile({
+            desc: "用于完善个人资料（同步昵称）",
+            success: resolve,
+            fail: reject
+          });
+        });
+        nickname = profileRes && profileRes.userInfo && profileRes.userInfo.nickName;
+      } catch (e) {
+      }
       let avatar_file = {
         extname: avatarUrl.split(".")[avatarUrl.split(".").length - 1],
         name: "",
@@ -68,12 +85,16 @@ const _sfc_main = {
           fileType: "image"
         });
         avatar_file.url = fileID;
-        common_vendor.index.hideLoading();
       } catch (e) {
-        common_vendor.index.__f__("error", "at uni_modules/uni-id-pages/components/uni-id-pages-avatar/uni-id-pages-avatar.vue:94", e);
+        common_vendor.index.hideLoading();
+        common_vendor.index.showToast({ title: "头像上传失败", icon: "none" });
+        return;
       }
-      common_vendor.index.__f__("log", "at uni_modules/uni-id-pages/components/uni-id-pages-avatar/uni-id-pages-avatar.vue:96", "avatar_file", avatar_file);
-      this.setAvatarFile(avatar_file);
+      common_vendor.index.hideLoading();
+      uni_modules_uniIdPages_common_store.mutations.updateUserInfo({
+        avatar_file,
+        ...nickname ? { nickname } : {}
+      });
     },
     uploadAvatarImg(res) {
       return false;
@@ -110,11 +131,10 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     })
   }, {
     g: common_vendor.o((...args) => $options.bindchooseavatar && $options.bindchooseavatar(...args)),
-    h: common_vendor.o((...args) => $options.uploadAvatarImg && $options.uploadAvatarImg(...args)),
-    i: $props.border ? 1 : "",
-    j: $props.width,
-    k: $props.height,
-    l: $props.height
+    h: $props.border ? 1 : "",
+    i: $props.width,
+    j: $props.height,
+    k: $props.height
   });
 }
 const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render]]);
