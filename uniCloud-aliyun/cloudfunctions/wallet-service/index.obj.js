@@ -16,6 +16,17 @@ function checkAuth(ctx) {
 	return { uid: ctx.uid }
 }
 
+/**
+ * 金额统一精确到分（两位小数）
+ * 所有写入数据库或用于累计的金额，必须先走这个方法
+ */
+function normalizeAmount(num) {
+	const n = Number(num || 0)
+	if (!n || isNaN(n)) return 0
+	// 先放大到分，再四舍五入，最后再缩回元，保证只有两位小数
+	return Math.round(n * 100) / 100
+}
+
 module.exports = {
 	_before: async function() {
 		// 获取客户端信息
@@ -100,9 +111,9 @@ module.exports = {
 		}
 		const uid = authResult.uid
 
-		// 参数校验
-		amount = Number(amount)
-		if (isNaN(amount) || amount <= 0) {
+		// 参数校验（统一精确到分）
+		amount = normalizeAmount(amount)
+		if (amount <= 0) {
 			return {
 				code: 'INVALID_PARAM',
 				message: '充值金额必须大于0'
@@ -137,8 +148,8 @@ module.exports = {
 				wallet = walletRes.data[0]
 			}
 
-			const balanceBefore = wallet.balance || 0
-			const balanceAfter = balanceBefore + amount
+			const balanceBefore = normalizeAmount(wallet.balance || 0)
+			const balanceAfter = normalizeAmount(balanceBefore + amount)
 
 			// 更新钱包余额
 			await db.collection('wallets')
@@ -188,9 +199,9 @@ module.exports = {
 		}
 		const uid = authResult.uid
 
-		// 参数校验
-		amount = Number(amount)
-		if (isNaN(amount) || amount <= 0) {
+		// 参数校验（统一精确到分）
+		amount = normalizeAmount(amount)
+		if (amount <= 0) {
 			return {
 				code: 'INVALID_PARAM',
 				message: '提现金额必须大于0'
@@ -211,7 +222,7 @@ module.exports = {
 			}
 
 			const wallet = walletRes.data[0]
-			const balanceBefore = wallet.balance || 0
+			const balanceBefore = normalizeAmount(wallet.balance || 0)
 
 			// 检查余额是否足够
 			if (balanceBefore < amount) {
@@ -221,7 +232,7 @@ module.exports = {
 				}
 			}
 
-			const balanceAfter = balanceBefore - amount
+			const balanceAfter = normalizeAmount(balanceBefore - amount)
 			const now = Date.now()
 
 			// 更新钱包余额
@@ -273,9 +284,9 @@ module.exports = {
 		}
 		const uid = authResult.uid
 
-		// 参数校验
-		amount = Number(amount)
-		if (isNaN(amount) || amount <= 0) {
+		// 参数校验（统一精确到分）
+		amount = normalizeAmount(amount)
+		if (amount <= 0) {
 			return {
 				code: 'INVALID_PARAM',
 				message: '支付金额必须大于0'
@@ -296,7 +307,7 @@ module.exports = {
 			}
 
 			const wallet = walletRes.data[0]
-			const balanceBefore = wallet.balance || 0
+			const balanceBefore = normalizeAmount(wallet.balance || 0)
 
 			// 检查余额是否足够
 			if (balanceBefore < amount) {
@@ -306,7 +317,7 @@ module.exports = {
 				}
 			}
 
-			const balanceAfter = balanceBefore - amount
+			const balanceAfter = normalizeAmount(balanceBefore - amount)
 			const now = Date.now()
 
 			// 更新钱包余额和累计支出
@@ -360,9 +371,9 @@ module.exports = {
 		}
 		const uid = authResult.uid
 
-		// 参数校验
-		amount = Number(amount)
-		if (isNaN(amount) || amount <= 0) {
+		// 参数校验（统一精确到分）
+		amount = normalizeAmount(amount)
+		if (amount <= 0) {
 			return {
 				code: 'INVALID_PARAM',
 				message: '收入金额必须大于0'
@@ -397,8 +408,8 @@ module.exports = {
 				wallet = walletRes.data[0]
 			}
 
-			const balanceBefore = wallet.balance || 0
-			const balanceAfter = balanceBefore + amount
+			const balanceBefore = normalizeAmount(wallet.balance || 0)
+			const balanceAfter = normalizeAmount(balanceBefore + amount)
 
 			// 更新钱包余额和累计收入
 			await db.collection('wallets')
@@ -445,8 +456,9 @@ module.exports = {
 	 * @param {string} orderId 订单ID
 	 */
 	async addIncomeForUser(userId, amount, orderId) {
-		amount = Number(amount)
-		if (!userId || isNaN(amount) || amount <= 0) {
+		// 参数校验（统一精确到分）
+		amount = normalizeAmount(amount)
+		if (!userId || amount <= 0) {
 			return {
 				code: 'INVALID_PARAM',
 				message: '用户ID或金额不合法'
@@ -481,8 +493,8 @@ module.exports = {
 				wallet = walletRes.data[0]
 			}
 
-			const balanceBefore = wallet.balance || 0
-			const balanceAfter = balanceBefore + amount
+			const balanceBefore = normalizeAmount(wallet.balance || 0)
+			const balanceAfter = normalizeAmount(balanceBefore + amount)
 
 			// 更新钱包余额和累计收入
 			await db.collection('wallets')

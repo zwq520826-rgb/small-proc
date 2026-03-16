@@ -14,7 +14,7 @@ const _sfc_main = {
   setup(__props) {
     const images = common_vendor.ref([]);
     const quantities = common_vendor.ref({ small: 0, medium: 0, large: 0 });
-    const rates = common_vendor.ref({ small: 0.1, medium: 0.2, large: 0.3 });
+    const rates = common_vendor.ref({ small: 1.5, medium: 2, large: 3 });
     const isUrgent = common_vendor.ref(false);
     const isDelivery = common_vendor.ref(false);
     const dormNumber = common_vendor.ref("");
@@ -24,25 +24,33 @@ const _sfc_main = {
     const walletStore = store_wallet.useWalletStore();
     const showPayPopup = common_vendor.ref(false);
     const balance = common_vendor.computed(() => walletStore.balance);
+    const toFen = (yuan) => Math.round(Number(yuan || 0) * 100);
+    const fromFen = (fen) => Number(fen || 0) / 100;
     const sizeOptions = common_vendor.computed(() => [
-      { key: "small", label: "小件（手机壳、饰品等）", price: rates.value.small },
-      { key: "medium", label: "中件（衣服、鞋子等）", price: rates.value.medium },
-      { key: "large", label: "大件（床上用品、架子等）", price: rates.value.large }
+      { key: "small", label: "小件（手机壳、饰品等）", price: fromFen(toFen(rates.value.small)).toFixed(2) },
+      { key: "medium", label: "中件（衣服、鞋子等）", price: fromFen(toFen(rates.value.medium)).toFixed(2) },
+      { key: "large", label: "大件（床上用品、架子等）", price: fromFen(toFen(rates.value.large)).toFixed(2) }
     ]);
     const currentAddress = common_vendor.computed(() => {
       return addressStore.selectedAddress || addressStore.addressList.find((item) => item.isDefault) || null;
     });
-    const goodsPrice = common_vendor.computed(() => {
+    const goodsPriceFen = common_vendor.computed(() => {
       const q = quantities.value;
-      return q.small * rates.value.small + q.medium * rates.value.medium + q.large * rates.value.large;
+      const smallFen = q.small * toFen(rates.value.small);
+      const mediumFen = q.medium * toFen(rates.value.medium);
+      const largeFen = q.large * toFen(rates.value.large);
+      return smallFen + mediumFen + largeFen;
+    });
+    const totalPriceFen = common_vendor.computed(() => {
+      let fen = goodsPriceFen.value;
+      if (isUrgent.value)
+        fen += toFen(1);
+      if (isDelivery.value)
+        fen += toFen(1);
+      return fen;
     });
     const totalPrice = common_vendor.computed(() => {
-      let price = quantities.value.small * rates.value.small + quantities.value.medium * rates.value.medium + quantities.value.large * rates.value.large;
-      if (isUrgent.value)
-        price += 1;
-      if (isDelivery.value)
-        price += 1;
-      return price.toFixed(2);
+      return fromFen(totalPriceFen.value).toFixed(2);
     });
     const chooseImage = () => {
       common_vendor.wx$1.chooseMedia({
@@ -55,7 +63,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:203", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:208", "选择图片失败:", err);
         }
       });
     };
@@ -86,7 +94,7 @@ const _sfc_main = {
         common_vendor.index.showToast({ title: "请上传至少一张取件凭证", icon: "none" });
         return;
       }
-      if (goodsPrice.value <= 0) {
+      if (goodsPriceFen.value <= 0) {
         common_vendor.index.showToast({ title: "请选择代取物品数量", icon: "none" });
         return;
       }
@@ -202,7 +210,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:383", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:388", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -226,7 +234,7 @@ ${deliveryLocation}`,
           };
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:410", "加载快递代取价格失败，将使用默认价格:", e);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:415", "加载快递代取价格失败，将使用默认价格:", e);
       }
     });
     return (_ctx, _cache) => {

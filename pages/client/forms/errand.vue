@@ -252,8 +252,8 @@ const handlePayClick = () => {
       return
     }
     if (!dormNumber.value.trim()) {
-      uni.showToast({ title: '请填写寝室号', icon: 'none' })
-      return
+    uni.showToast({ title: '请填写寝室号', icon: 'none' })
+    return
     }
   }
 

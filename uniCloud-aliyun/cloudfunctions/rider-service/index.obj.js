@@ -368,7 +368,8 @@ module.exports = {
       }
     }
 
-    const price = Number(orderPrice || 0)
+    // 订单金额统一精确到分
+    const price = Math.round(Number(orderPrice || 0) * 100) / 100
     if (!price || isNaN(price)) {
       return {
         code: 'INVALID_PRICE',
@@ -406,9 +407,9 @@ module.exports = {
       last_complete_time: Date.now()
     })
 
-    // 4. 计算骑手收入与平台抽成，并调用钱包服务给骑手入账
-    const riderIncome = price * rider_share
-    const platformIncome = price * commission_rate
+    // 4. 计算骑手收入与平台抽成，并调用钱包服务给骑手入账（统一精确到分）
+    const riderIncome = Math.round(price * rider_share * 100) / 100
+    const platformIncome = Math.round(price * commission_rate * 100) / 100
 
     // 将骑手实际收入与平台抽成写回订单，方便前端展示
     await db.collection('orders')
