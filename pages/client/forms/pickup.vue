@@ -139,8 +139,8 @@ import { payForOrder } from '@/store/pay'
 
 const images = ref([])
 const quantities = ref({ small: 0, medium: 0, large: 0 })
-// 从后端配置读取的小/中/大件价格，初始给个兜底值
-const rates = ref({ small: 0.1, medium: 0.2, large: 0.3 })
+// 从后端配置读取的小/中/大件价格（单位：元）
+const rates = ref({ small: 1.5, medium: 2, large: 3 })
 const isUrgent = ref(false)
 const isDelivery = ref(false)
 const dormNumber = ref('')
@@ -152,10 +152,14 @@ const walletStore = useWalletStore()
 const showPayPopup = ref(false)
 const balance = computed(() => walletStore.balance)
 
+// 金额工具：统一在“分”上运算，避免浮点精度问题
+const toFen = (yuan) => Math.round(Number(yuan || 0) * 100)
+const fromFen = (fen) => Number(fen || 0) / 100
+
 const sizeOptions = computed(() => ([
-  { key: 'small', label: '小件（手机壳、饰品等）', price: rates.value.small },
-  { key: 'medium', label: '中件（衣服、鞋子等）', price: rates.value.medium },
-  { key: 'large', label: '大件（床上用品、架子等）', price: rates.value.large }
+  { key: 'small', label: '小件（手机壳、饰品等）', price: fromFen(toFen(rates.value.small)).toFixed(2) },
+  { key: 'medium', label: '中件（衣服、鞋子等）', price: fromFen(toFen(rates.value.medium)).toFixed(2) },
+  { key: 'large', label: '大件（床上用品、架子等）', price: fromFen(toFen(rates.value.large)).toFixed(2) }
 ]))
 
 const currentAddress = computed(() => {
@@ -166,25 +170,26 @@ const currentAddress = computed(() => {
   )
 })
 
-const goodsPrice = computed(() => {
+// 物品金额（单位：分）
+const goodsPriceFen = computed(() => {
   const q = quantities.value
-  return (
-    q.small * rates.value.small +
-    q.medium * rates.value.medium +
-    q.large * rates.value.large
-  )
+  const smallFen = q.small * toFen(rates.value.small)
+  const mediumFen = q.medium * toFen(rates.value.medium)
+  const largeFen = q.large * toFen(rates.value.large)
+  return smallFen + mediumFen + largeFen
 })
 
+// 总金额（单位：分）
+const totalPriceFen = computed(() => {
+  let fen = goodsPriceFen.value
+  if (isUrgent.value) fen += toFen(1)      // 加急 +1 元
+  if (isDelivery.value) fen += toFen(1)    // 送货上门 +1 元
+  return fen
+})
+
+// 用于界面显示和下单的金额（单位：元，字符串，保留两位小数）
 const totalPrice = computed(() => {
-  let price =
-    quantities.value.small * rates.value.small +
-    quantities.value.medium * rates.value.medium +
-    quantities.value.large * rates.value.large
-
-  if (isUrgent.value) price += 1
-  if (isDelivery.value) price += 1
-
-  return price.toFixed(2)
+  return fromFen(totalPriceFen.value).toFixed(2)
 })
 
 const chooseImage = () => {
@@ -247,7 +252,7 @@ const handlePayClick = () => {
     uni.showToast({ title: '请上传至少一张取件凭证', icon: 'none' })
     return
   }
-  if (goodsPrice.value <= 0) {
+  if (goodsPriceFen.value <= 0) {
     uni.showToast({ title: '请选择代取物品数量', icon: 'none' })
     return
   }
