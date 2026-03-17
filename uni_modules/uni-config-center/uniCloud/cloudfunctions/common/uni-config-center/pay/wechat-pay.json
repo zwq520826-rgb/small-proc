@@ -5,6 +5,7 @@
   "serial_no": "66C7CA40CCFE4109C2D6132EC24617F0922B3E28",
   "api_v3_key": "KSKBLZDJDWKZKBLmpwzbyqslnzzyswp",
   "private_key_path": "certs/apiclient_key.pem",
-  "notify_url": "https://fc-mp-80ccc7ae-e435-45d8-9321-9ea2a50456b5.next.bspapp.com/http/wechat-pay-notify"
+  "notify_url": "https://fc-mp-80ccc7ae-e435-45d8-9321-9ea2a50456b5.next.bspapp.com/http/wechat-pay-notify",
+  "refund_notify_url": "https://fc-mp-80ccc7ae-e435-45d8-9321-9ea2a50456b5.next.bspapp.com/http/wechat-refund-notify"
 }
 

@@ -289,13 +289,13 @@ module.exports = {
 				return { code: 'NO_PERMISSION', message: '无权限取消此订单' }
 			}
 
-			// 原子取消：必须是待接单 & 未被骑手接单（互斥锁思路同抢单）
+			// 原子取消：必须是待支付/待接单 & 未被骑手接单（互斥锁思路同抢单）
 			// rider_id 不存在或为 null 才允许取消
 			const updateRes = await db.collection('orders')
 				.where({
 					_id: orderId,
 					user_id: uid,
-					status: 'pending_accept',
+					status: dbCmd.in(['pending_pay', 'pending_accept']),
 					rider_id: dbCmd.exists(false).or(dbCmd.eq(null))
 				})
 				.update({
@@ -314,48 +314,97 @@ module.exports = {
 				return { code: 'INVALID_STATUS', message: '当前订单状态无法取消' }
 			}
 
-			// === 退款：取消成功后，若已支付则退回余额 ===
+			// === 退款：取消成功后，若已支付则退款 ===
+			// - 余额支付：退回站内余额（wallet-service.refundForUser）
+			// - 微信支付：原路退款到微信（payment-service.refundOrder，异步完成）
 			let refunded = false
 			let refundAmount = 0
+			let refundChannel = ''
 
-			// 判断是否“已支付”
-			// - 微信支付：pay_status === 'paid'
-			// - 余额支付：transactions 里存在 type='pay' & status='success' & order_id=orderId
+			// 判断是否“已支付”，并尽量拿到“支付渠道（wechat/balance）”
+			// 目的：避免把微信支付单误退到余额（你要的是原路退微信）
 			let isPaid = false
+			let payTxDoc = null
 			if (order.pay_status === 'paid') {
 				isPaid = true
-			} else {
-				const payTx = await db.collection('transactions')
-					.where({
-						user_id: uid,
-						type: 'pay',
-						status: 'success',
-						order_id: orderId
-					})
-					.limit(1)
-					.get()
-				if (payTx.data && payTx.data.length) isPaid = true
+			}
+			// 无论是否 pay_status=paid，都查一次成功的支付流水用于判定 channel（兼容老数据）
+			const payTx = await db.collection('transactions')
+				.where({
+					user_id: uid,
+					type: 'pay',
+					status: 'success',
+					order_id: orderId
+				})
+				.orderBy('create_time', 'desc')
+				.limit(1)
+				.get()
+			if (payTx.data && payTx.data.length) {
+				payTxDoc = payTx.data[0]
+				isPaid = true
 			}
 
 			if (isPaid) {
 				refundAmount = Number(order.price || 0)
 				if (refundAmount > 0) {
-					const walletService = uniCloud.importObject('wallet-service')
-					const refundRes = await walletService.refundForUser(uid, refundAmount, orderId)
-					if (refundRes && refundRes.code === 0) {
-						refunded = true
-						await db.collection('orders').doc(orderId).update({
-							refund_status: 'refunded_to_balance',
-							refund_time: now
+					// 退款渠道判定优先级（从高到低）：
+					// 1) 支付流水 channel（最可靠）
+					// 2) 订单 pay_method
+					// 3) 订单 out_trade_no 存在则视为微信支付
+					// 目的：坚决避免“微信支付却退到余额”
+					const txChannel = (payTxDoc && payTxDoc.channel) ? String(payTxDoc.channel) : ''
+					const payMethod = (order.pay_method || '').toString()
+					const txLooksLikeWechat = !!(payTxDoc && (payTxDoc.out_trade_no || payTxDoc.transaction_id))
+					const isWechat =
+						txChannel === 'wechat' ||
+						txLooksLikeWechat ||
+						payMethod === 'wechat' ||
+						(!!order.out_trade_no && payMethod !== 'balance')
+
+					if (isWechat) {
+						refundChannel = 'wechat'
+						const paymentService = uniCloud.importObject('payment-service')
+						const refundRes = await paymentService.refundOrder({
+							orderId,
+							reason: '订单取消',
+							userId: uid // 服务端内部调用：避免 payment-service 误判“未登录”
 						})
+						if (refundRes && refundRes.code === 0) {
+							// 微信原路退款是异步：这里只表示“已受理”
+							refunded = true
+							await db.collection('orders').doc(orderId).update({
+								refund_status: 'refunding_wechat',
+								refund_time: now
+							})
+						} else {
+							await db.collection('orders').doc(orderId).update({
+								refund_status: 'refund_failed',
+								refund_time: now
+							})
+							return {
+								code: 'REFUND_FAILED',
+								message: refundRes?.message || '订单已取消，但微信退款申请失败，请联系管理员处理'
+							}
+						}
 					} else {
-						await db.collection('orders').doc(orderId).update({
-							refund_status: 'refund_failed',
-							refund_time: now
-						})
-						return {
-							code: 'REFUND_FAILED',
-							message: '订单已取消，但退款失败，请联系管理员处理'
+						refundChannel = 'balance'
+						const walletService = uniCloud.importObject('wallet-service')
+						const refundRes = await walletService.refundForUser(uid, refundAmount, orderId)
+						if (refundRes && refundRes.code === 0) {
+							refunded = true
+							await db.collection('orders').doc(orderId).update({
+								refund_status: 'refunded_to_balance',
+								refund_time: now
+							})
+						} else {
+							await db.collection('orders').doc(orderId).update({
+								refund_status: 'refund_failed',
+								refund_time: now
+							})
+							return {
+								code: 'REFUND_FAILED',
+								message: '订单已取消，但退款失败，请联系管理员处理'
+							}
 						}
 					}
 				}
@@ -363,10 +412,13 @@ module.exports = {
 
 			return {
 				code: 0,
-				message: refunded ? '取消成功，款项已退回余额' : '取消成功',
+				message: refunded
+					? (refundChannel === 'wechat' ? '取消成功，退款已受理，将原路退回微信' : '取消成功，款项已退回余额')
+					: '取消成功',
 				data: {
 					refunded,
-					refund_amount: refunded ? refundAmount : 0
+					refund_amount: refunded ? refundAmount : 0,
+					refund_channel: refunded ? refundChannel : ''
 				}
 			}
 		} catch (error) {

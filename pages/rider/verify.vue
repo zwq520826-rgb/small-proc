@@ -89,8 +89,13 @@ const submit = async () => {
       // 认证成功后提示并返回“我的”页面
       uni.showToast({ title: res.message || '验证成功', icon: 'success' })
       setTimeout(() => {
-        uni.reLaunch({
-          url: '/pages/mine/index'
+        // 目的：/pages/mine/index 是 tabBar 页面，用 switchTab 最稳（自定义 tabBar 场景也兼容）
+        uni.switchTab({
+          url: '/pages/mine/index',
+          fail: () => {
+            // 兜底：极少数情况下 switchTab 失败，再用 reLaunch
+            uni.reLaunch({ url: '/pages/mine/index' })
+          }
         })
       }, 800)
     } else {

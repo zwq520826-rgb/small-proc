@@ -67,6 +67,36 @@
 			"description": "备注",
 			"title": "备注"
 		},
+		"channel": {
+			"bsonType": "string",
+			"description": "渠道（wechat/balance等）",
+			"title": "渠道"
+		},
+		"out_trade_no": {
+			"bsonType": "string",
+			"description": "微信商户订单号（可选）",
+			"title": "商户订单号"
+		},
+		"transaction_id": {
+			"bsonType": "string",
+			"description": "微信支付订单号（可选）",
+			"title": "微信支付订单号"
+		},
+		"out_refund_no": {
+			"bsonType": "string",
+			"description": "商户退款单号（可选）",
+			"title": "商户退款单号"
+		},
+		"refund_id": {
+			"bsonType": "string",
+			"description": "微信退款单号（可选）",
+			"title": "微信退款单号"
+		},
+		"update_time": {
+			"bsonType": "timestamp",
+			"description": "更新时间（可选）",
+			"title": "更新时间"
+		},
 		"create_time": {
 			"bsonType": "timestamp",
 			"description": "创建时间",

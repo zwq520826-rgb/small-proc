@@ -134,6 +134,22 @@ function buildOutTradeNo(mchid) {
   return `${mchid}${now}${rand}`
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0')
+}
+
+function buildOutRefundNo(prefix = 'RF') {
+  const now = new Date()
+  const yyyy = now.getFullYear()
+  const MM = pad2(now.getMonth() + 1)
+  const dd = pad2(now.getDate())
+  const HH = pad2(now.getHours())
+  const mm = pad2(now.getMinutes())
+  const ss = pad2(now.getSeconds())
+  const rand = crypto.randomBytes(4).toString('hex')
+  return `${prefix}${yyyy}${MM}${dd}${HH}${mm}${ss}${rand}`
+}
+
 async function queryWechatOrderByOutTradeNo(outTradeNo, cfg) {
   const urlPath =
     `/v3/pay/transactions/out-trade-no/${encodeURIComponent(outTradeNo)}` +
@@ -544,6 +560,225 @@ module.exports = {
     }
 
     return { code: 0, message: '订单支付状态已确认并更新' }
+  },
+
+  /**
+   * 发起退款（原路退微信）
+   * - 对应文档：POST /v3/refund/domestic/refunds
+   * - 退款最终结果需要依赖“退款结果通知”或“查询退款”来确认
+   *
+   * @param {Object} payload
+   * @param {String} payload.orderId 业务订单ID（orders._id）
+   * @param {String} payload.reason 退款原因（可选）
+   * @param {Number} payload.amount 退款金额（可选，不传默认全额）
+   */
+  async refundOrder(payload = {}) {
+    // 兼容两种调用方式：
+    // 1) 客户端直调：有登录态 this.uid
+    // 2) 服务端内部调用（例如 order-service.cancelOrder）：通过 payload.userId 传入
+    // 目的：避免服务端内部调用时出现“请先登录”
+    const uid = this && this.uid ? this.uid : (payload.userId || '')
+    if (!uid) {
+      return { code: 'NO_LOGIN', message: '请先登录' }
+    }
+
+    if (this.payConfigError) {
+      return { code: 'PAY_CONFIG_ERROR', message: this.payConfigError }
+    }
+
+    const { orderId, reason = '', amount } = payload
+    if (!orderId) return { code: 'INVALID_PARAM', message: 'orderId 不能为空' }
+
+    const cfg = this.payConfig
+
+    // 1) 读取订单并校验归属/支付状态
+    const orderRes = await db.collection('orders').doc(orderId).get()
+    if (!orderRes.data || !orderRes.data.length) {
+      return { code: 'ORDER_NOT_FOUND', message: '订单不存在' }
+    }
+    const order = orderRes.data[0]
+    if (order.user_id !== uid) {
+      return { code: 'NO_PERMISSION', message: '无权退款此订单' }
+    }
+    if (order.pay_status !== 'paid') {
+      return { code: 'NOT_PAID', message: '订单未支付，无法退款' }
+    }
+    // 已退款成功则直接返回（幂等）
+    if (order.refund_status === 'refunded_to_wechat') {
+      return { code: 0, message: '已退款（幂等）' }
+    }
+
+    const totalYuan = Number(order.price || 0)
+    const refundYuan = typeof amount === 'number' ? Number(amount) : totalYuan
+    if (!totalYuan || totalYuan <= 0 || refundYuan <= 0 || refundYuan - totalYuan > 0.0001) {
+      return { code: 'INVALID_AMOUNT', message: '退款金额不合法' }
+    }
+
+    const totalFen = Math.round(totalYuan * 100)
+    const refundFen = Math.round(refundYuan * 100)
+
+    // 优先用订单 out_trade_no；若缺失则从支付流水补（兼容老数据/异常写入）
+    let outTradeNo = order.out_trade_no
+    if (!outTradeNo) {
+      const payTx = await db.collection('transactions')
+        .where({
+          user_id: uid,
+          type: 'pay',
+          channel: 'wechat',
+          status: 'success',
+          order_id: orderId
+        })
+        .orderBy('create_time', 'desc')
+        .limit(1)
+        .get()
+      if (payTx.data && payTx.data.length && payTx.data[0].out_trade_no) {
+        outTradeNo = payTx.data[0].out_trade_no
+        // 把 out_trade_no 回写到订单，后续逻辑更稳定
+        await db.collection('orders').doc(orderId).update({
+          out_trade_no: outTradeNo,
+          pay_method: 'wechat',
+          update_time: Date.now()
+        })
+      }
+    }
+    if (!outTradeNo) {
+      return { code: 'MISSING_OUT_TRADE_NO', message: '订单缺少 out_trade_no，无法发起微信退款（请检查支付下单是否写入 out_trade_no）' }
+    }
+
+    // 2) 幂等：同一订单若已有“微信退款处理中/成功”的流水，复用 out_refund_no
+    const existedRefund = await db.collection('transactions')
+      .where({
+        user_id: uid,
+        type: 'refund',
+        channel: 'wechat',
+        order_id: orderId,
+        status: dbCmd.in(['pending', 'success'])
+      })
+      .orderBy('create_time', 'desc')
+      .limit(1)
+      .get()
+
+    const outRefundNo = (existedRefund.data && existedRefund.data[0] && existedRefund.data[0].out_refund_no)
+      ? existedRefund.data[0].out_refund_no
+      : buildOutRefundNo('RF')
+
+    const now = Date.now()
+
+    // 3) 写入/更新本地退款流水（pending）
+    if (!existedRefund.data || !existedRefund.data.length) {
+      await db.collection('transactions').add({
+        user_id: uid,
+        type: 'refund',
+        amount: refundYuan,
+        balance_before: 0,
+        balance_after: 0,
+        order_id: orderId,
+        status: 'pending',
+        channel: 'wechat',
+        out_trade_no: outTradeNo,
+        out_refund_no: outRefundNo,
+        remark: reason ? `微信原路退款：${reason}` : '微信原路退款',
+        create_time: now,
+        update_time: now
+      })
+    }
+
+    // 4) 更新订单退款状态为“退款中”
+    await db.collection('orders').doc(orderId).update({
+      refund_status: 'refunding_wechat',
+      refund_time: now,
+      update_time: now
+    })
+
+    // 5) 调用微信退款申请接口
+    const body = {
+      out_trade_no: outTradeNo,
+      out_refund_no: outRefundNo,
+      reason: (reason || '').slice(0, 80),
+      amount: {
+        refund: refundFen,
+        total: totalFen,
+        currency: 'CNY'
+      }
+    }
+
+    // 服务商(Partner)模式：若配置了 sub_mchid，则按文档传入
+    if (cfg.sub_mchid) {
+      body.sub_mchid = cfg.sub_mchid
+    }
+    // 可选：自定义退款回调地址
+    if (cfg.refund_notify_url) {
+      body.notify_url = cfg.refund_notify_url
+    }
+
+    const urlPath = '/v3/refund/domestic/refunds'
+    const { authorization, bodyString } = buildAuthorizationHeader({
+      method: 'POST',
+      url: urlPath,
+      body,
+      mchid: cfg.mchid,
+      serial_no: cfg.serial_no
+    })
+
+    let wxRes
+    try {
+      wxRes = await uniCloud.httpclient.request(
+        'https://api.mch.weixin.qq.com' + urlPath,
+        {
+          method: 'POST',
+          data: bodyString,
+          dataType: 'json',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json; charset=utf-8',
+            Authorization: authorization,
+            'User-Agent': 'uniCloud-payment-service'
+          },
+          timeout: 10000
+        }
+      )
+    } catch (e) {
+      console.error('微信退款申请请求异常:', e)
+      return { code: 'HTTP_REQUEST_ERROR', message: '微信退款申请失败：' + (e.message || '网络错误') }
+    }
+
+    const statusCode = wxRes.statusCode || wxRes.status
+    if (statusCode !== 200) {
+      console.error('微信退款申请失败:', statusCode, wxRes.data)
+      // 标记流水失败（不改变幂等 out_refund_no，便于重试复用）
+      await db.collection('transactions')
+        .where({ user_id: uid, type: 'refund', channel: 'wechat', out_refund_no: outRefundNo })
+        .update({ status: 'failed', remark: '微信退款申请失败', update_time: Date.now() })
+      await db.collection('orders').doc(orderId).update({
+        refund_status: 'refund_failed',
+        refund_time: Date.now(),
+        update_time: Date.now()
+      })
+      return {
+        code: 'WECHAT_REFUND_ERROR',
+        message: (wxRes.data && (wxRes.data.message || wxRes.data.code)) || '微信退款申请失败',
+        raw: wxRes.data
+      }
+    }
+
+    // 退款申请受理成功：返回 out_refund_no，最终结果等通知/查询
+    const data = wxRes.data || {}
+    await db.collection('transactions')
+      .where({ user_id: uid, type: 'refund', channel: 'wechat', out_refund_no: outRefundNo })
+      .update({
+        refund_id: data.refund_id || '',
+        update_time: Date.now()
+      })
+
+    return {
+      code: 0,
+      message: '退款已受理，请等待退款结果通知',
+      data: {
+        out_refund_no: outRefundNo,
+        refund_id: data.refund_id || '',
+        status: data.status || ''
+      }
+    }
   },
 
   /**

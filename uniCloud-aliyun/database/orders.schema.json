@@ -89,7 +89,7 @@
 		"refund_status": {
 			"bsonType": "string",
 			"description": "退款状态",
-			"enum": ["none", "refunded_to_balance", "refund_failed"],
+			"enum": ["none", "refunded_to_balance", "refunding_wechat", "refunded_to_wechat", "refund_failed"],
 			"title": "退款状态"
 		},
 		"refund_time": {

@@ -48,8 +48,11 @@ const _sfc_main = {
         if (res.code === 0) {
           common_vendor.index.showToast({ title: res.message || "验证成功", icon: "success" });
           setTimeout(() => {
-            common_vendor.index.reLaunch({
-              url: "/pages/mine/index"
+            common_vendor.index.switchTab({
+              url: "/pages/mine/index",
+              fail: () => {
+                common_vendor.index.reLaunch({ url: "/pages/mine/index" });
+              }
             });
           }, 800);
         } else {
@@ -64,7 +67,7 @@ const _sfc_main = {
         }
       } catch (e) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/rider/verify.vue:109", "提交失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/verify.vue:114", "提交失败:", e);
         common_vendor.index.showToast({ title: "提交失败", icon: "none" });
         form.value.captcha = "";
         if (captchaRef.value) {
