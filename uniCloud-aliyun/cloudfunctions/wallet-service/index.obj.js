@@ -342,6 +342,31 @@ module.exports = {
 				create_time: now
 			})
 
+			// 余额支付成功后：推进订单状态（待支付 -> 已支付待接单，并进入大厅）
+			if (orderId) {
+				try {
+					// 只允许从未支付推进，避免重复调用导致状态异常（幂等 + 互斥）
+					await db.collection('orders')
+						.where({
+							_id: orderId,
+							user_id: uid,
+							// 只允许未支付订单推进（字段不存在 或 等于 unpaid）
+							pay_status: dbCmd.exists(false).or(dbCmd.eq('unpaid'))
+						})
+						.update({
+							pay_method: 'balance',
+							pay_status: 'paid',
+							pay_time: now,
+							status: 'pending_accept',
+							hall_visible: true,
+							update_time: now
+						})
+				} catch (e) {
+					console.error('余额支付后更新订单状态失败:', e)
+					// 不影响扣款成功，但需要提示运营排查
+				}
+			}
+
 			return {
 				code: 0,
 				message: '支付成功',

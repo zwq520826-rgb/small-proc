@@ -134,6 +134,51 @@ function buildOutTradeNo(mchid) {
   return `${mchid}${now}${rand}`
 }
 
+async function queryWechatOrderByOutTradeNo(outTradeNo, cfg) {
+  const urlPath =
+    `/v3/pay/transactions/out-trade-no/${encodeURIComponent(outTradeNo)}` +
+    `?mchid=${encodeURIComponent(cfg.mchid)}`
+
+  const { authorization } = buildAuthorizationHeader({
+    method: 'GET',
+    url: urlPath,
+    body: '',
+    mchid: cfg.mchid,
+    serial_no: cfg.serial_no
+  })
+
+  const wxRes = await uniCloud.httpclient.request(
+    'https://api.mch.weixin.qq.com' + urlPath,
+    {
+      method: 'GET',
+      dataType: 'json',
+      headers: {
+        Authorization: authorization,
+        'User-Agent': 'uniCloud-payment-service'
+      },
+      timeout: 8000
+    }
+  )
+
+  const statusCode = wxRes.statusCode || wxRes.status
+  if (statusCode !== 200) {
+    console.error('查询微信订单失败:', statusCode, wxRes.data)
+    return {
+      code: 'WECHAT_QUERY_ERROR',
+      message:
+        (wxRes.data && (wxRes.data.message || wxRes.data.code)) ||
+        '查询微信订单失败',
+      raw: wxRes.data
+    }
+  }
+
+  return {
+    code: 0,
+    message: 'OK',
+    data: wxRes.data
+  }
+}
+
 module.exports = {
   /**
    * 通用预处理器：校验登录、加载配置
@@ -247,11 +292,14 @@ module.exports = {
       // 3. 生成商户订单号
       const outTradeNo = order.out_trade_no || buildOutTradeNo(cfg.mchid)
 
-      // 4. 写入/更新订单中的支付相关字段
+      // 4. 写入/更新订单中的支付相关字段（强制回到“待支付且不进大厅”，避免未支付先被抢）
       await db.collection('orders').doc(orderId).update({
         out_trade_no: outTradeNo,
-        pay_type: 'wechat',
-        pay_status: order.pay_status || 'unpaid'
+        pay_method: 'wechat',
+        pay_status: 'unpaid',
+        status: 'pending_pay',
+        hall_visible: false,
+        update_time: Date.now()
       })
 
       // 5. 写入一条交易记录（pending）
@@ -425,49 +473,9 @@ module.exports = {
       }
     }
 
-    const cfg = this.payConfig
-    const urlPath =
-      `/v3/pay/transactions/out-trade-no/${encodeURIComponent(outTradeNo)}` +
-      `?mchid=${encodeURIComponent(cfg.mchid)}`
-
     try {
-      const { authorization } = buildAuthorizationHeader({
-        method: 'GET',
-        url: urlPath,
-        body: '',
-        mchid: cfg.mchid,
-        serial_no: cfg.serial_no
-      })
-
-      const wxRes = await uniCloud.httpclient.request(
-        'https://api.mch.weixin.qq.com' + urlPath,
-        {
-          method: 'GET',
-          dataType: 'json',
-          headers: {
-            Authorization: authorization,
-            'User-Agent': 'uniCloud-payment-service'
-          },
-          timeout: 8000
-        }
-      )
-
-      if (wxRes.statusCode !== 200) {
-        console.error('查询微信订单失败:', wxRes.statusCode, wxRes.data)
-        return {
-          code: 'WECHAT_QUERY_ERROR',
-          message:
-            (wxRes.data && (wxRes.data.message || wxRes.data.code)) ||
-            '查询微信订单失败',
-          raw: wxRes.data
-        }
-      }
-
-      return {
-        code: 0,
-        message: 'OK',
-        data: wxRes.data
-      }
+      const cfg = this.payConfig
+      return await queryWechatOrderByOutTradeNo(outTradeNo, cfg)
     } catch (e) {
       console.error('queryOrder 异常:', e)
       return {
@@ -475,6 +483,67 @@ module.exports = {
         message: '查询微信订单失败：' + e.message
       }
     }
+  },
+
+  /**
+   * 支付成功后主动确认并推进订单状态（用于前端 requestPayment success 后的兜底）
+   * @param {Object} payload
+   * @param {String} payload.outTradeNo 商户订单号
+   */
+  async confirmPaid(payload = {}) {
+    const auth = checkAuth(this)
+    if (auth.code) return auth
+
+    if (this.payConfigError) {
+      return {
+        code: 'PAY_CONFIG_ERROR',
+        message: this.payConfigError
+      }
+    }
+
+    const { outTradeNo } = payload
+    if (!outTradeNo) {
+      return { code: 'INVALID_PARAM', message: 'outTradeNo 不能为空' }
+    }
+
+    // 1) 先向微信侧查询最终状态（防止前端误判）
+    const q = await queryWechatOrderByOutTradeNo(outTradeNo, this.payConfig)
+    if (q.code !== 0 || !q.data) {
+      return { code: 'WECHAT_QUERY_ERROR', message: q.message || '查询支付状态失败' }
+    }
+    if (q.data.trade_state !== 'SUCCESS') {
+      return { code: 'PAY_NOT_SUCCESS', message: '微信支付未成功' , data: { trade_state: q.data.trade_state } }
+    }
+
+    const now = Date.now()
+
+    // 2) 原子推进订单：只允许从 unpaid -> paid
+    const updateRes = await db.collection('orders')
+      .where({
+        out_trade_no: outTradeNo,
+        pay_status: 'unpaid'
+      })
+      .update({
+        pay_status: 'paid',
+        pay_time: now,
+        status: 'pending_accept',
+        hall_visible: true,
+        update_time: now
+      })
+
+    // 3) 同步交易记录：把 pending 的 pay 交易置为 success（幂等）
+    await db.collection('transactions')
+      .where({ out_trade_no: outTradeNo, channel: 'wechat', type: 'pay', status: 'pending' })
+      .update({
+        status: 'success',
+        update_time: now
+      })
+
+    if (updateRes.updated === 0) {
+      return { code: 'ORDER_ALREADY_UPDATED', message: '订单已更新或无需更新' }
+    }
+
+    return { code: 0, message: '订单支付状态已确认并更新' }
   },
 
   /**

@@ -114,11 +114,11 @@ function hallTasksSorted(sortBy) {
     }
 
     // 在同一优先级内再按原来的规则排序
-    if (sortBy === 'price') {
+  if (sortBy === 'price') {
       return (b.price || 0) - (a.price || 0)
-    } else {
+  } else {
       return (a.pickupDistance || 0) - (b.pickupDistance || 0)
-    }
+  }
   })
   return list
 }

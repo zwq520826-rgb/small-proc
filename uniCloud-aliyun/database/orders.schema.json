@@ -48,8 +48,9 @@
 		"status": {
 			"bsonType": "string",
 			"description": "订单状态",
-			"enum": ["pending_accept", "pending_pickup", "delivering", "completed", "cancelled"],
+			"enum": ["pending_pay", "pending_accept", "pending_pickup", "delivering", "completed", "cancelled"],
 			"enumDesc": {
+				"pending_pay": "待支付",
 				"pending_accept": "待接单",
 				"pending_pickup": "待取货",
 				"delivering": "配送中",
@@ -57,6 +58,44 @@
 				"cancelled": "已取消"
 			},
 			"title": "订单状态"
+		},
+		"pay_method": {
+			"bsonType": "string",
+			"description": "支付方式",
+			"enum": ["balance", "wechat"],
+			"title": "支付方式"
+		},
+		"pay_status": {
+			"bsonType": "string",
+			"description": "支付状态",
+			"enum": ["unpaid", "paid"],
+			"title": "支付状态"
+		},
+		"pay_time": {
+			"bsonType": "timestamp",
+			"description": "支付完成时间",
+			"title": "支付时间"
+		},
+		"hall_visible": {
+			"bsonType": "bool",
+			"description": "是否在骑手大厅可见（支付成功后才可见）",
+			"title": "大厅可见"
+		},
+		"out_trade_no": {
+			"bsonType": "string",
+			"description": "微信商户订单号（out_trade_no）",
+			"title": "微信商户单号"
+		},
+		"refund_status": {
+			"bsonType": "string",
+			"description": "退款状态",
+			"enum": ["none", "refunded_to_balance", "refund_failed"],
+			"title": "退款状态"
+		},
+		"refund_time": {
+			"bsonType": "timestamp",
+			"description": "退款时间",
+			"title": "退款时间"
 		},
 		"price": {
 			"bsonType": "double",

@@ -87,6 +87,13 @@ export async function payForOrder({ method, orderId, amount }) {
               const queryResult = await queryPaymentStatus(res.data.outTradeNo)
               
               if (queryResult.success) {
+                // 兜底：主动确认并推进订单状态，避免仅依赖异步回调导致订单长时间停留“待支付”
+                try {
+                  await paymentService.confirmPaid({ outTradeNo: res.data.outTradeNo })
+                } catch (e) {
+                  // 不影响前端结果展示，最终仍可由回调推进
+                  console.warn('confirmPaid 失败（可忽略，等待回调）:', e)
+                }
                 resolve({
                   success: true
                 })

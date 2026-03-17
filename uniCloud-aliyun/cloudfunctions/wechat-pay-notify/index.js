@@ -60,39 +60,154 @@ function loadPayConfig() {
 
 let platformCertCache = null
 
-function loadPlatformCert(serialNo) {
+function safeReadFile(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      return fs.readFileSync(filePath, 'utf8')
+    }
+  } catch (e) {
+    console.warn('读取证书文件失败:', filePath, e && e.message)
+  }
+  return null
+}
+
+function loadPlatformCertFromFile(serialNo) {
   // 优先使用缓存（如果序列号匹配）
   if (platformCertCache && platformCertCache.serialNo === serialNo) {
     return platformCertCache.cert
   }
 
-  // 尝试从文件加载（如果用户已下载证书）
-  const certPath = path.resolve(__dirname, '../certs/wechatpay_platform/apiclient_cert.pem')
-  try {
-    if (fs.existsSync(certPath)) {
-      const cert = fs.readFileSync(certPath, 'utf8')
-      // 验证证书序列号（简单检查，实际应该解析证书）
-      // 注意：这里假设证书文件中的序列号与请求中的匹配
-      // 如果证书序列号不匹配，需要实现动态获取逻辑
+  // 尝试从文件加载（兼容多个放置位置/文件名）
+  const candidates = [
+    // 推荐：项目根 uniCloud-aliyun/certs/wechatpay_platform/*.pem
+    path.resolve(__dirname, '../../certs/wechatpay_platform/apiclient_cert.pem'),
+    path.resolve(__dirname, '../../certs/wechatpay_platform/wechatpay_platform_cert.pem'),
+    path.resolve(__dirname, '../../certs/wechatpay_platform_cert.pem'),
+    // 兼容旧路径（曾写错层级）
+    path.resolve(__dirname, '../certs/wechatpay_platform/apiclient_cert.pem')
+  ]
+  for (const p of candidates) {
+    const cert = safeReadFile(p)
+    if (cert) {
       platformCertCache = { serialNo, cert }
-      console.log('已加载平台证书，序列号:', serialNo)
+      console.log('已从文件加载平台证书，序列号:', serialNo, 'path:', p)
       return cert
     }
-  } catch (e) {
-    console.warn('读取平台证书文件失败:', e)
   }
 
   // 如果文件不存在，返回 null
   // TODO: 可以扩展为通过 API 动态获取证书
   // 参考：https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay5_1.shtml
-  console.warn('未找到平台证书文件，路径:', certPath)
-  console.warn('请从微信商户平台下载平台证书，放到上述路径')
+  console.warn('未找到平台证书文件（将尝试从微信侧拉取证书）')
   return null
+}
+
+// ====== 自动拉取平台证书（推荐：避免手动放 pem）======
+
+let mchPrivateKeyCache = null
+
+function loadMchPrivateKey() {
+  if (mchPrivateKeyCache) return mchPrivateKeyCache
+  const cfg = loadPayConfig()
+  if (!cfg.private_key_path) {
+    throw new Error('微信支付配置缺少 private_key_path')
+  }
+  // 相对路径，从云函数目录解析
+  const keyPath = path.resolve(__dirname, cfg.private_key_path)
+  if (!fs.existsSync(keyPath)) {
+    throw new Error(`商户私钥文件不存在: ${keyPath}`)
+  }
+  mchPrivateKeyCache = fs.readFileSync(keyPath, 'utf8')
+  return mchPrivateKeyCache
+}
+
+function buildAuthorizationHeaderForWechatpay({ method, url, body, mchid, serial_no }) {
+  const cfg = loadPayConfig()
+  const timestamp = Math.floor(Date.now() / 1000).toString()
+  const nonceStr = crypto.randomBytes(16).toString('hex')
+  const bodyString = body ? JSON.stringify(body) : ''
+
+  const message = `${method}\n${url}\n${timestamp}\n${nonceStr}\n${bodyString}\n`
+  const privateKey = loadMchPrivateKey()
+
+  const sign = crypto.createSign('RSA-SHA256')
+  sign.update(message)
+  sign.end()
+  const signature = sign.sign(privateKey, 'base64')
+
+  const serial = serial_no || cfg.serial_no
+  const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${mchid}",nonce_str="${nonceStr}",timestamp="${timestamp}",serial_no="${serial}",signature="${signature}"`
+  return { authorization, bodyString }
+}
+
+function decryptCertificate(resource, apiV3Key) {
+  // resource: { associated_data, nonce, ciphertext }
+  const { ciphertext, nonce, associated_data } = resource || {}
+  if (!ciphertext || !nonce) throw new Error('证书解密字段缺失')
+
+  const cipherBuffer = Buffer.from(ciphertext, 'base64')
+  const nonceBuffer = Buffer.from(nonce, 'utf8')
+  const keyBuffer = Buffer.from(apiV3Key, 'utf8')
+
+  const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, nonceBuffer)
+  if (associated_data) {
+    decipher.setAAD(Buffer.from(associated_data, 'utf8'))
+  }
+  // 微信证书 ciphertext 末尾 16 bytes 为 authTag
+  const authTag = cipherBuffer.slice(cipherBuffer.length - 16)
+  const data = cipherBuffer.slice(0, cipherBuffer.length - 16)
+  decipher.setAuthTag(authTag)
+  let decrypted = decipher.update(data, null, 'utf8')
+  decrypted += decipher.final('utf8')
+  return decrypted
+}
+
+async function fetchPlatformCertBySerial(serialNo) {
+  const cfg = loadPayConfig()
+  if (!cfg.mchid || !cfg.serial_no || !cfg.api_v3_key) {
+    throw new Error('微信支付配置缺少 mchid/serial_no/api_v3_key')
+  }
+
+  const urlPath = '/v3/certificates'
+  const { authorization } = buildAuthorizationHeaderForWechatpay({
+    method: 'GET',
+    url: urlPath,
+    body: '',
+    mchid: cfg.mchid,
+    serial_no: cfg.serial_no
+  })
+
+  const wxRes = await uniCloud.httpclient.request(
+    'https://api.mch.weixin.qq.com' + urlPath,
+    {
+      method: 'GET',
+      dataType: 'json',
+      headers: {
+        Authorization: authorization,
+        'User-Agent': 'uniCloud-wechat-pay-notify'
+      },
+      timeout: 8000
+    }
+  )
+
+  if (wxRes.statusCode !== 200) {
+    throw new Error('拉取平台证书失败: ' + (wxRes.data && (wxRes.data.message || wxRes.data.code) || wxRes.statusCode))
+  }
+
+  const list = (wxRes.data && wxRes.data.data) || []
+  const item = list.find(x => x && x.serial_no === serialNo)
+  if (!item) {
+    throw new Error('未在微信侧证书列表中找到序列号: ' + serialNo)
+  }
+  const pem = decryptCertificate(item.encrypt_certificate, cfg.api_v3_key)
+  platformCertCache = { serialNo, cert: pem }
+  console.log('已从微信侧拉取并缓存平台证书，序列号:', serialNo)
+  return pem
 }
 
 // ====== 签名验证 ======
 
-function verifySignature({
+async function verifySignature({
   signature,
   timestamp,
   nonce,
@@ -104,14 +219,15 @@ function verifySignature({
   // 构建签名字符串
   const message = `${timestamp}\n${nonce}\n${body}\n`
 
-  // 加载平台证书
-  const platformCert = loadPlatformCert(serialNo)
+  // 加载平台证书：先读文件；读不到则自动从微信侧拉取
+  let platformCert = loadPlatformCertFromFile(serialNo)
   if (!platformCert) {
-    console.error('未找到平台证书，序列号:', serialNo)
-    console.error('请确保已从微信商户平台下载平台证书，并放到 uniCloud-aliyun/certs/wechatpay_platform_cert.pem')
-    // 实际生产环境应该通过 API 获取证书
-    // 参考：https://pay.weixin.qq.com/wiki/doc/apiv3/wechatpay/wechatpay5_1.shtml
-    return false
+    try {
+      platformCert = await fetchPlatformCertBySerial(serialNo)
+    } catch (e) {
+      console.error('平台证书获取失败，无法验签:', e && e.message)
+      return false
+    }
   }
 
   try {
@@ -132,28 +248,27 @@ function decryptResource(resource, apiV3Key) {
   try {
     const { ciphertext, nonce, associated_data } = resource
 
-    // 将 ciphertext 从 base64 转为 Buffer
+    if (!ciphertext || !nonce) {
+      throw new Error('resource 字段缺少 ciphertext/nonce')
+    }
+
+    // 微信支付回调：ciphertext 为 base64，末尾 16 bytes 为 authTag
     const cipherBuffer = Buffer.from(ciphertext, 'base64')
+    const authTag = cipherBuffer.slice(cipherBuffer.length - 16)
+    const data = cipherBuffer.slice(0, cipherBuffer.length - 16)
 
-    // 将 nonce 从 base64 转为 Buffer
-    const nonceBuffer = Buffer.from(nonce, 'base64')
-
-    // 将 api_v3_key 转为 Buffer（32 字节）
+    // nonce / associated_data 为普通字符串（utf8）
+    const nonceBuffer = Buffer.from(nonce, 'utf8')
     const keyBuffer = Buffer.from(apiV3Key, 'utf8')
 
-    // 创建解密器
     const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, nonceBuffer)
-
-    // 设置 associated_data（AAD）
     if (associated_data) {
       decipher.setAAD(Buffer.from(associated_data, 'utf8'))
     }
+    decipher.setAuthTag(authTag)
 
-    // 解密
-    let decrypted = decipher.update(cipherBuffer, null, 'utf8')
-    decipher.final()
-
-    // 解析 JSON
+    let decrypted = decipher.update(data, null, 'utf8')
+    decrypted += decipher.final('utf8')
     return JSON.parse(decrypted)
   } catch (e) {
     console.error('AES-GCM 解密失败:', e)
@@ -239,6 +354,7 @@ async function processPaymentNotification(decryptedData) {
       const updateData = {
         pay_status: 'paid',
         pay_time: Date.now(),
+        hall_visible: true,
         update_time: Date.now()
       }
 
@@ -323,7 +439,7 @@ exports.main = async (event, context) => {
     }
 
     // 4. 验证签名
-    const isValid = verifySignature({
+    const isValid = await verifySignature({
       signature,
       timestamp,
       nonce,

@@ -315,12 +315,11 @@ const onPayConfirm = async (method = 'balance') => {
     const addr = currentAddress.value || {}
     const deliveryLocation = addr.schoolArea ? `${addr.schoolArea}・${addr.detail}` : addr.detail
     
-    // 1. 先创建订单（状态为 pending_accept）
+    // 1. 先创建订单（后端会统一创建为待支付，支付成功后才会放到大厅）
     const payload = {
       type: 'pickup',
       typeLabel: '快递代取',
       price: amount,
-      status: 'pending_accept',
       pickupLocation: '', // 不再使用“待指定”，改为通过取件凭证照片识别取件点
       deliveryLocation: deliveryLocation,
       address: `${addr.name || ''} ${addr.phone || ''}\n${deliveryLocation}`,

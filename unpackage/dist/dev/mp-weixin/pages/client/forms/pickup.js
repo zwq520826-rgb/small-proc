@@ -157,7 +157,6 @@ const _sfc_main = {
           type: "pickup",
           typeLabel: "快递代取",
           price: amount,
-          status: "pending_accept",
           pickupLocation: "",
           // 不再使用“待指定”，改为通过取件凭证照片识别取件点
           deliveryLocation,
@@ -210,7 +209,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:385", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:384", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -234,7 +233,7 @@ ${deliveryLocation}`,
           };
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:412", "加载快递代取价格失败，将使用默认价格:", e);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:411", "加载快递代取价格失败，将使用默认价格:", e);
       }
     });
     return (_ctx, _cache) => {

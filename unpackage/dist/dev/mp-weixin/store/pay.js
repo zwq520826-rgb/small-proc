@@ -53,6 +53,11 @@ async function payForOrder({ method, orderId, amount }) {
               });
               const queryResult = await queryPaymentStatus(res.data.outTradeNo);
               if (queryResult.success) {
+                try {
+                  await paymentService.confirmPaid({ outTradeNo: res.data.outTradeNo });
+                } catch (e) {
+                  common_vendor.index.__f__("warn", "at store/pay.js:95", "confirmPaid 失败（可忽略，等待回调）:", e);
+                }
                 resolve({
                   success: true
                 });
@@ -64,7 +69,7 @@ async function payForOrder({ method, orderId, amount }) {
               }
             },
             fail: (err) => {
-              common_vendor.index.__f__("error", "at store/pay.js:103", "微信支付失败:", err);
+              common_vendor.index.__f__("error", "at store/pay.js:110", "微信支付失败:", err);
               common_vendor.index.hideLoading();
               if (err.errMsg && err.errMsg.includes("cancel")) {
                 resolve({
@@ -82,7 +87,7 @@ async function payForOrder({ method, orderId, amount }) {
         });
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at store/pay.js:123", "微信支付异常:", error);
+        common_vendor.index.__f__("error", "at store/pay.js:130", "微信支付异常:", error);
         return {
           success: false,
           reason: error.message || "支付失败，请重试"
@@ -95,7 +100,7 @@ async function payForOrder({ method, orderId, amount }) {
       };
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/pay.js:136", "payForOrder 异常:", error);
+    common_vendor.index.__f__("error", "at store/pay.js:143", "payForOrder 异常:", error);
     return {
       success: false,
       reason: error.message || "支付失败，请重试"
@@ -125,7 +130,7 @@ async function queryPaymentStatus(outTradeNo, maxRetries = 5, interval = 2e3) {
         await new Promise((resolve) => setTimeout(resolve, interval));
       }
     } catch (error) {
-      common_vendor.index.__f__("error", "at store/pay.js:179", "查询支付状态失败:", error);
+      common_vendor.index.__f__("error", "at store/pay.js:186", "查询支付状态失败:", error);
       if (i < maxRetries - 1) {
         await new Promise((resolve) => setTimeout(resolve, interval));
       }

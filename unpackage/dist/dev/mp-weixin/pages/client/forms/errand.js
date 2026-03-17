@@ -139,7 +139,6 @@ const _sfc_main = {
           type: "errand",
           typeLabel: "跑腿代购",
           price: amount,
-          status: "pending_accept",
           pickupLocation: "",
           // 不再使用“待指定”，改为由图片说明取件信息
           deliveryLocation,
@@ -193,7 +192,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:361", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:360", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };

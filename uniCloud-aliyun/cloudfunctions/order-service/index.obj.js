@@ -102,12 +102,17 @@ module.exports = {
 		}
 
 		// 构建订单数据
+		// 关键：订单创建后默认“待支付”，且不进入骑手大厅；支付成功后再推进到待接单并放到大厅
 		const order = {
 			order_no: generateOrderNo(new Date()),
 			user_id: uid,
 			type: orderData.type,
 			type_label: orderData.type_label || '',
-			status: 'pending_accept',
+			status: 'pending_pay',
+			pay_method: 'wechat', // 默认微信支付；余额支付会在 wallet-service.pay 成功后更新
+			pay_status: 'unpaid',
+			hall_visible: false,
+			refund_status: 'none',
 			price: Number(orderData.price),
 			pickup_location: orderData.pickup_location || '',
 			delivery_location: orderData.delivery_location || orderData.address || '',
@@ -461,9 +466,11 @@ module.exports = {
 		const { sortBy = 'distance', page = 1, pageSize = 10 } = params
 
 		try {
-			// 查询待接单的订单（没有骑手接单的，且不是自己发布的）
+			// 查询待接单的订单（必须已支付且在大厅可见；没有骑手接单的；且不是自己发布的）
 			let query = db.collection('orders').where({
 				status: 'pending_accept',
+				pay_status: 'paid',
+				hall_visible: true,
 				rider_id: dbCmd.exists(false).or(dbCmd.eq(null)),
 				user_id: dbCmd.neq(uid) // 排除自己发布的订单
 			})
@@ -485,6 +492,8 @@ module.exports = {
 			const countResult = await db.collection('orders')
 				.where({
 					status: 'pending_accept',
+					pay_status: 'paid',
+					hall_visible: true,
 					rider_id: dbCmd.exists(false).or(dbCmd.eq(null)),
 					user_id: dbCmd.neq(uid) // 排除自己发布的订单
 				})
@@ -539,11 +548,17 @@ module.exports = {
 
 			const order = orderResult.data[0]
 
-			// 检查订单状态
+			// 检查订单状态（必须已支付且在大厅可见）
 			if (order.status !== 'pending_accept') {
 				return {
 					code: 'INVALID_STATUS',
 					message: '订单已被接单或已取消'
+				}
+			}
+			if (order.pay_status !== 'paid' || order.hall_visible !== true) {
+				return {
+					code: 'NOT_PAID',
+					message: '订单未支付，暂不可接单'
 				}
 			}
 
