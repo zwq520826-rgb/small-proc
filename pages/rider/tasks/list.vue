@@ -54,6 +54,9 @@
           <button class="confirm-btn" type="primary" @click="confirmPickup(task)">
              已取货
           </button>
+          <button class="cancel-btn" @click="goDetailAndOpenCancel(task)">
+            取消订单
+          </button>
         </view>
       </view>
     </view>
@@ -96,6 +99,9 @@
         <view class="actions">
           <button class="deliver-btn" @click="confirmDelivery(task)">
             拍照送达
+          </button>
+          <button class="cancel-btn" @click="goDetailAndOpenCancel(task)">
+            取消订单
           </button>
         </view>
       </view>
@@ -414,6 +420,14 @@ const confirmDelivery = (task) => {
   })
 }
 
+// 跳转到详情页并直接打开取消弹窗（复用 detail.vue 的取消原因/数量选择逻辑）
+const goDetailAndOpenCancel = (task) => {
+  if (!task || !task.id) return
+  uni.navigateTo({
+    url: '/pages/rider/tasks/detail?id=' + encodeURIComponent(String(task.id)) + '&openCancel=1'
+  })
+}
+
 // 格式化时间
 const formatTime = (timestamp) => {
   if (!timestamp) return ''
@@ -627,6 +641,7 @@ const formatTime = (timestamp) => {
   display: flex;
   gap: 12rpx;
   margin-top: 16rpx;
+  flex-wrap: wrap;
 }
 
 .view-btn {
@@ -694,6 +709,18 @@ const formatTime = (timestamp) => {
   height: 72rpx;
   line-height: 72rpx;
   background: #4caf50;
+  color: #ffffff;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+
+.cancel-btn {
+  flex: 1;
+  min-width: 180rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #ef4444;
   color: #ffffff;
   border-radius: 12rpx;
   font-size: 28rpx;

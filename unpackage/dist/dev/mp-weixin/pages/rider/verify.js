@@ -46,15 +46,18 @@ const _sfc_main = {
         const res = await riderService.submitApplication(form.value);
         common_vendor.index.hideLoading();
         if (res.code === 0) {
-          common_vendor.index.showToast({ title: res.message || "验证成功", icon: "success" });
-          setTimeout(() => {
-            common_vendor.index.switchTab({
-              url: "/pages/mine/index",
-              fail: () => {
-                common_vendor.index.reLaunch({ url: "/pages/mine/index" });
-              }
-            });
-          }, 800);
+          common_vendor.index.showToast({
+            title: res.message || "验证成功",
+            icon: "success",
+            // 让跳转不被 toast 持续时间“看起来卡住”
+            duration: 800
+          });
+          common_vendor.index.switchTab({
+            url: "/pages/mine/index",
+            fail: () => {
+              common_vendor.index.reLaunch({ url: "/pages/mine/index" });
+            }
+          });
         } else {
           common_vendor.index.showToast({ title: res.message || "提交失败", icon: "none" });
           if (res.code === "CAPTCHA_ERROR" || ((_a = res.message) == null ? void 0 : _a.includes("验证码"))) {
@@ -67,7 +70,7 @@ const _sfc_main = {
         }
       } catch (e) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/rider/verify.vue:114", "提交失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/verify.vue:118", "提交失败:", e);
         common_vendor.index.showToast({ title: "提交失败", icon: "none" });
         form.value.captcha = "";
         if (captchaRef.value) {

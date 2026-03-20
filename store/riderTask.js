@@ -273,6 +273,50 @@ async function confirmDelivery(id, images) {
 }
 
 /**
+ * 骑手取消订单
+ * - reasonType='rider_personal'：回到大厅（不退款）
+ * - reasonType='user_illegal'：全额退款 + 写 illegal-order（在云端完成）
+ */
+async function riderCancelOrder(id, payload = {}) {
+  try {
+    const res = await orderService.riderCancelOrder(id, payload)
+
+    if (res.code !== 0) {
+      uni.showToast({
+        title: res.message || '取消失败',
+        icon: 'none'
+      })
+      return { success: false, msg: res.message || '取消失败' }
+    }
+
+    const reasonType = payload && payload.reasonType ? String(payload.reasonType) : ''
+    const idx = state.myTasks.findIndex((t) => t.id === id || t._id === id)
+    const task = idx >= 0 ? state.myTasks[idx] : null
+
+    if (idx >= 0) state.myTasks.splice(idx, 1)
+
+    // 骑手原因：把任务放回大厅列表（pending_accept）
+    if (reasonType === 'rider_personal' && task) {
+      const moved = {
+        ...task,
+        status: 'pending_accept',
+        rider_id: null
+      }
+      state.hallTasks.unshift(moved)
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('取消订单失败:', error)
+    uni.showToast({
+      title: '网络错误，请稍后重试',
+      icon: 'none'
+    })
+    return { success: false, msg: '网络错误' }
+  }
+}
+
+/**
  * 初始化数据（兼容旧接口）
  */
 async function initMock() {
@@ -311,6 +355,7 @@ export function useRiderTaskStore() {
     getTaskById,
     confirmPickup,
     confirmDelivery,
+    riderCancelOrder,
     loadFromStorage: (force = true) => {
       if (!force && inited) return Promise.resolve(true)
       return initMock()

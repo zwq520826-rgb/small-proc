@@ -184,6 +184,7 @@
   display: flex;
   gap: 12rpx;
   margin-top: 16rpx;
+  flex-wrap: wrap;
 }
 .view-btn.data-v-1cb17a62 {
   flex: 1;
@@ -245,6 +246,17 @@
   height: 72rpx;
   line-height: 72rpx;
   background: #4caf50;
+  color: #ffffff;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+.cancel-btn.data-v-1cb17a62 {
+  flex: 1;
+  min-width: 180rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #ef4444;
   color: #ffffff;
   border-radius: 12rpx;
   font-size: 28rpx;

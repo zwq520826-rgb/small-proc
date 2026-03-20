@@ -77,7 +77,7 @@
               送达照片
             </button>
             <button
-              v-if="order.status === 'pending_accept'"
+              v-if="order.status === 'pending_accept' || order.status === 'pending_pickup' || order.status === 'delivering'"
               class="btn btn-cancel"
               size="mini"
               @click.stop="handleCancel(order.id)"
@@ -126,6 +126,7 @@ const tabs = [
 
 const statusMap = {
   pending_accept: '待接单',
+  pending_pickup: '待取货',
   delivering: '配送中',
   completed: '已完成',
   cancelled: '已取消'

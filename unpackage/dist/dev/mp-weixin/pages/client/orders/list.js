@@ -18,6 +18,7 @@ const _sfc_main = {
     ];
     const statusMap = {
       pending_accept: "待接单",
+      pending_pickup: "待取货",
       delivering: "配送中",
       completed: "已完成",
       cancelled: "已取消"
@@ -139,8 +140,8 @@ const _sfc_main = {
           }, order.status === "completed" ? {
             m: common_vendor.o(($event) => handleViewPhotos(order), order.id)
           } : {}, {
-            n: order.status === "pending_accept"
-          }, order.status === "pending_accept" ? {
+            n: order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering"
+          }, order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering" ? {
             o: common_vendor.o(($event) => handleCancel(order.id), order.id)
           } : {}, {
             p: order.status === "completed"

@@ -108,7 +108,7 @@ const _sfc_main = {
       common_vendor.index.makePhoneCall({
         phoneNumber: order.value.rider.phone,
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/orders/detail.vue:299", "拨打电话失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/orders/detail.vue:307", "拨打电话失败:", err);
           common_vendor.index.showToast({ title: "拨打电话失败", icon: "none" });
         }
       });
@@ -145,14 +145,14 @@ const _sfc_main = {
         illegalOrderPromise.value = db.collection("illegal-order").where({ order_id: orderId }).limit(1).get().then((res) => {
           illegalOrder.value = res.data && res.data.length ? res.data[0] : null;
         }).catch((e) => {
-          common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:350", "加载 illegal-order 失败:", e);
+          common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:358", "加载 illegal-order 失败:", e);
           illegalOrder.value = null;
         }).finally(() => {
           illegalOrderPromise.value = null;
         });
         return illegalOrderPromise.value;
       } catch (e) {
-        common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:359", "加载 illegal-order 异常:", e);
+        common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:367", "加载 illegal-order 异常:", e);
         illegalOrder.value = null;
         return null;
       }
@@ -256,7 +256,7 @@ const _sfc_main = {
       }
     });
     return (_ctx, _cache) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L;
       return common_vendor.e({
         a: common_vendor.t(getStatusTitle()),
         b: common_vendor.t(getStatusSubtitle()),
@@ -317,13 +317,18 @@ const _sfc_main = {
         C: common_vendor.o(handleCancelOrder),
         D: common_vendor.o(handleUrgent)
       } : {}, {
-        E: ((_G = order.value) == null ? void 0 : _G.status) === "delivering"
-      }, ((_H = order.value) == null ? void 0 : _H.status) === "delivering" ? {
-        F: common_vendor.o(handleConfirmDelivery)
+        E: ((_G = order.value) == null ? void 0 : _G.status) === "pending_pickup"
+      }, ((_H = order.value) == null ? void 0 : _H.status) === "pending_pickup" ? {
+        F: common_vendor.o(handleCancelOrder)
       } : {}, {
-        G: ((_I = order.value) == null ? void 0 : _I.status) === "completed"
-      }, ((_J = order.value) == null ? void 0 : _J.status) === "completed" ? {
-        H: common_vendor.o(handleDeleteOrder)
+        G: ((_I = order.value) == null ? void 0 : _I.status) === "delivering"
+      }, ((_J = order.value) == null ? void 0 : _J.status) === "delivering" ? {
+        H: common_vendor.o(handleConfirmDelivery),
+        I: common_vendor.o(handleCancelOrder)
+      } : {}, {
+        J: ((_K = order.value) == null ? void 0 : _K.status) === "completed"
+      }, ((_L = order.value) == null ? void 0 : _L.status) === "completed" ? {
+        K: common_vendor.o(handleDeleteOrder)
       } : {});
     };
   }

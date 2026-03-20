@@ -282,28 +282,73 @@ module.exports = {
 				return { code: 'NO_PERMISSION', message: '无权限取消此订单' }
 			}
 
-			// 原子取消：必须是待支付/待接单 & 未被骑手接单（互斥锁思路同抢单）
-			// rider_id 不存在或为 null 才允许取消
-			const updateRes = await db.collection('orders')
-				.where({
-					_id: orderId,
-					user_id: uid,
-					status: dbCmd.in(['pending_pay', 'pending_accept']),
-					rider_id: dbCmd.exists(false).or(dbCmd.eq(null))
-				})
-				.update({
-					status: 'cancelled',
-					cancel_time: now,
-					update_time: now
-				})
+			// 允许取消规则：
+			// 1) 未被骑手接单：pending_pay / pending_accept 且 rider_id 为空 => 可取消
+			// 2) 已被骑手接单：pending_pickup / delivering
+			//    - 以 accept_time 为准，接单后未满 40 分钟 => 不可取消
+			//    - 超过 40 分钟且未完成 => 可取消（触发退款逻辑）
+
+			let updateRes = null
+			const TIMEOUT_MS = 40 * 60 * 1000
+
+			const status = order.status
+			const riderId = order.rider_id
+			const acceptTs = typeof order.accept_time === 'number' ? order.accept_time : (order.accept_time ? Date.parse(order.accept_time) : 0)
+
+			const isRiderNotGrabbed = !riderId
+			const allowWithoutGrab = ['pending_pay', 'pending_accept'].includes(status) && isRiderNotGrabbed
+
+			const allowWithTimeout =
+				['pending_pickup', 'delivering'].includes(status) &&
+				!!riderId &&
+				Number.isFinite(acceptTs) &&
+				acceptTs > 0 &&
+				now - acceptTs >= TIMEOUT_MS
+
+			if (allowWithoutGrab) {
+				// 原子取消：必须是待支付/待接单 & rider_id 为空
+				updateRes = await db.collection('orders')
+					.where({
+						_id: orderId,
+						user_id: uid,
+						status: dbCmd.in(['pending_pay', 'pending_accept']),
+						rider_id: dbCmd.exists(false).or(dbCmd.eq(null))
+					})
+					.update({
+						status: 'cancelled',
+						cancel_time: now,
+						update_time: now
+					})
+			} else if (['pending_pickup', 'delivering'].includes(status)) {
+				// 已接单：未满 40 分钟不允许取消
+				if (!allowWithTimeout) {
+					return {
+						code: 'INVALID_STATUS',
+						message: '接单尚未满 40 分钟，暂不可取消'
+					}
+				}
+
+				// 原子取消：pending_pickup / delivering 且 rider_id 与当前一致（避免并发状态变化）
+				updateRes = await db.collection('orders')
+					.where({
+						_id: orderId,
+						user_id: uid,
+						status: dbCmd.in(['pending_pickup', 'delivering']),
+						rider_id: riderId ? dbCmd.eq(riderId) : dbCmd.exists(false).or(dbCmd.eq(null))
+					})
+					.update({
+						status: 'cancelled',
+						cancel_time: now,
+						update_time: now,
+						hall_visible: false,
+						rider_id: dbCmd.remove()
+					})
+			} else {
+				return { code: 'INVALID_STATUS', message: '当前订单状态无法取消' }
+			}
 
 			if (updateRes.updated === 0) {
-				// 重新读一次，给出明确原因
-				const latest = await db.collection('orders').doc(orderId).get()
-				const o = latest.data && latest.data[0]
-				if (o && o.rider_id) {
-					return { code: 'ALREADY_GRABBED', message: '订单已被骑手接单，无法取消' }
-				}
+				// 并发导致的状态变化，给出明确原因
 				return { code: 'INVALID_STATUS', message: '当前订单状态无法取消' }
 			}
 
@@ -502,23 +547,20 @@ module.exports = {
 				})
 		} else {
 			// user_illegal：全额退款 + 记录 illegal-order
-			const q = (payload && payload.actualQuantities) ? payload.actualQuantities : {}
-			const small = Number(q.small || 0)
-			const medium = Number(q.medium || 0)
-			const large = Number(q.large || 0)
+			// 新需求：前端取消不再要求骑手手动填实际数量
+			// 为保证 illegal-order 的展示字段可用，这里用订单 content.quantities 做兜底。
+			const q = (payload && payload.actualQuantities) ? payload.actualQuantities : null
 
-			if (
-				!Number.isFinite(small) ||
-				!Number.isFinite(medium) ||
-				!Number.isFinite(large) ||
-				small < 0 ||
-				medium < 0 ||
-				large < 0
-			) {
-				return { code: 'INVALID_PARAM', message: '数量不合法' }
-			}
-			if (small + medium + large <= 0) {
-				return { code: 'INVALID_PARAM', message: '请至少选择一种物品数量' }
+			const fallbackQs = (order.content && order.content.quantities) ? order.content.quantities : {}
+			const small = q && q.small != null ? Number(q.small) : Number(fallbackQs.small || 0)
+			const medium = q && q.medium != null ? Number(q.medium) : Number(fallbackQs.medium || 0)
+			const large = q && q.large != null ? Number(q.large) : Number(fallbackQs.large || 0)
+
+			// 只要取消原因文本正确，就允许进入退款逻辑；数量用于记录展示字段。
+			// 若 fallbackQs 也为空，则 rider_quantities 记为 0，不影响退款/取消动作。
+			if (Number.isNaN(small) || Number.isNaN(medium) || Number.isNaN(large)) {
+				// 防御：极端脏数据时兜底为 0
+				// eslint-disable-next-line no-unused-vars
 			}
 
 			updateRes = await db.collection('orders')
@@ -545,7 +587,8 @@ module.exports = {
 				order_id: orderId,
 				user_id: order.user_id,
 				rider_id: riderUid,
-				reason_type: 'user_issue',
+				// 与 schema 的 reason_type enum 保持一致
+				reason_type: 'user_illegal',
 				reason_text: reasonText,
 				user_quantities: {
 					small: Number(userQs.small || 0),

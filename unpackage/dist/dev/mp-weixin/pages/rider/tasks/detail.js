@@ -9,15 +9,15 @@ const _sfc_main = {
     const cancelPopupVisible = common_vendor.ref(false);
     const cancelReasonType = common_vendor.ref("rider_personal");
     const cancelReasonText = common_vendor.ref("");
-    const actualSmallQty = common_vendor.ref(0);
-    const actualMediumQty = common_vendor.ref(0);
-    const actualLargeQty = common_vendor.ref(0);
     common_vendor.onLoad(async (options) => {
       if (options.id) {
         await store.loadFromStorage();
         const found = store.getTaskById(options.id);
         if (found) {
           task.value = found;
+          const openCancel = String(options.openCancel || "").toLowerCase() === "1";
+          if (openCancel)
+            openCancelPopup();
         } else {
           common_vendor.index.showToast({ title: "任务不存在", icon: "none" });
           setTimeout(() => {
@@ -59,16 +59,11 @@ const _sfc_main = {
       common_vendor.index.makePhoneCall({ phoneNumber: phone.replace(/\*/g, "") });
     };
     const openCancelPopup = () => {
-      var _a, _b;
       if (!task.value)
         return;
       cancelPopupVisible.value = true;
       cancelReasonText.value = "";
       cancelReasonType.value = "rider_personal";
-      const qs = ((_b = (_a = task.value) == null ? void 0 : _a.content) == null ? void 0 : _b.quantities) || {};
-      actualSmallQty.value = Number(qs.small || 0);
-      actualMediumQty.value = Number(qs.medium || 0);
-      actualLargeQty.value = Number(qs.large || 0);
     };
     const closeCancelPopup = () => {
       cancelPopupVisible.value = false;
@@ -87,18 +82,10 @@ const _sfc_main = {
       const reasonType = cancelReasonType.value;
       const reasonText = cancelReasonText.value.trim();
       if (reasonType === "user_illegal") {
-        const s = Number(actualSmallQty.value || 0);
-        const m = Number(actualMediumQty.value || 0);
-        const l = Number(actualLargeQty.value || 0);
-        if (s + m + l <= 0) {
-          common_vendor.index.showToast({ title: "请至少选择一种物品数量", icon: "none" });
-          return;
-        }
         common_vendor.index.showLoading({ title: "取消中..." });
         const res2 = await store.riderCancelOrder(task.value.id || task.value._id, {
           reasonType: "user_illegal",
-          reasonText,
-          actualQuantities: { small: s, medium: m, large: l }
+          reasonText
         });
         common_vendor.index.hideLoading();
         if (res2 == null ? void 0 : res2.success) {
@@ -236,30 +223,17 @@ const _sfc_main = {
         y: common_vendor.o(openCancelPopup)
       } : {}) : {}, {
         z: cancelPopupVisible.value
-      }, cancelPopupVisible.value ? common_vendor.e({
+      }, cancelPopupVisible.value ? {
         A: common_vendor.o(onChangeReasonMode),
         B: cancelReasonType.value,
         C: cancelReasonText.value,
         D: common_vendor.o(($event) => cancelReasonText.value = $event.detail.value),
-        E: cancelReasonType.value === "user_illegal"
-      }, cancelReasonType.value === "user_illegal" ? {
-        F: actualSmallQty.value,
-        G: common_vendor.o(common_vendor.m(($event) => actualSmallQty.value = $event.detail.value, {
-          number: true
-        })),
-        H: actualMediumQty.value,
-        I: common_vendor.o(common_vendor.m(($event) => actualMediumQty.value = $event.detail.value, {
-          number: true
-        })),
-        J: actualLargeQty.value,
-        K: common_vendor.o(common_vendor.m(($event) => actualLargeQty.value = $event.detail.value, {
-          number: true
-        }))
-      } : {}, {
-        L: common_vendor.o(closeCancelPopup),
-        M: common_vendor.o(confirmCancel),
-        N: common_vendor.o(closeCancelPopup)
-      }) : {});
+        E: common_vendor.o(closeCancelPopup),
+        F: common_vendor.o(confirmCancel),
+        G: common_vendor.o(() => {
+        }),
+        H: common_vendor.o(closeCancelPopup)
+      } : {});
     };
   }
 };

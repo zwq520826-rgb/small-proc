@@ -76,6 +76,7 @@
   bottom: 0;
   left: 0;
   right: 0;
+  z-index: 1; /* 避免遮罩层显示时盖住弹窗按钮 */
   background: #fff;
   padding: 20rpx 30rpx;
   box-shadow: 0 -4rpx 10rpx rgba(0,0,0,0.05);
@@ -99,6 +100,8 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.55);
+  z-index: 999999 !important; /* 保证弹窗在底部固定栏/其他浮层之上，避免无法点击 */
+  pointer-events: auto;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -106,11 +109,18 @@
   box-sizing: border-box;
 }
 .cancel-modal.data-v-163fccdb {
-  width: 100%;
+  width: auto;
   background: #fff;
   border-radius: 16rpx;
   padding: 26rpx;
   box-sizing: border-box;
+  position: fixed;
+  left: 20rpx;
+  right: 20rpx;
+  bottom: 20rpx;
+  top: auto;
+  z-index: 1000001;
+  pointer-events: auto;
 }
 .cancel-title.data-v-163fccdb { font-size: 34rpx; font-weight: 700; margin-bottom: 16rpx;
 }

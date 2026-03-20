@@ -82,7 +82,7 @@
 
     <!-- 骑手取消弹窗 -->
     <view v-if="cancelPopupVisible" class="cancel-mask" @click.self="closeCancelPopup">
-      <view class="cancel-modal">
+      <view class="cancel-modal" @click.stop>
         <view class="cancel-title">取消订单</view>
 
         <view class="section">
@@ -94,7 +94,7 @@
             </label>
             <label class="radio-item">
               <radio value="user_illegal" />
-              <text>用户问题（物件大小填写不符）</text>
+              <text>用户填错（物件大小不符）</text>
             </label>
           </radio-group>
         </view>
@@ -107,23 +107,6 @@
             placeholder="例如：客户实际拿大件，但我收到订单标注小件"
             maxlength="30"
           />
-        </view>
-
-        <!-- 用户问题：需要骑手选择物件数量 -->
-        <view v-if="cancelReasonType === 'user_illegal'" class="section">
-          <text class="label">请填写骑手判定实际物件数量</text>
-          <view class="qty-row">
-            <text class="qty-label">小件</text>
-            <input class="qty-input" type="number" min="0" step="1" v-model.number="actualSmallQty" />
-          </view>
-          <view class="qty-row">
-            <text class="qty-label">中件</text>
-            <input class="qty-input" type="number" min="0" step="1" v-model.number="actualMediumQty" />
-          </view>
-          <view class="qty-row">
-            <text class="qty-label">大件</text>
-            <input class="qty-input" type="number" min="0" step="1" v-model.number="actualLargeQty" />
-          </view>
         </view>
 
         <view class="actions">
@@ -147,9 +130,6 @@ const task = ref(null)
 const cancelPopupVisible = ref(false)
 const cancelReasonType = ref('rider_personal') // rider_personal | user_illegal
 const cancelReasonText = ref('')
-const actualSmallQty = ref(0)
-const actualMediumQty = ref(0)
-const actualLargeQty = ref(0)
 
 // 页面加载时获取 ID 并查找任务
 onLoad(async (options) => {
@@ -159,6 +139,9 @@ onLoad(async (options) => {
     const found = store.getTaskById(options.id)
     if (found) {
       task.value = found
+      // 从列表页跳转过来时，可直接打开取消弹窗
+      const openCancel = String(options.openCancel || '').toLowerCase() === '1'
+      if (openCancel) openCancelPopup()
     } else {
       uni.showToast({ title: '任务不存在', icon: 'none' })
       setTimeout(() => {
@@ -205,12 +188,6 @@ const openCancelPopup = () => {
   cancelPopupVisible.value = true
   cancelReasonText.value = ''
   cancelReasonType.value = 'rider_personal'
-
-  // 默认用“用户填写的数量”初始化，方便骑手直接修改为“骑手判定”
-  const qs = task.value?.content?.quantities || {}
-  actualSmallQty.value = Number(qs.small || 0)
-  actualMediumQty.value = Number(qs.medium || 0)
-  actualLargeQty.value = Number(qs.large || 0)
 }
 
 const closeCancelPopup = () => {
@@ -232,19 +209,10 @@ const confirmCancel = async () => {
   const reasonText = cancelReasonText.value.trim()
 
   if (reasonType === 'user_illegal') {
-    const s = Number(actualSmallQty.value || 0)
-    const m = Number(actualMediumQty.value || 0)
-    const l = Number(actualLargeQty.value || 0)
-    if (s + m + l <= 0) {
-      uni.showToast({ title: '请至少选择一种物品数量', icon: 'none' })
-      return
-    }
-
     uni.showLoading({ title: '取消中...' })
     const res = await store.riderCancelOrder(task.value.id || task.value._id, {
       reasonType: 'user_illegal',
-      reasonText,
-      actualQuantities: { small: s, medium: m, large: l }
+      reasonText
     })
     uni.hideLoading()
 
@@ -415,6 +383,7 @@ const handleConfirmDelivery = () => {
   bottom: 0;
   left: 0;
   right: 0;
+  z-index: 1; /* 避免遮罩层显示时盖住弹窗按钮 */
   background: #fff;
   padding: 20rpx 30rpx;
   box-shadow: 0 -4rpx 10rpx rgba(0,0,0,0.05);
@@ -434,6 +403,8 @@ const handleConfirmDelivery = () => {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.55);
+  z-index: 999999 !important; /* 保证弹窗在底部固定栏/其他浮层之上，避免无法点击 */
+  pointer-events: auto;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -441,11 +412,18 @@ const handleConfirmDelivery = () => {
   box-sizing: border-box;
 }
 .cancel-modal {
-  width: 100%;
+  width: auto;
   background: #fff;
   border-radius: 16rpx;
   padding: 26rpx;
   box-sizing: border-box;
+  position: fixed;
+  left: 20rpx;
+  right: 20rpx;
+  bottom: 20rpx;
+  top: auto;
+  z-index: 1000001;
+  pointer-events: auto;
 }
 .cancel-title { font-size: 34rpx; font-weight: 700; margin-bottom: 16rpx; }
 .section { margin-bottom: 18rpx; }

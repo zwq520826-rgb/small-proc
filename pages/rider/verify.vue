@@ -87,17 +87,21 @@ const submit = async () => {
     
     if (res.code === 0) {
       // 认证成功后提示并返回“我的”页面
-      uni.showToast({ title: res.message || '验证成功', icon: 'success' })
-      setTimeout(() => {
-        // 目的：/pages/mine/index 是 tabBar 页面，用 switchTab 最稳（自定义 tabBar 场景也兼容）
-        uni.switchTab({
-          url: '/pages/mine/index',
-          fail: () => {
-            // 兜底：极少数情况下 switchTab 失败，再用 reLaunch
-            uni.reLaunch({ url: '/pages/mine/index' })
-          }
-        })
-      }, 800)
+      uni.showToast({
+        title: res.message || '验证成功',
+        icon: 'success',
+        // 让跳转不被 toast 持续时间“看起来卡住”
+        duration: 800
+      })
+
+      // 目的：/pages/mine/index 是 tabBar 页面，用 switchTab 最稳（自定义 tabBar 场景也兼容）
+      uni.switchTab({
+        url: '/pages/mine/index',
+        fail: () => {
+          // 兜底：极少数情况下 switchTab 失败，再用 reLaunch
+          uni.reLaunch({ url: '/pages/mine/index' })
+        }
+      })
     } else {
       uni.showToast({ title: res.message || '提交失败', icon: 'none' })
       // 如果验证码错误，刷新图形验证码

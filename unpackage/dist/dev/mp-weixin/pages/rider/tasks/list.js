@@ -26,7 +26,7 @@ const _sfc_main = {
       try {
         await store.loadFromStorage(true);
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:179", "下拉刷新失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:185", "下拉刷新失败:", e);
       } finally {
         pulling = false;
         common_vendor.index.stopPullDownRefresh();
@@ -105,7 +105,7 @@ const _sfc_main = {
           });
           urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
         } catch (e) {
-          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:289", "获取临时文件 URL 失败:", e);
+          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:295", "获取临时文件 URL 失败:", e);
           common_vendor.index.showToast({ title: "图片加载失败，请稍后重试", icon: "none" });
           return;
         }
@@ -185,7 +185,7 @@ const _sfc_main = {
             } else {
             }
           } catch (e) {
-            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:406", "上传/送达确认失败:", e);
+            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:412", "上传/送达确认失败:", e);
             common_vendor.index.hideLoading();
             common_vendor.index.showToast({ title: e.message || "上传失败，请重试", icon: "none" });
           }
@@ -193,6 +193,13 @@ const _sfc_main = {
         fail: () => {
           common_vendor.index.showToast({ title: "取消拍照", icon: "none" });
         }
+      });
+    };
+    const goDetailAndOpenCancel = (task) => {
+      if (!task || !task.id)
+        return;
+      common_vendor.index.navigateTo({
+        url: "/pages/rider/tasks/detail?id=" + encodeURIComponent(String(task.id)) + "&openCancel=1"
       });
     };
     const formatTime = (timestamp) => {
@@ -251,7 +258,8 @@ const _sfc_main = {
           } : {}, {
             j: common_vendor.o(($event) => viewPickupImages(task), task.id),
             k: common_vendor.o(($event) => confirmPickup(task), task.id),
-            l: task.id
+            l: common_vendor.o(($event) => goDetailAndOpenCancel(task), task.id),
+            m: task.id
           });
         })
       } : {}, {
@@ -279,7 +287,8 @@ const _sfc_main = {
             h: common_vendor.o(($event) => copyPhone(task.phone), task.id)
           } : {}, {
             i: common_vendor.o(($event) => confirmDelivery(task), task.id),
-            j: task.id
+            j: common_vendor.o(($event) => goDetailAndOpenCancel(task), task.id),
+            k: task.id
           });
         })
       } : {}, {

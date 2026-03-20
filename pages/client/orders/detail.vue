@@ -139,14 +139,22 @@
         </button>
       </template>
 
-      <!-- delivering: 确认送达 -->
-      <button
-        v-if="order?.status === 'delivering'"
-        class="action-btn btn-primary"
-        @click="handleConfirmDelivery"
-      >
-        确认送达
-      </button>
+      <!-- pending_pickup: 仍可取消（取货后超时规则） -->
+      <template v-if="order?.status === 'pending_pickup'">
+        <button class="action-btn btn-cancel" @click="handleCancelOrder">
+          取消订单
+        </button>
+      </template>
+
+      <!-- delivering: 确认送达 + 可取消（超时规则） -->
+      <template v-if="order?.status === 'delivering'">
+        <button class="action-btn btn-primary" @click="handleConfirmDelivery">
+          确认送达
+        </button>
+        <button class="action-btn btn-cancel" @click="handleCancelOrder">
+          取消订单
+        </button>
+      </template>
 
       <!-- completed: 删除订单 -->
       <button
