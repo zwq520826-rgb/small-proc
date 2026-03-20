@@ -9,12 +9,16 @@ if (!Math) {
   PaymentPopup();
 }
 const PaymentPopup = () => "../../../components/PaymentPopup.js";
+const PICKUP_RATES_MIN_INTERVAL_MS = 60 * 60 * 1e3;
 const _sfc_main = {
   __name: "pickup",
   setup(__props) {
     const images = common_vendor.ref([]);
     const quantities = common_vendor.ref({ small: 0, medium: 0, large: 0 });
     const rates = common_vendor.ref({ small: 1.5, medium: 2, large: 3 });
+    let pickupRatesCache = null;
+    let lastPickupRatesLoadedAt = 0;
+    let pickupRatesPromise = null;
     const isUrgent = common_vendor.ref(false);
     const isDelivery = common_vendor.ref(false);
     const dormNumber = common_vendor.ref("");
@@ -63,7 +67,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:205", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:212", "选择图片失败:", err);
         }
       });
     };
@@ -209,7 +213,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:384", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:391", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -221,20 +225,38 @@ ${deliveryLocation}`,
         return "";
       return phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
     };
-    common_vendor.onLoad(async () => {
-      try {
-        const configService = common_vendor.tr.importObject("config-service");
-        const res = await configService.getPickupRates();
-        if (res && res.code === 0 && res.data) {
-          rates.value = {
-            small: Number(res.data.small) || rates.value.small,
-            medium: Number(res.data.medium) || rates.value.medium,
-            large: Number(res.data.large) || rates.value.large
-          };
-        }
-      } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:411", "加载快递代取价格失败，将使用默认价格:", e);
+    async function loadPickupRatesIfNeeded() {
+      const now = Date.now();
+      if (pickupRatesCache && now - lastPickupRatesLoadedAt < PICKUP_RATES_MIN_INTERVAL_MS) {
+        rates.value = { ...pickupRatesCache };
+        return;
       }
+      if (pickupRatesPromise)
+        return pickupRatesPromise;
+      pickupRatesPromise = (async () => {
+        try {
+          const configService = common_vendor.tr.importObject("config-service");
+          const res = await configService.getPickupRates();
+          if (res && res.code === 0 && res.data) {
+            const nextRates = {
+              small: Number(res.data.small) || rates.value.small,
+              medium: Number(res.data.medium) || rates.value.medium,
+              large: Number(res.data.large) || rates.value.large
+            };
+            pickupRatesCache = nextRates;
+            lastPickupRatesLoadedAt = Date.now();
+            rates.value = { ...nextRates };
+          }
+        } catch (e) {
+          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:432", "加载快递代取价格失败，将使用默认价格:", e);
+        } finally {
+          pickupRatesPromise = null;
+        }
+      })();
+      return pickupRatesPromise;
+    }
+    common_vendor.onLoad(async () => {
+      await loadPickupRatesIfNeeded();
     });
     return (_ctx, _cache) => {
       return common_vendor.e({

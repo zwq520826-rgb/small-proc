@@ -61,7 +61,6 @@ const _sfc_main = {
             common_vendor.index.hideLoading();
             if (ok) {
               common_vendor.index.showToast({ title: "已取消", icon: "success" });
-              reloadCurrent();
             }
           }
         }
@@ -78,7 +77,6 @@ const _sfc_main = {
             common_vendor.index.hideLoading();
             if (ok) {
               common_vendor.index.showToast({ title: "已删除", icon: "success" });
-              reloadCurrent();
             }
           }
         }
@@ -99,13 +97,6 @@ const _sfc_main = {
     common_vendor.onPullDownRefresh(async () => {
       await reloadCurrent();
       common_vendor.index.stopPullDownRefresh();
-    });
-    common_vendor.onLoad(async () => {
-      await store.loadFromStorage();
-    });
-    common_vendor.onShow(async () => {
-      common_vendor.index.hideHomeButton();
-      await store.loadFromStorage();
     });
     return (_ctx, _cache) => {
       return common_vendor.e({

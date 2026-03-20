@@ -9,23 +9,47 @@ const state = common_vendor.reactive({
   transactions: [],
   loading: false
 });
-async function loadFromCloud() {
-  if (state.loading)
+let inited = false;
+let initPromise = null;
+let lastBalanceLoadedAt = 0;
+let lastTransactionsLoadedAt = 0;
+let lastTxKey = "";
+let txPromise = null;
+const BALANCE_MIN_INTERVAL_MS = 8e3;
+const TRANSACTIONS_MIN_INTERVAL_MS = 8e3;
+async function loadFromCloud(force = false) {
+  const now = Date.now();
+  if (state.loading && !force)
     return;
-  state.loading = true;
-  try {
-    const res = await walletService.getBalance();
-    if (res.code === 0 && res.data) {
-      state.balance = res.data.balance || 0;
-      state.frozenBalance = res.data.frozen_balance || 0;
-      state.totalIncome = res.data.total_income || 0;
-      state.totalExpense = res.data.total_expense || 0;
-    }
-  } catch (e) {
-    common_vendor.index.__f__("warn", "at store/wallet.js:31", "加载钱包信息失败:", e);
-  } finally {
-    state.loading = false;
+  if (!force && inited && now - lastBalanceLoadedAt < BALANCE_MIN_INTERVAL_MS) {
+    return true;
   }
+  if (initPromise && !force)
+    return initPromise;
+  initPromise = (async () => {
+    state.loading = true;
+    try {
+      const res = await walletService.getBalance();
+      if (res.code === 0 && res.data) {
+        state.balance = res.data.balance || 0;
+        state.frozenBalance = res.data.frozen_balance || 0;
+        state.totalIncome = res.data.total_income || 0;
+        state.totalExpense = res.data.total_expense || 0;
+        inited = true;
+        lastBalanceLoadedAt = Date.now();
+      }
+    } catch (e) {
+      common_vendor.index.__f__("warn", "at store/wallet.js:53", "加载钱包信息失败:", e);
+    } finally {
+      state.loading = false;
+    }
+  })();
+  try {
+    await initPromise;
+  } finally {
+    initPromise = null;
+  }
+  return true;
 }
 async function recharge(amount) {
   try {
@@ -37,7 +61,7 @@ async function recharge(amount) {
       return { success: false, reason: res.message };
     }
   } catch (e) {
-    common_vendor.index.__f__("error", "at store/wallet.js:52", "充值失败:", e);
+    common_vendor.index.__f__("error", "at store/wallet.js:82", "充值失败:", e);
     return { success: false, reason: "网络错误，请稍后重试" };
   }
 }
@@ -51,7 +75,7 @@ async function withdraw(amount) {
       return { success: false, reason: res.message };
     }
   } catch (e) {
-    common_vendor.index.__f__("error", "at store/wallet.js:72", "提现失败:", e);
+    common_vendor.index.__f__("error", "at store/wallet.js:102", "提现失败:", e);
     return { success: false, reason: "网络错误，请稍后重试" };
   }
 }
@@ -65,22 +89,40 @@ async function pay(amount, orderId) {
       return { success: false, reason: res.message };
     }
   } catch (e) {
-    common_vendor.index.__f__("error", "at store/wallet.js:93", "支付失败:", e);
+    common_vendor.index.__f__("error", "at store/wallet.js:123", "支付失败:", e);
     return { success: false, reason: "网络错误，请稍后重试" };
   }
 }
-async function getTransactions(params = {}) {
-  try {
-    const res = await walletService.getTransactionList(params);
-    if (res.code === 0) {
-      state.transactions = res.data || [];
-      return { success: true, data: res.data, total: res.total };
-    } else {
-      return { success: false, reason: res.message };
+async function getTransactionsInternal(params = {}, force = false) {
+  var _a;
+  const now = Date.now();
+  const { type, page = 1, pageSize = 20 } = params;
+  const txKey = `${type || "all"}|${page}|${pageSize}`;
+  if (!force && txKey === lastTxKey && now - lastTransactionsLoadedAt < TRANSACTIONS_MIN_INTERVAL_MS) {
+    return { success: true, data: state.transactions, total: ((_a = state.transactions) == null ? void 0 : _a.length) || 0 };
+  }
+  if (txPromise && !force)
+    return txPromise;
+  txPromise = (async () => {
+    try {
+      const res = await walletService.getTransactionList({ type, page, pageSize });
+      if (res.code === 0) {
+        state.transactions = res.data || [];
+        lastTxKey = txKey;
+        lastTransactionsLoadedAt = Date.now();
+        return { success: true, data: res.data, total: res.total };
+      } else {
+        return { success: false, reason: res.message };
+      }
+    } catch (e) {
+      common_vendor.index.__f__("error", "at store/wallet.js:161", "获取交易记录失败:", e);
+      return { success: false, reason: "网络错误，请稍后重试" };
     }
-  } catch (e) {
-    common_vendor.index.__f__("error", "at store/wallet.js:113", "获取交易记录失败:", e);
-    return { success: false, reason: "网络错误，请稍后重试" };
+  })();
+  try {
+    return await txPromise;
+  } finally {
+    txPromise = null;
   }
 }
 function useWalletStore() {
@@ -108,7 +150,7 @@ function useWalletStore() {
     recharge,
     withdraw,
     pay,
-    getTransactions
+    getTransactions: (params, force = false) => getTransactionsInternal(params, force)
   };
 }
 exports.useWalletStore = useWalletStore;

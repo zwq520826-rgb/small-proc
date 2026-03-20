@@ -7,7 +7,7 @@
           <uni-id-pages-avatar width="120rpx" height="120rpx"></uni-id-pages-avatar>
         </view>
         <view class="user-info">
-          <text class="nickname">{{ userInfo.nickname || '点击登录/完善资料' }}</text>
+          <text class="nickname">{{ displayNickname }}</text>
           <text class="uid" v-if="userInfo.studentNo">学号: {{ userInfo.studentNo }}</text>
           <text class="uid" v-else-if="!userInfo._id">未登录</text>
         </view>
@@ -118,6 +118,11 @@ const riderService = uniCloud.importObject("rider-service")
       userInfo() {
         return store.userInfo
       },
+      displayNickname() {
+        if (this.userInfo.nickname) return this.userInfo.nickname
+        if (this.userInfo._id) return this.getDefaultNickname()
+        return '点击登录/完善资料'
+      },
       isRiderMode() {
         return checkRiderMode()
       },
@@ -184,6 +189,25 @@ const riderService = uniCloud.importObject("rider-service")
 			this.walletStore = useWalletStore()
 		},
 		methods: {
+      // 默认昵称：同学 + 长度为 3 的“数字或英文”随机组合，并按 uid 缓存保证稳定展示
+			getDefaultNickname() {
+				const uid = this.userInfo && this.userInfo._id ? String(this.userInfo._id) : ''
+				if (!uid) return '点击登录/完善资料'
+
+				const cacheKey = `default_nickname_${uid}`
+				const cached = uni.getStorageSync(cacheKey)
+				if (cached && typeof cached === 'string') return cached
+
+				const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+				let code = ''
+				for (let i = 0; i < 3; i++) {
+					code += chars.charAt(Math.floor(Math.random() * chars.length))
+				}
+
+				const nickname = `同学${code}`
+				uni.setStorageSync(cacheKey, nickname)
+				return nickname
+			},
 			login() {
 				uni.navigateTo({
 					url: '/uni_modules/uni-id-pages/pages/login/login-withoutpwd',

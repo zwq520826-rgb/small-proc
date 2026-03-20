@@ -3,8 +3,12 @@ const common_vendor = require("../common/vendor.js");
 const orderService = common_vendor.tr.importObject("order-service");
 const state = common_vendor.reactive({
   hallTasks: [],
-  myTasks: []
+  myTasks: [],
+  // 只在“送达完成”等关键事件后才触发统计刷新，避免 onShow 高频打 stats
+  statsRefreshNeeded: false
 });
+let inited = false;
+let initPromise = null;
 function formatTaskFromDB(task) {
   return {
     id: task._id,
@@ -32,13 +36,13 @@ async function loadHallTasksFromCloud(sortBy = "distance") {
     const res = await orderService.getHallTasks({
       sortBy,
       page: 1,
-      pageSize: 100
+      pageSize: 7
     });
     if (res.code === 0) {
       state.hallTasks = (res.data || []).map(formatTaskFromDB);
       return true;
     } else {
-      common_vendor.index.__f__("error", "at store/riderTask.js:52", "加载大厅任务失败:", res.message);
+      common_vendor.index.__f__("error", "at store/riderTask.js:57", "加载大厅任务失败:", res.message);
       if (res.code !== "NO_LOGIN") {
         common_vendor.index.showToast({
           title: res.message || "加载失败",
@@ -48,7 +52,7 @@ async function loadHallTasksFromCloud(sortBy = "distance") {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:62", "加载大厅任务失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:67", "加载大厅任务失败:", error);
     common_vendor.index.hideLoading();
     return false;
   }
@@ -58,13 +62,13 @@ async function loadMyTasksFromCloud(status = "all") {
     const res = await orderService.getMyTasks({
       status,
       page: 1,
-      pageSize: 100
+      pageSize: 7
     });
     if (res.code === 0) {
       state.myTasks = (res.data || []).map(formatTaskFromDB);
       return true;
     } else {
-      common_vendor.index.__f__("error", "at store/riderTask.js:84", "加载我的任务失败:", res.message);
+      common_vendor.index.__f__("error", "at store/riderTask.js:89", "加载我的任务失败:", res.message);
       if (res.code !== "NO_LOGIN") {
         common_vendor.index.showToast({
           title: res.message || "加载失败",
@@ -74,7 +78,7 @@ async function loadMyTasksFromCloud(status = "all") {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:94", "加载我的任务失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:99", "加载我的任务失败:", error);
     common_vendor.index.hideLoading();
     return false;
   }
@@ -99,10 +103,21 @@ async function grabTask(id) {
   try {
     const res = await orderService.grabTask(id);
     if (res.code === 0) {
-      await Promise.all([
-        loadHallTasksFromCloud(),
-        loadMyTasksFromCloud("all")
-      ]);
+      const idx = state.hallTasks.findIndex((t) => t.id === id || t._id === id);
+      if (idx >= 0) {
+        const task = state.hallTasks[idx];
+        state.hallTasks.splice(idx, 1);
+        const moved = {
+          ...task,
+          status: "pending_pickup",
+          accept_time: Date.now()
+        };
+        const myIdx = state.myTasks.findIndex((t) => t.id === id || t._id === id);
+        if (myIdx >= 0)
+          state.myTasks.splice(myIdx, 1, moved);
+        else
+          state.myTasks.unshift(moved);
+      }
       return { success: true };
     } else {
       return {
@@ -111,7 +126,7 @@ async function grabTask(id) {
       };
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:147", "抢单失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:162", "抢单失败:", error);
     common_vendor.index.hideLoading();
     return {
       success: false,
@@ -133,7 +148,19 @@ async function confirmPickup(id, images = []) {
   try {
     const res = await orderService.confirmPickup(id, images);
     if (res.code === 0) {
-      await loadMyTasksFromCloud("all");
+      const idx = state.myTasks.findIndex((t) => t.id === id || t._id === id);
+      if (idx >= 0) {
+        const old = state.myTasks[idx];
+        state.myTasks[idx] = {
+          ...old,
+          status: "delivering",
+          pickup_time: Date.now(),
+          content: {
+            ...old.content || {},
+            ...images && images.length ? { pickup_images: images } : {}
+          }
+        };
+      }
       return true;
     } else {
       common_vendor.index.showToast({
@@ -143,7 +170,7 @@ async function confirmPickup(id, images = []) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:196", "确认取货失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:223", "确认取货失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -155,7 +182,21 @@ async function confirmDelivery(id, images) {
   try {
     const res = await orderService.confirmDelivery(id, images);
     if (res.code === 0) {
-      await loadMyTasksFromCloud("all");
+      const idx = state.myTasks.findIndex((t) => t.id === id || t._id === id);
+      if (idx >= 0) {
+        const old = state.myTasks[idx];
+        state.myTasks[idx] = {
+          ...old,
+          status: "completed",
+          complete_time: Date.now(),
+          completedAt: Date.now(),
+          content: {
+            ...old.content || {},
+            delivery_images: images
+          }
+        };
+      }
+      state.statsRefreshNeeded = true;
       return true;
     } else {
       common_vendor.index.showToast({
@@ -165,7 +206,7 @@ async function confirmDelivery(id, images) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:225", "确认送达失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:266", "确认送达失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -174,19 +215,31 @@ async function confirmDelivery(id, images) {
   }
 }
 async function initMock() {
-  await Promise.all([
+  const [hallOk, myOk] = await Promise.all([
     loadHallTasksFromCloud(),
     loadMyTasksFromCloud("all")
   ]);
+  if (hallOk || myOk)
+    inited = true;
 }
 function useRiderTaskStore() {
-  initMock();
+  if (!inited && !initPromise) {
+    initPromise = initMock().finally(() => {
+      initPromise = null;
+    });
+  }
   return {
     get hallTasks() {
       return state.hallTasks;
     },
     get myTasks() {
       return state.myTasks;
+    },
+    get statsRefreshNeeded() {
+      return state.statsRefreshNeeded;
+    },
+    setStatsRefreshNeeded: (v) => {
+      state.statsRefreshNeeded = !!v;
     },
     initMock,
     hallTasksSorted,
@@ -195,8 +248,11 @@ function useRiderTaskStore() {
     getTaskById,
     confirmPickup,
     confirmDelivery,
-    loadFromStorage: initMock
-    // 保持接口一致
+    loadFromStorage: (force = true) => {
+      if (!force && inited)
+        return Promise.resolve(true);
+      return initMock();
+    }
   };
 }
 exports.useRiderTaskStore = useRiderTaskStore;

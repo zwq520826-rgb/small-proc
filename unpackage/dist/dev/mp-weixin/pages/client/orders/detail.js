@@ -6,6 +6,9 @@ const _sfc_main = {
   setup(__props) {
     const store = store_clientOrder.useClientOrderStore();
     const order = common_vendor.ref(null);
+    const illegalOrder = common_vendor.ref(null);
+    const illegalOrderPromise = common_vendor.ref(null);
+    const db = common_vendor.tr.database();
     const timelineSteps = [
       { label: "已支付", status: "paid" },
       { label: "已接单", status: "accepted" },
@@ -105,7 +108,7 @@ const _sfc_main = {
       common_vendor.index.makePhoneCall({
         phoneNumber: order.value.rider.phone,
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/orders/detail.vue:269", "拨打电话失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/orders/detail.vue:299", "拨打电话失败:", err);
           common_vendor.index.showToast({ title: "拨打电话失败", icon: "none" });
         }
       });
@@ -128,6 +131,40 @@ const _sfc_main = {
           }
         }
       });
+    };
+    const loadIllegalOrderForCurrentOrder = async () => {
+      var _a;
+      if (!((_a = order.value) == null ? void 0 : _a.id) || order.value.status !== "cancelled") {
+        illegalOrder.value = null;
+        return;
+      }
+      const orderId = order.value.id;
+      try {
+        if (illegalOrderPromise.value)
+          return illegalOrderPromise.value;
+        illegalOrderPromise.value = db.collection("illegal-order").where({ order_id: orderId }).limit(1).get().then((res) => {
+          illegalOrder.value = res.data && res.data.length ? res.data[0] : null;
+        }).catch((e) => {
+          common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:350", "加载 illegal-order 失败:", e);
+          illegalOrder.value = null;
+        }).finally(() => {
+          illegalOrderPromise.value = null;
+        });
+        return illegalOrderPromise.value;
+      } catch (e) {
+        common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:359", "加载 illegal-order 异常:", e);
+        illegalOrder.value = null;
+        return null;
+      }
+    };
+    const formatQty = (n) => {
+      const v = Number(n || 0);
+      return Number.isFinite(v) ? v : 0;
+    };
+    const getIllegalReasonText = () => {
+      var _a;
+      const text = (_a = illegalOrder.value) == null ? void 0 : _a.reason_text;
+      return text ? text : "未记录原因";
     };
     const handleUrgent = () => {
       common_vendor.index.showModal({
@@ -183,6 +220,7 @@ const _sfc_main = {
         const updatedOrder = store.getOrderById(order.value.id);
         if (updatedOrder) {
           order.value = updatedOrder;
+          await loadIllegalOrderForCurrentOrder();
         }
       }
     };
@@ -192,6 +230,7 @@ const _sfc_main = {
         const foundOrder = store.getOrderById(options.id);
         if (foundOrder) {
           order.value = foundOrder;
+          await loadIllegalOrderForCurrentOrder();
         } else {
           common_vendor.index.showToast({ title: "订单不存在", icon: "none" });
           setTimeout(() => {
@@ -212,11 +251,12 @@ const _sfc_main = {
         const updatedOrder = store.getOrderById(order.value.id);
         if (updatedOrder) {
           order.value = updatedOrder;
+          await loadIllegalOrderForCurrentOrder();
         }
       }
     });
     return (_ctx, _cache) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J;
       return common_vendor.e({
         a: common_vendor.t(getStatusTitle()),
         b: common_vendor.t(getStatusSubtitle()),
@@ -265,18 +305,25 @@ const _sfc_main = {
       }, ((_v = order.value) == null ? void 0 : _v.rider) ? {
         v: common_vendor.t(formatTime(order.value.createTime))
       } : {}, {
-        w: ((_w = order.value) == null ? void 0 : _w.status) === "pending_accept"
-      }, ((_x = order.value) == null ? void 0 : _x.status) === "pending_accept" ? {
-        x: common_vendor.o(handleCancelOrder),
-        y: common_vendor.o(handleUrgent)
+        w: ((_w = order.value) == null ? void 0 : _w.status) === "cancelled" && illegalOrder.value
+      }, ((_x = order.value) == null ? void 0 : _x.status) === "cancelled" && illegalOrder.value ? {
+        x: common_vendor.t(getIllegalReasonText()),
+        y: common_vendor.t(formatQty((_z = (_y = illegalOrder.value) == null ? void 0 : _y.rider_quantities) == null ? void 0 : _z.small)),
+        z: common_vendor.t(formatQty((_B = (_A = illegalOrder.value) == null ? void 0 : _A.rider_quantities) == null ? void 0 : _B.medium)),
+        A: common_vendor.t(formatQty((_D = (_C = illegalOrder.value) == null ? void 0 : _C.rider_quantities) == null ? void 0 : _D.large))
       } : {}, {
-        z: ((_y = order.value) == null ? void 0 : _y.status) === "delivering"
-      }, ((_z = order.value) == null ? void 0 : _z.status) === "delivering" ? {
-        A: common_vendor.o(handleConfirmDelivery)
+        B: ((_E = order.value) == null ? void 0 : _E.status) === "pending_accept"
+      }, ((_F = order.value) == null ? void 0 : _F.status) === "pending_accept" ? {
+        C: common_vendor.o(handleCancelOrder),
+        D: common_vendor.o(handleUrgent)
       } : {}, {
-        B: ((_A = order.value) == null ? void 0 : _A.status) === "completed"
-      }, ((_B = order.value) == null ? void 0 : _B.status) === "completed" ? {
-        C: common_vendor.o(handleDeleteOrder)
+        E: ((_G = order.value) == null ? void 0 : _G.status) === "delivering"
+      }, ((_H = order.value) == null ? void 0 : _H.status) === "delivering" ? {
+        F: common_vendor.o(handleConfirmDelivery)
+      } : {}, {
+        G: ((_I = order.value) == null ? void 0 : _I.status) === "completed"
+      }, ((_J = order.value) == null ? void 0 : _J.status) === "completed" ? {
+        H: common_vendor.o(handleDeleteOrder)
       } : {});
     };
   }

@@ -137,8 +137,8 @@ const transactions = computed(() => walletStore.transactions)
 // 刷新余额
 const refreshBalance = async () => {
   uni.showLoading({ title: '刷新中...' })
-  await walletStore.loadFromCloud()
-  await walletStore.getTransactions({ page: 1, pageSize: 20 })
+  await walletStore.loadFromCloud(true)
+  await walletStore.getTransactions({ page: 1, pageSize: 20 }, true)
   uni.hideLoading()
   uni.showToast({ title: '已刷新', icon: 'success' })
 }
@@ -146,7 +146,7 @@ const refreshBalance = async () => {
 // 加载更多交易记录
 const loadMoreTransactions = async () => {
   uni.showLoading({ title: '加载中...' })
-  await walletStore.getTransactions({ page: 1, pageSize: 50 })
+  await walletStore.getTransactions({ page: 1, pageSize: 50 }, true)
   uni.hideLoading()
 }
 
@@ -195,7 +195,7 @@ const handleWithdraw = async () => {
     uni.showToast({ title: '提现成功', icon: 'success' })
     closeWithdrawPopup()
     // 刷新交易记录
-    await walletStore.getTransactions({ page: 1, pageSize: 20 })
+    await walletStore.getTransactions({ page: 1, pageSize: 20 }, true)
   } else {
     uni.showToast({ title: result.reason || '提现失败', icon: 'none' })
   }

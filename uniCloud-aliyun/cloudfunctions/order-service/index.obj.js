@@ -177,19 +177,12 @@ module.exports = {
 				.limit(pageSize)
 				.get()
 
-			// 获取总数
-			const countResult = await db.collection('orders')
-				.where({
-					user_id: uid,
-					...(status && status !== 'all' ? { status } : {})
-				})
-				.count()
-
 			return {
 				code: 0,
 				message: '获取成功',
 				data: result.data,
-				total: countResult.total
+				// 兼容旧字段：前端当前不依赖精确 total，因此用当前返回的数量回填
+				total: (result.data && result.data.length) ? result.data.length : 0
 			}
 		} catch (error) {
 			console.error('获取订单列表失败:', error)
@@ -431,6 +424,255 @@ module.exports = {
 	},
 
 	/**
+	 * 骑手取消订单（允许 delivering）
+	 * - reasonType='rider_personal'：骑手原因，订单回到大厅（pending_accept + hall_visible=true + rider_id=null），不退款
+	 * - reasonType='user_illegal'：用户问题，取消并全额退款 + 记录 illegal-order
+	 *
+	 * @param {string} orderId 订单ID（orders._id）
+	 * @param {object} payload
+	 * @param {'rider_personal'|'user_illegal'} payload.reasonType
+	 * @param {string} payload.reasonText 骑手说明（6~30字）
+	 * @param {object} payload.actualQuantities 骑手实际物品数量（仅 user_illegal 使用）：{ small, medium, large }
+	 */
+	async riderCancelOrder(orderId, payload = {}) {
+		const authResult = checkAuth(this)
+		if (authResult.code) {
+			return authResult
+		}
+		const riderUid = authResult.uid
+
+		if (!orderId) {
+			return {
+				code: 'INVALID_PARAM',
+				message: '订单ID不能为空'
+			}
+		}
+
+		const reasonType = payload && payload.reasonType ? String(payload.reasonType) : ''
+		const reasonText = (payload && payload.reasonText ? String(payload.reasonText) : '').trim()
+
+		if (!['rider_personal', 'user_illegal'].includes(reasonType)) {
+			return {
+				code: 'INVALID_PARAM',
+				message: '取消原因类型错误'
+			}
+		}
+		if (!reasonText || reasonText.length < 6 || reasonText.length > 30) {
+			return {
+				code: 'INVALID_PARAM',
+				message: '取消原因需在 6~30 字之间'
+			}
+		}
+
+		const dbCmd = db.command
+		const now = Date.now()
+
+		// 先读订单，用于校验权限与退款判定
+		const orderResult = await db.collection('orders').doc(orderId).get()
+		if (!orderResult.data || !orderResult.data.length) {
+			return { code: 'NOT_FOUND', message: '订单不存在' }
+		}
+		const order = orderResult.data[0]
+
+		// 只能取消自己接的单
+		if (order.rider_id !== riderUid) {
+			return { code: 'NO_PERMISSION', message: '无权限取消此订单' }
+		}
+
+		// 允许在 pending_pickup / delivering 取消
+		if (!['pending_pickup', 'delivering'].includes(order.status)) {
+			return { code: 'INVALID_STATUS', message: '当前订单状态无法取消' }
+		}
+
+		// 原子更新：先把订单改成目标状态，避免并发重复取消
+		let updateRes = null
+
+		if (reasonType === 'rider_personal') {
+			updateRes = await db.collection('orders')
+				.where({
+					_id: orderId,
+					rider_id: riderUid,
+					status: dbCmd.in(['pending_pickup', 'delivering'])
+				})
+				.update({
+					status: 'pending_accept',
+					hall_visible: true,
+					rider_id: null,
+					update_time: now
+				})
+		} else {
+			// user_illegal：全额退款 + 记录 illegal-order
+			const q = (payload && payload.actualQuantities) ? payload.actualQuantities : {}
+			const small = Number(q.small || 0)
+			const medium = Number(q.medium || 0)
+			const large = Number(q.large || 0)
+
+			if (
+				!Number.isFinite(small) ||
+				!Number.isFinite(medium) ||
+				!Number.isFinite(large) ||
+				small < 0 ||
+				medium < 0 ||
+				large < 0
+			) {
+				return { code: 'INVALID_PARAM', message: '数量不合法' }
+			}
+			if (small + medium + large <= 0) {
+				return { code: 'INVALID_PARAM', message: '请至少选择一种物品数量' }
+			}
+
+			updateRes = await db.collection('orders')
+				.where({
+					_id: orderId,
+					rider_id: riderUid,
+					status: dbCmd.in(['pending_pickup', 'delivering'])
+				})
+				.update({
+					status: 'cancelled',
+					hall_visible: false,
+					rider_id: null,
+					cancel_time: now,
+					update_time: now
+				})
+
+			if (updateRes.updated === 0) {
+				return { code: 'INVALID_STATUS', message: '订单状态已变化，无法取消' }
+			}
+
+			// 写入 illegal-order：记录“用户填的 vs 骑手判定的”
+			const userQs = (order.content && order.content.quantities) ? order.content.quantities : {}
+			await db.collection('illegal-order').add({
+				order_id: orderId,
+				user_id: order.user_id,
+				rider_id: riderUid,
+				reason_type: 'user_issue',
+				reason_text: reasonText,
+				user_quantities: {
+					small: Number(userQs.small || 0),
+					medium: Number(userQs.medium || 0),
+					large: Number(userQs.large || 0)
+				},
+				rider_quantities: { small, medium, large },
+				create_time: now,
+				update_time: now
+			})
+		}
+
+		if (updateRes.updated === 0) {
+			return { code: 'INVALID_STATUS', message: '订单状态已变化，无法取消' }
+		}
+
+		// rider_personal 不退款
+		if (reasonType === 'rider_personal') {
+			return {
+				code: 0,
+				message: '取消成功，订单已回到大厅'
+			}
+		}
+
+		// user_illegal：全额退款（目标用户为 order.user_id）
+		const userId = order.user_id
+		let refunded = false
+		let refundAmount = 0
+		let refundChannel = ''
+
+		let isPaid = false
+		let payTxDoc = null
+		if (order.pay_status === 'paid') {
+			isPaid = true
+		}
+
+		// 查一次成功支付流水用于判定渠道（兼容老数据）
+		const payTx = await db.collection('transactions')
+			.where({
+				user_id: userId,
+				type: 'pay',
+				status: 'success',
+				order_id: orderId
+			})
+			.orderBy('create_time', 'desc')
+			.limit(1)
+			.get()
+
+		if (payTx.data && payTx.data.length) {
+			payTxDoc = payTx.data[0]
+			isPaid = true
+		}
+
+		if (isPaid) {
+			refundAmount = Number(order.price || 0)
+			if (refundAmount > 0) {
+				const txChannel = (payTxDoc && payTxDoc.channel) ? String(payTxDoc.channel) : ''
+				const payMethod = (order.pay_method || '').toString()
+				const txLooksLikeWechat = !!(payTxDoc && (payTxDoc.out_trade_no || payTxDoc.transaction_id))
+				const isWechat =
+					txChannel === 'wechat' ||
+					txLooksLikeWechat ||
+					payMethod === 'wechat' ||
+					(!!order.out_trade_no && payMethod !== 'balance')
+
+				if (isWechat) {
+					refundChannel = 'wechat'
+					const paymentService = uniCloud.importObject('payment-service')
+					const refundRes = await paymentService.refundOrder({
+						orderId,
+						reason: reasonText,
+						userId
+					})
+					if (refundRes && refundRes.code === 0) {
+						refunded = true
+						await db.collection('orders').doc(orderId).update({
+							refund_status: 'refunding_wechat',
+							refund_time: now
+						})
+					} else {
+						await db.collection('orders').doc(orderId).update({
+							refund_status: 'refund_failed',
+							refund_time: now
+						})
+						return {
+							code: 'REFUND_FAILED',
+							message: refundRes?.message || '订单已取消，但微信退款申请失败，请联系管理员处理'
+						}
+					}
+				} else {
+					refundChannel = 'balance'
+					const walletService = uniCloud.importObject('wallet-service')
+					const refundRes = await walletService.refundForUser(userId, refundAmount, orderId)
+					if (refundRes && refundRes.code === 0) {
+						refunded = true
+						await db.collection('orders').doc(orderId).update({
+							refund_status: 'refunded_to_balance',
+							refund_time: now
+						})
+					} else {
+						await db.collection('orders').doc(orderId).update({
+							refund_status: 'refund_failed',
+							refund_time: now
+						})
+						return {
+							code: 'REFUND_FAILED',
+							message: '订单已取消，但退款失败，请联系管理员处理'
+						}
+					}
+				}
+			}
+		}
+
+		return {
+			code: 0,
+			message: refunded
+				? (refundChannel === 'wechat' ? '取消成功，已触发全额退款（原路退回微信）' : '取消成功，已触发全额退款（退回余额）')
+				: '取消成功',
+			data: {
+				refunded,
+				refund_amount: refunded ? refundAmount : 0,
+				refund_channel: refunded ? refundChannel : ''
+			}
+		}
+	},
+
+	/**
 	 * 删除订单
 	 * @param {string} orderId 订单ID
 	 * @returns {object} 删除结果
@@ -540,22 +782,12 @@ module.exports = {
 				.limit(pageSize)
 				.get()
 
-			// 获取总数
-			const countResult = await db.collection('orders')
-				.where({
-					status: 'pending_accept',
-					pay_status: 'paid',
-					hall_visible: true,
-					rider_id: dbCmd.exists(false).or(dbCmd.eq(null)),
-					user_id: dbCmd.neq(uid) // 排除自己发布的订单
-				})
-				.count()
-
 			return {
 				code: 0,
 				message: '获取成功',
 				data: result.data,
-				total: countResult.total
+				// 兼容旧字段：前端当前不依赖精确 total，因此用当前返回的数量回填
+				total: (result.data && result.data.length) ? result.data.length : 0
 			}
 		} catch (error) {
 			console.error('获取大厅任务失败:', error)
@@ -739,19 +971,12 @@ module.exports = {
 				.limit(pageSize)
 				.get()
 
-			// 获取总数
-			const countResult = await db.collection('orders')
-				.where({
-					rider_id: uid,
-					...(status && status !== 'all' ? { status } : {})
-				})
-				.count()
-
 			return {
 				code: 0,
 				message: '获取成功',
 				data: result.data,
-				total: countResult.total
+				// 兼容旧字段：前端当前不依赖精确 total，因此用当前返回的数量回填
+				total: (result.data && result.data.length) ? result.data.length : 0
 			}
 		} catch (error) {
 			console.error('获取我的任务失败:', error)

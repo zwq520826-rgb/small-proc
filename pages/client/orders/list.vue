@@ -110,7 +110,7 @@
 <script setup>
 import TheTabBar from '@/components/TheTabBar.vue'
 import { ref, computed } from 'vue' // 引入 computed
-import { onLoad, onPullDownRefresh, onShow } from '@dcloudio/uni-app'
+import { onPullDownRefresh } from '@dcloudio/uni-app'
 // 【修改点1】引入正确的 store (clientOrder.js)
 import { useClientOrderStore } from '@/store/clientOrder'
 
@@ -196,7 +196,6 @@ const handleCancel = async (id) => {
         uni.hideLoading()
         if (ok) {
           uni.showToast({ title: '已取消', icon: 'success' })
-          reloadCurrent()
         } else {
           // 错误提示已在 store 中处理
         }
@@ -216,7 +215,6 @@ const handleDelete = async (id) => {
         uni.hideLoading()
         if (ok) {
           uni.showToast({ title: '已删除', icon: 'success' })
-          reloadCurrent()
         } else {
           // 错误提示已在 store 中处理
         }
@@ -243,17 +241,6 @@ const goDetail = (id) => {
 onPullDownRefresh(async () => {
   await reloadCurrent()
   uni.stopPullDownRefresh()
-})
-
-onLoad(async () => {
-  // 初始化数据：从云端加载订单列表
-  await store.loadFromStorage()
-})
-
-onShow(async () => {
-  uni.hideHomeButton()
-  // 每次显示页面时刷新数据（从云端加载最新状态）
-  await store.loadFromStorage()
 })
 </script>
 

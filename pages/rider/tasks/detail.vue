@@ -70,12 +70,67 @@
       <!-- 已接单：待取货状态 -->
       <template v-if="task.status === 'pending_pickup'">
         <button class="btn btn-primary" @click="handleConfirmPickup">确认已取货</button>
+        <button class="btn btn-cancel" @click="openCancelPopup">取消订单</button>
       </template>
 
       <!-- 配送中状态 -->
       <template v-if="task.status === 'delivering'">
         <button class="btn btn-success" @click="handleConfirmDelivery">拍照送达</button>
+        <button class="btn btn-cancel" @click="openCancelPopup">取消订单</button>
       </template>
+    </view>
+
+    <!-- 骑手取消弹窗 -->
+    <view v-if="cancelPopupVisible" class="cancel-mask" @click.self="closeCancelPopup">
+      <view class="cancel-modal">
+        <view class="cancel-title">取消订单</view>
+
+        <view class="section">
+          <text class="label">取消原因类型</text>
+          <radio-group @change="onChangeReasonMode" :value="cancelReasonType">
+            <label class="radio-item">
+              <radio value="rider_personal" />
+              <text>个人原因</text>
+            </label>
+            <label class="radio-item">
+              <radio value="user_illegal" />
+              <text>用户问题（物件大小填写不符）</text>
+            </label>
+          </radio-group>
+        </view>
+
+        <view class="section">
+          <text class="label">取消原因说明（6~30字）</text>
+          <textarea
+            class="textarea"
+            v-model="cancelReasonText"
+            placeholder="例如：客户实际拿大件，但我收到订单标注小件"
+            maxlength="30"
+          />
+        </view>
+
+        <!-- 用户问题：需要骑手选择物件数量 -->
+        <view v-if="cancelReasonType === 'user_illegal'" class="section">
+          <text class="label">请填写骑手判定实际物件数量</text>
+          <view class="qty-row">
+            <text class="qty-label">小件</text>
+            <input class="qty-input" type="number" min="0" step="1" v-model.number="actualSmallQty" />
+          </view>
+          <view class="qty-row">
+            <text class="qty-label">中件</text>
+            <input class="qty-input" type="number" min="0" step="1" v-model.number="actualMediumQty" />
+          </view>
+          <view class="qty-row">
+            <text class="qty-label">大件</text>
+            <input class="qty-input" type="number" min="0" step="1" v-model.number="actualLargeQty" />
+          </view>
+        </view>
+
+        <view class="actions">
+          <button class="btn btn-secondary" @click="closeCancelPopup">返回</button>
+          <button class="btn btn-confirm" @click="confirmCancel">确认取消</button>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -87,6 +142,14 @@ import { useRiderTaskStore } from '@/store/riderTask'
 
 const store = useRiderTaskStore()
 const task = ref(null)
+
+// 取消弹窗状态
+const cancelPopupVisible = ref(false)
+const cancelReasonType = ref('rider_personal') // rider_personal | user_illegal
+const cancelReasonText = ref('')
+const actualSmallQty = ref(0)
+const actualMediumQty = ref(0)
+const actualLargeQty = ref(0)
 
 // 页面加载时获取 ID 并查找任务
 onLoad(async (options) => {
@@ -135,6 +198,74 @@ const handleCall = () => {
     return
   }
   uni.makePhoneCall({ phoneNumber: phone.replace(/\*/g, '') })
+}
+
+const openCancelPopup = () => {
+  if (!task.value) return
+  cancelPopupVisible.value = true
+  cancelReasonText.value = ''
+  cancelReasonType.value = 'rider_personal'
+
+  // 默认用“用户填写的数量”初始化，方便骑手直接修改为“骑手判定”
+  const qs = task.value?.content?.quantities || {}
+  actualSmallQty.value = Number(qs.small || 0)
+  actualMediumQty.value = Number(qs.medium || 0)
+  actualLargeQty.value = Number(qs.large || 0)
+}
+
+const closeCancelPopup = () => {
+  cancelPopupVisible.value = false
+}
+
+const onChangeReasonMode = (e) => {
+  cancelReasonType.value = e?.detail?.value
+}
+
+const confirmCancel = async () => {
+  if (!task.value) return
+  if (!cancelReasonText.value || cancelReasonText.value.trim().length < 6 || cancelReasonText.value.trim().length > 30) {
+    uni.showToast({ title: '取消原因需在 6~30 字之间', icon: 'none' })
+    return
+  }
+
+  const reasonType = cancelReasonType.value
+  const reasonText = cancelReasonText.value.trim()
+
+  if (reasonType === 'user_illegal') {
+    const s = Number(actualSmallQty.value || 0)
+    const m = Number(actualMediumQty.value || 0)
+    const l = Number(actualLargeQty.value || 0)
+    if (s + m + l <= 0) {
+      uni.showToast({ title: '请至少选择一种物品数量', icon: 'none' })
+      return
+    }
+
+    uni.showLoading({ title: '取消中...' })
+    const res = await store.riderCancelOrder(task.value.id || task.value._id, {
+      reasonType: 'user_illegal',
+      reasonText,
+      actualQuantities: { small: s, medium: m, large: l }
+    })
+    uni.hideLoading()
+
+    if (res?.success) {
+      uni.showToast({ title: '已触发全额退款', icon: 'success' })
+      setTimeout(() => uni.navigateBack(), 800)
+    }
+    return
+  }
+
+  uni.showLoading({ title: '取消中...' })
+  const res = await store.riderCancelOrder(task.value.id || task.value._id, {
+    reasonType: 'rider_personal',
+    reasonText
+  })
+  uni.hideLoading()
+
+  if (res?.success) {
+    uni.showToast({ title: '已回到大厅', icon: 'success' })
+    setTimeout(() => uni.navigateBack(), 800)
+  }
 }
 
 // 抢单
@@ -294,5 +425,54 @@ const handleConfirmDelivery = () => {
 .btn-grab { background: linear-gradient(135deg, #ff8f00, #ff7043); color: #fff; }
 .btn-primary { background: #2196f3; color: #fff; }
 .btn-success { background: #4caf50; color: #fff; }
+.btn-cancel { background: #f1f3f6; color: #333; border: 1rpx solid #e5e7eb; }
+
+.cancel-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
+.cancel-modal {
+  width: 100%;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 26rpx;
+  box-sizing: border-box;
+}
+.cancel-title { font-size: 34rpx; font-weight: 700; margin-bottom: 16rpx; }
+.section { margin-bottom: 18rpx; }
+.label { font-size: 26rpx; color: #666; display: block; margin-bottom: 10rpx; }
+.radio-item { display: flex; align-items: center; gap: 12rpx; margin-bottom: 10rpx; font-size: 26rpx; color: #333; }
+.textarea {
+  width: 100%;
+  min-height: 120rpx;
+  border: 1rpx solid #eee;
+  border-radius: 10rpx;
+  padding: 14rpx;
+  box-sizing: border-box;
+  font-size: 26rpx;
+}
+.qty-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14rpx; }
+.qty-label { font-size: 26rpx; color: #333; }
+.qty-input {
+  width: 240rpx;
+  text-align: right;
+  border: 1rpx solid #eee;
+  border-radius: 10rpx;
+  padding: 10rpx 14rpx;
+  box-sizing: border-box;
+  font-size: 26rpx;
+}
+.actions { display: flex; gap: 20rpx; }
+.btn-secondary { flex: 1; border: 1rpx solid #e5e7eb; background: #fff; color: #333; font-size: 32rpx; }
+.btn-confirm { flex: 1; border: none; background: #ff6f00; color: #fff; font-size: 32rpx; }
 .empty { text-align: center; padding-top: 200rpx; color: #999; }
 </style>

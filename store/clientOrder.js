@@ -7,6 +7,9 @@ const state = reactive({
   orders: []
 })
 
+let inited = false
+let initPromise = null
+
 /**
  * 将数据库格式转换为前端格式
  */
@@ -59,33 +62,45 @@ function formatOrderToDB(orderData) {
 /**
  * 从云数据库加载订单
  */
-async function loadOrdersFromCloud() {
+async function fetchOrdersFromCloud() {
   try {
     const res = await orderService.getOrderList({
       status: 'all',
       page: 1,
-      pageSize: 100
+      pageSize: 7
     })
 
     if (res.code === 0) {
       state.orders = (res.data || []).map(formatOrderFromDB)
+      inited = true
       return true
-    } else {
-      console.error('加载订单失败:', res.message)
-      // 如果未登录，不显示错误提示
-      if (res.code !== 'NO_LOGIN') {
-        uni.showToast({
-          title: res.message || '加载失败',
-          icon: 'none'
-        })
-      }
-      return false
     }
+
+    console.error('加载订单失败:', res.message)
+    // 如果未登录，不显示错误提示
+    if (res.code !== 'NO_LOGIN') {
+      uni.showToast({
+        title: res.message || '加载失败',
+        icon: 'none'
+      })
+    }
+    return false
   } catch (error) {
     console.error('加载订单失败:', error)
     // 网络错误时不显示提示，避免干扰用户体验
     return false
   }
+}
+
+async function loadOrdersFromCloud({ force = false } = {}) {
+  if (inited && !force) return true
+  if (initPromise) return initPromise
+
+  // 并发复用：避免多个组件/钩子同时触发同一次加载
+  initPromise = fetchOrdersFromCloud().finally(() => {
+    initPromise = null
+  })
+  return initPromise
 }
 
 /**
@@ -100,9 +115,14 @@ async function addOrder(payload) {
     const res = await orderService.createOrder(orderData)
 
     if (res.code === 0) {
-      // 创建成功后，重新加载列表
-      await loadOrdersFromCloud()
-      return res.data ? formatOrderFromDB(res.data) : null
+      const created = res.data ? formatOrderFromDB(res.data) : null
+      if (created) {
+        // 本地插入，避免再触发一次全量拉取（省云函数额度）
+        const existingIdx = state.orders.findIndex((o) => o.id === created.id || o._id === created._id)
+        if (existingIdx >= 0) state.orders.splice(existingIdx, 1, created)
+        else state.orders.unshift(created)
+      }
+      return created
     } else {
       uni.showToast({
         title: res.message || '创建失败',
@@ -133,8 +153,15 @@ async function cancelOrder(id) {
         title: res.message || '取消成功',
         icon: 'none'
       })
-      // 取消成功后，重新加载列表
-      await loadOrdersFromCloud()
+
+      // 本地更新状态，避免全量重刷
+      const idx = state.orders.findIndex((o) => o.id === id || o._id === id)
+      if (idx >= 0) {
+        state.orders[idx] = {
+          ...state.orders[idx],
+          status: 'cancelled'
+        }
+      }
       return true
     } else {
       uni.showToast({
@@ -161,8 +188,9 @@ async function deleteOrder(id) {
     const res = await orderService.deleteOrder(id)
 
     if (res.code === 0) {
-      // 删除成功后，重新加载列表
-      await loadOrdersFromCloud()
+      // 本地删除，避免全量重刷
+      const idx = state.orders.findIndex((o) => o.id === id || o._id === id)
+      if (idx >= 0) state.orders.splice(idx, 1)
       return true
     } else {
       uni.showToast({
@@ -203,8 +231,12 @@ function getOrderById(id) {
 }
 
 export function useClientOrderStore() {
-  // 初始化时加载数据
-  loadOrdersFromCloud()
+  // 单例初始化：避免每次 useClientOrderStore() 都触发云函数全量拉取
+  if (!inited && !initPromise) {
+    initPromise = loadOrdersFromCloud({ force: false }).finally(() => {
+      initPromise = null
+    })
+  }
 
   return {
     get orders() {
@@ -215,6 +247,6 @@ export function useClientOrderStore() {
     addOrder,
     cancelOrder,
     deleteOrder,
-    loadFromStorage: loadOrdersFromCloud // 保持接口一致，但实际是从云端加载
+    loadFromStorage: (force = true) => loadOrdersFromCloud({ force }) // 下拉刷新/需要强制时使用
   }
 }

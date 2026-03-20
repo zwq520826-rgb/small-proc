@@ -101,6 +101,32 @@
       </view>
     </view>
 
+    <!-- 用户问题取消提醒：从 illegal-order 表读取 -->
+    <view
+      v-if="order?.status === 'cancelled' && illegalOrder"
+      class="illegal-reminder-card"
+    >
+      <view class="illegal-title">温馨提示：本单因物件规格问题已被取消</view>
+      <view class="illegal-row">
+        <text class="illegal-label">原因：</text>
+        <text class="illegal-value">{{ getIllegalReasonText() }}</text>
+      </view>
+      <view class="illegal-row">
+        <text class="illegal-label">骑手判定规格：</text>
+        <text class="illegal-value">
+          小件 {{ formatQty(illegalOrder?.rider_quantities?.small) }} /
+          中件 {{ formatQty(illegalOrder?.rider_quantities?.medium) }} /
+          大件 {{ formatQty(illegalOrder?.rider_quantities?.large) }}
+        </text>
+      </view>
+      <view class="illegal-row">
+        <text class="illegal-label">请您下次填写：</text>
+        <text class="illegal-value">
+          按上面骑手判定的数量填写物件规格，避免再次取消
+        </text>
+      </view>
+    </view>
+
     <!-- Bottom Action Bar (Fixed) -->
     <view class="bottom-bar">
       <!-- pending_accept: 取消订单 + 加急 -->
@@ -143,6 +169,10 @@ import { useClientOrderStore } from '@/store/clientOrder'
 // 【修改点2】使用新的 store 名称
 const store = useClientOrderStore()
 const order = ref(null)
+const illegalOrder = ref(null)
+const illegalOrderPromise = ref(null)
+
+const db = uniCloud.database()
 
 // Timeline steps
 const timelineSteps = [
@@ -296,6 +326,52 @@ const handleCancelOrder = () => {
   })
 }
 
+// 读取骑手“用户问题取消”记录，用于向用户展示提醒
+const loadIllegalOrderForCurrentOrder = async () => {
+  // 非取消订单不需要
+  if (!order.value?.id || order.value.status !== 'cancelled') {
+    illegalOrder.value = null
+    return
+  }
+
+  const orderId = order.value.id
+  try {
+    if (illegalOrderPromise.value) return illegalOrderPromise.value
+
+    illegalOrderPromise.value = db
+      .collection('illegal-order')
+      .where({ order_id: orderId })
+      .limit(1)
+      .get()
+      .then((res) => {
+        illegalOrder.value = (res.data && res.data.length ? res.data[0] : null)
+      })
+      .catch((e) => {
+        console.warn('加载 illegal-order 失败:', e)
+        illegalOrder.value = null
+      })
+      .finally(() => {
+        illegalOrderPromise.value = null
+      })
+
+    return illegalOrderPromise.value
+  } catch (e) {
+    console.warn('加载 illegal-order 异常:', e)
+    illegalOrder.value = null
+    return null
+  }
+}
+
+const formatQty = (n) => {
+  const v = Number(n || 0)
+  return Number.isFinite(v) ? v : 0
+}
+
+const getIllegalReasonText = () => {
+  const text = illegalOrder.value?.reason_text
+  return text ? text : '未记录原因'
+}
+
 // Handle urgent
 const handleUrgent = () => {
   uni.showModal({
@@ -368,6 +444,7 @@ const loadOrder = async () => {
     const updatedOrder = store.getOrderById(order.value.id)
     if (updatedOrder) {
       order.value = updatedOrder
+      await loadIllegalOrderForCurrentOrder()
     }
   }
 }
@@ -381,6 +458,7 @@ onLoad(async (options) => {
     const foundOrder = store.getOrderById(options.id)
     if (foundOrder) {
       order.value = foundOrder
+      await loadIllegalOrderForCurrentOrder()
     } else {
       uni.showToast({ title: '订单不存在', icon: 'none' })
       setTimeout(() => {
@@ -402,6 +480,7 @@ onShow(async () => {
     const updatedOrder = store.getOrderById(order.value.id)
     if (updatedOrder) {
       order.value = updatedOrder
+      await loadIllegalOrderForCurrentOrder()
     }
   }
 })
@@ -449,6 +528,37 @@ onShow(async () => {
   display: block;
   font-size: 26rpx;
   opacity: 0.9;
+}
+
+.illegal-reminder-card {
+  margin: 20rpx 24rpx 0;
+  background: #fff7ed;
+  border: 1rpx solid #fed7aa;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.illegal-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #c2410c;
+  margin-bottom: 16rpx;
+}
+
+.illegal-row {
+  margin-bottom: 12rpx;
+}
+
+.illegal-label {
+  font-size: 26rpx;
+  color: #9a3412;
+  font-weight: 600;
+}
+
+.illegal-value {
+  font-size: 26rpx;
+  color: #333;
 }
 
 /* Timeline Section */

@@ -81,30 +81,18 @@ export async function payForOrder({ method, orderId, amount }) {
                 duration: 2000
               })
 
-              // 4. 可选：轮询查询订单状态，直到支付完成或失败
-              // 注意：实际支付结果由回调处理，这里只是前端确认
-              // 可以轮询几次确认支付状态
-              const queryResult = await queryPaymentStatus(res.data.outTradeNo)
-              
-              if (queryResult.success) {
-                // 兜底：主动确认并推进订单状态，避免仅依赖异步回调导致订单长时间停留“待支付”
-                try {
-                  await paymentService.confirmPaid({ outTradeNo: res.data.outTradeNo })
-                } catch (e) {
-                  // 不影响前端结果展示，最终仍可由回调推进
-                  console.warn('confirmPaid 失败（可忽略，等待回调）:', e)
-                }
-                resolve({
-                  success: true
-                })
-              } else {
-                // 即使查询失败，也认为支付成功（因为微信支付已经返回成功）
-                // 最终状态由回调确认
-                resolve({
-                  success: true,
-                  reason: '支付成功，订单处理中'
-                })
+              // 4. 兜底：只调用一次 confirmPaid，避免前端 queryOrder 轮询导致重复云函数/额度消耗。
+              //    confirmPaid 内部会向微信查询 trade_state，并且推进订单是幂等的。
+              try {
+                await paymentService.confirmPaid({ outTradeNo: res.data.outTradeNo })
+              } catch (e) {
+                // 不影响前端结果展示，最终仍可由微信回调推进订单状态
+                console.warn('confirmPaid 失败（可忽略，等待回调）:', e)
               }
+              resolve({
+                success: true,
+                reason: '支付成功，订单处理中'
+              })
             },
             fail: (err) => {
               console.error('微信支付失败:', err)

@@ -696,16 +696,12 @@ module.exports = {
 				.limit(pageSize)
 				.get()
 
-			// 获取总数
-			const countResult = await db.collection('transactions')
-				.where(where)
-				.count()
-
 			return {
 				code: 0,
 				message: '获取成功',
 				data: result.data,
-				total: countResult.total
+				// 兼容旧字段：前端当前不依赖精确 total，因此用当前返回的数量回填
+				total: (result.data && result.data.length) ? result.data.length : 0
 			}
 		} catch (error) {
 			console.error('获取交易记录失败:', error)

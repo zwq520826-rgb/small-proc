@@ -15,9 +15,22 @@ const _sfc_main = {
       { label: "配送中", value: "delivering" },
       { label: "已送达", value: "completed" }
     ];
+    let pulling = false;
     common_vendor.onShow(async () => {
       common_vendor.index.hideHomeButton();
-      await store.loadFromStorage();
+    });
+    common_vendor.onPullDownRefresh(async () => {
+      if (pulling)
+        return;
+      pulling = true;
+      try {
+        await store.loadFromStorage(true);
+      } catch (e) {
+        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:179", "下拉刷新失败:", e);
+      } finally {
+        pulling = false;
+        common_vendor.index.stopPullDownRefresh();
+      }
     });
     const taskList = common_vendor.computed(() => {
       const statusKeys = ["pending_pickup", "delivering", "completed"];
@@ -92,7 +105,7 @@ const _sfc_main = {
           });
           urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
         } catch (e) {
-          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:276", "获取临时文件 URL 失败:", e);
+          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:289", "获取临时文件 URL 失败:", e);
           common_vendor.index.showToast({ title: "图片加载失败，请稍后重试", icon: "none" });
           return;
         }
@@ -172,7 +185,7 @@ const _sfc_main = {
             } else {
             }
           } catch (e) {
-            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:393", "上传/送达确认失败:", e);
+            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:406", "上传/送达确认失败:", e);
             common_vendor.index.hideLoading();
             common_vendor.index.showToast({ title: e.message || "上传失败，请重试", icon: "none" });
           }

@@ -141,6 +141,13 @@ const images = ref([])
 const quantities = ref({ small: 0, medium: 0, large: 0 })
 // 从后端配置读取的小/中/大件价格（单位：元）
 const rates = ref({ small: 1.5, medium: 2, large: 3 })
+
+// 价格配置缓存：避免用户频繁进入/返回时重复触发 config-service 配置拉取
+let pickupRatesCache = null
+let lastPickupRatesLoadedAt = 0
+let pickupRatesPromise = null
+const PICKUP_RATES_MIN_INTERVAL_MS = 60 * 60 * 1000 // 1 小时冷却
+
 const isUrgent = ref(false)
 const isDelivery = ref(false)
 const dormNumber = ref('')
@@ -395,21 +402,44 @@ const formatPhone = (phone = '') => {
   return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
 }
 
-onLoad(async () => {
-  // 从后端配置服务加载快递代取价格
-  try {
-    const configService = uniCloud.importObject('config-service')
-    const res = await configService.getPickupRates()
-    if (res && res.code === 0 && res.data) {
-      rates.value = {
-        small: Number(res.data.small) || rates.value.small,
-        medium: Number(res.data.medium) || rates.value.medium,
-        large: Number(res.data.large) || rates.value.large
-      }
-    }
-  } catch (e) {
-    console.error('加载快递代取价格失败，将使用默认价格:', e)
+async function loadPickupRatesIfNeeded() {
+  const now = Date.now()
+
+  // 冷却内直接使用缓存（避免多次 onLoad 打云对象）
+  if (pickupRatesCache && now - lastPickupRatesLoadedAt < PICKUP_RATES_MIN_INTERVAL_MS) {
+    rates.value = { ...pickupRatesCache }
+    return
   }
+
+  // 并发复用：同一时刻只发起一次拉取
+  if (pickupRatesPromise) return pickupRatesPromise
+
+  pickupRatesPromise = (async () => {
+    try {
+      const configService = uniCloud.importObject('config-service')
+      const res = await configService.getPickupRates()
+      if (res && res.code === 0 && res.data) {
+        const nextRates = {
+          small: Number(res.data.small) || rates.value.small,
+          medium: Number(res.data.medium) || rates.value.medium,
+          large: Number(res.data.large) || rates.value.large
+        }
+        pickupRatesCache = nextRates
+        lastPickupRatesLoadedAt = Date.now()
+        rates.value = { ...nextRates }
+      }
+    } catch (e) {
+      console.error('加载快递代取价格失败，将使用默认价格:', e)
+    } finally {
+      pickupRatesPromise = null
+    }
+  })()
+
+  return pickupRatesPromise
+}
+
+onLoad(async () => {
+  await loadPickupRatesIfNeeded()
   // 预留扩展：可从路由参数预填数量或服务选项
 })
 </script>

@@ -59,7 +59,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import TheTabBar from '@/components/TheTabBar.vue'
 // 【修改点1】引入正确的 Rider Store
 import { useRiderTaskStore } from '@/store/riderTask'
@@ -68,6 +68,7 @@ import { useRiderTaskStore } from '@/store/riderTask'
 const store = useRiderTaskStore()
 // 骑手等级与统计信息
 const levelInfo = ref(null)
+let pulling = false
 
 const filterOptions = [
   { label: '距离最近', value: 'distance' },
@@ -239,18 +240,15 @@ const grab = async (task) => {
 
 onShow(async () => {
   uni.hideHomeButton()
-  // 从云端加载大厅任务
-  try {
-    await store.loadFromStorage()
-  } catch (error) {
-    console.error('加载任务失败:', error)
-    uni.hideLoading()
-  }
 
-  // 加载当前骑手等级与统计信息
+  // 只在需要时刷新骑手统计，避免每次进入页面都打 rider-service
   try {
+    const shouldRefresh = store.statsRefreshNeeded || !levelInfo.value
+    if (!shouldRefresh) return
+
     const riderService = uniCloud.importObject('rider-service')
     const res = await riderService.getMyStats()
+
     if (res && res.code === 0) {
       levelInfo.value = res.data
     } else if (res && res.code === 'NO_RIDER_PROFILE') {
@@ -259,8 +257,39 @@ onShow(async () => {
     } else if (res && res.message) {
       console.warn('获取骑手等级信息失败:', res.message)
     }
+
+    store.setStatsRefreshNeeded(false)
   } catch (e) {
     console.error('调用 rider-service.getMyStats 失败:', e)
+  }
+})
+
+onPullDownRefresh(async () => {
+  if (pulling) return
+  pulling = true
+
+  try {
+    // 下拉刷新：强制刷新大厅/我的任务（缩小 pageSize 后降低额度消耗）
+    await store.loadFromStorage(true)
+
+    // 同步刷新骑手等级/今日统计
+    const riderService = uniCloud.importObject('rider-service')
+    const res = await riderService.getMyStats()
+
+    if (res && res.code === 0) {
+      levelInfo.value = res.data
+    } else if (res && res.code === 'NO_RIDER_PROFILE') {
+      levelInfo.value = null
+    } else if (res && res.message) {
+      console.warn('获取骑手等级信息失败:', res.message)
+    }
+
+    store.setStatsRefreshNeeded(false)
+  } catch (e) {
+    console.error('下拉刷新失败:', e)
+  } finally {
+    pulling = false
+    uni.stopPullDownRefresh()
   }
 })
 </script>

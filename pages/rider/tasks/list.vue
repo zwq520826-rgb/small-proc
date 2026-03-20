@@ -149,7 +149,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import TheTabBar from '@/components/TheTabBar.vue'
 // 【修改点1】引入正确的 Rider Store
 import { useRiderTaskStore } from '@/store/riderTask'
@@ -164,10 +164,23 @@ const tabs = [
   { label: '已送达', value: 'completed' }
 ]
 
+let pulling = false
 onShow(async () => {
   uni.hideHomeButton()
-  // 从云端刷新数据
-  await store.loadFromStorage()
+})
+
+onPullDownRefresh(async () => {
+  if (pulling) return
+  pulling = true
+  try {
+    // 下拉刷新：强制刷新大厅/我的任务（页面仅展示，不额外触发 stats）
+    await store.loadFromStorage(true)
+  } catch (e) {
+    console.error('下拉刷新失败:', e)
+  } finally {
+    pulling = false
+    uni.stopPullDownRefresh()
+  }
 })
 
 // 【修改点3】重写列表获取逻辑

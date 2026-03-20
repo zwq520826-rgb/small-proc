@@ -1,0 +1,75 @@
+// 文档教程: https://uniapp.dcloud.net.cn/uniCloud/schema
+{
+	"bsonType": "object",
+	"required": ["order_id", "user_id", "rider_id", "reason_type", "reason_text", "user_quantities", "rider_quantities"],
+	"permission": {
+		"read": "doc.user_id == auth.uid || doc.rider_id == auth.uid",
+		"create": "auth.uid != null",
+		"update": "doc.user_id == auth.uid || doc.rider_id == auth.uid",
+		"delete": false
+	},
+	"properties": {
+		"_id": {
+			"description": "ID，系统自动生成"
+		},
+		"order_id": {
+			"bsonType": "string",
+			"description": "被取消的订单ID"
+		},
+		"user_id": {
+			"bsonType": "string",
+			"description": "下单用户ID",
+			"foreignKey": "uni-id-users._id"
+		},
+		"rider_id": {
+			"bsonType": "string",
+			"description": "取消该订单的骑手ID",
+			"foreignKey": "uni-id-users._id"
+		},
+		"reason_type": {
+			"bsonType": "string",
+			"description": "原因类型",
+			"enum": ["personal_reason", "user_issue"],
+			"enumDesc": {
+				"personal_reason": "骑手原因（个人原因）",
+				"user_issue": "用户问题（填写物品规格不符）"
+			}
+		},
+		"reason_text": {
+			"bsonType": "string",
+			"description": "骑手说明（6~30字）"
+		},
+		"user_quantities": {
+			"bsonType": "object",
+			"description": "用户在下单时填写的物品数量",
+			"properties": {
+				"small": { "bsonType": "double", "description": "小件数量" },
+				"medium": { "bsonType": "double", "description": "中件数量" },
+				"large": { "bsonType": "double", "description": "大件数量" }
+			}
+		},
+		"rider_quantities": {
+			"bsonType": "object",
+			"description": "骑手实际判定的物品数量",
+			"properties": {
+				"small": { "bsonType": "double", "description": "小件数量" },
+				"medium": { "bsonType": "double", "description": "中件数量" },
+				"large": { "bsonType": "double", "description": "大件数量" }
+			}
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"description": "创建时间",
+			"forceDefaultValue": {
+				"$env": "now"
+			}
+		},
+		"update_time": {
+			"bsonType": "timestamp",
+			"description": "更新时间",
+			"forceDefaultValue": {
+				"$env": "now"
+			}
+		}
+	}
+}

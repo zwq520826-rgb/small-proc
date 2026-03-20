@@ -51,25 +51,18 @@ async function payForOrder({ method, orderId, amount }) {
                 icon: "none",
                 duration: 2e3
               });
-              const queryResult = await queryPaymentStatus(res.data.outTradeNo);
-              if (queryResult.success) {
-                try {
-                  await paymentService.confirmPaid({ outTradeNo: res.data.outTradeNo });
-                } catch (e) {
-                  common_vendor.index.__f__("warn", "at store/pay.js:95", "confirmPaid 失败（可忽略，等待回调）:", e);
-                }
-                resolve({
-                  success: true
-                });
-              } else {
-                resolve({
-                  success: true,
-                  reason: "支付成功，订单处理中"
-                });
+              try {
+                await paymentService.confirmPaid({ outTradeNo: res.data.outTradeNo });
+              } catch (e) {
+                common_vendor.index.__f__("warn", "at store/pay.js:90", "confirmPaid 失败（可忽略，等待回调）:", e);
               }
+              resolve({
+                success: true,
+                reason: "支付成功，订单处理中"
+              });
             },
             fail: (err) => {
-              common_vendor.index.__f__("error", "at store/pay.js:110", "微信支付失败:", err);
+              common_vendor.index.__f__("error", "at store/pay.js:98", "微信支付失败:", err);
               common_vendor.index.hideLoading();
               if (err.errMsg && err.errMsg.includes("cancel")) {
                 resolve({
@@ -87,7 +80,7 @@ async function payForOrder({ method, orderId, amount }) {
         });
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at store/pay.js:130", "微信支付异常:", error);
+        common_vendor.index.__f__("error", "at store/pay.js:118", "微信支付异常:", error);
         return {
           success: false,
           reason: error.message || "支付失败，请重试"
@@ -100,47 +93,12 @@ async function payForOrder({ method, orderId, amount }) {
       };
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/pay.js:143", "payForOrder 异常:", error);
+    common_vendor.index.__f__("error", "at store/pay.js:131", "payForOrder 异常:", error);
     return {
       success: false,
       reason: error.message || "支付失败，请重试"
     };
   }
-}
-async function queryPaymentStatus(outTradeNo, maxRetries = 5, interval = 2e3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const res = await paymentService.queryOrder({ outTradeNo });
-      if (res.code === 0 && res.data) {
-        const { trade_state } = res.data;
-        if (trade_state === "SUCCESS") {
-          return {
-            success: true,
-            tradeState: trade_state
-          };
-        } else if (trade_state === "CLOSED" || trade_state === "REVOKED") {
-          return {
-            success: false,
-            tradeState: trade_state,
-            reason: "订单已关闭"
-          };
-        }
-      }
-      if (i < maxRetries - 1) {
-        await new Promise((resolve) => setTimeout(resolve, interval));
-      }
-    } catch (error) {
-      common_vendor.index.__f__("error", "at store/pay.js:186", "查询支付状态失败:", error);
-      if (i < maxRetries - 1) {
-        await new Promise((resolve) => setTimeout(resolve, interval));
-      }
-    }
-  }
-  return {
-    success: true,
-    // 即使查询超时，也认为可能成功（由回调最终确认）
-    tradeState: "UNKNOWN"
-  };
 }
 exports.payForOrder = payForOrder;
 //# sourceMappingURL=../../.sourcemap/mp-weixin/store/pay.js.map

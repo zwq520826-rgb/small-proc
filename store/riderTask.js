@@ -5,8 +5,13 @@ const orderService = uniCloud.importObject('order-service')
 
 const state = reactive({
   hallTasks: [],
-  myTasks: []
+  myTasks: [],
+  // 只在“送达完成”等关键事件后才触发统计刷新，避免 onShow 高频打 stats
+  statsRefreshNeeded: false
 })
+
+let inited = false
+let initPromise = null
 
 /**
  * 将数据库格式转换为前端格式
@@ -42,7 +47,7 @@ async function loadHallTasksFromCloud(sortBy = 'distance') {
     const res = await orderService.getHallTasks({
       sortBy: sortBy,
       page: 1,
-      pageSize: 100
+      pageSize: 7
     })
 
     if (res.code === 0) {
@@ -74,7 +79,7 @@ async function loadMyTasksFromCloud(status = 'all') {
     const res = await orderService.getMyTasks({
       status: status,
       page: 1,
-      pageSize: 100
+      pageSize: 7
     })
 
     if (res.code === 0) {
@@ -131,11 +136,21 @@ async function grabTask(id) {
     const res = await orderService.grabTask(id)
 
     if (res.code === 0) {
-      // 抢单成功后，重新加载数据
-      await Promise.all([
-        loadHallTasksFromCloud(),
-        loadMyTasksFromCloud('all')
-      ])
+      // 本地移动任务，避免全量重刷
+      const idx = state.hallTasks.findIndex((t) => t.id === id || t._id === id)
+      if (idx >= 0) {
+        const task = state.hallTasks[idx]
+        state.hallTasks.splice(idx, 1)
+
+        const moved = {
+          ...task,
+          status: 'pending_pickup',
+          accept_time: Date.now()
+        }
+        const myIdx = state.myTasks.findIndex((t) => t.id === id || t._id === id)
+        if (myIdx >= 0) state.myTasks.splice(myIdx, 1, moved)
+        else state.myTasks.unshift(moved)
+      }
       return { success: true }
     } else {
       return {
@@ -182,8 +197,20 @@ async function confirmPickup(id, images = []) {
     const res = await orderService.confirmPickup(id, images)
 
     if (res.code === 0) {
-      // 确认成功后，重新加载我的任务
-      await loadMyTasksFromCloud('all')
+      // 本地更新任务状态，避免全量重刷
+      const idx = state.myTasks.findIndex((t) => t.id === id || t._id === id)
+      if (idx >= 0) {
+        const old = state.myTasks[idx]
+        state.myTasks[idx] = {
+          ...old,
+          status: 'delivering',
+          pickup_time: Date.now(),
+          content: {
+            ...(old.content || {}),
+            ...(images && images.length ? { pickup_images: images } : {})
+          }
+        }
+      }
       return true
     } else {
       uni.showToast({
@@ -211,8 +238,22 @@ async function confirmDelivery(id, images) {
 
     if (res.code === 0) {
       // 送达成功后，骑手收入与等级升级由后端 rider-service 统一处理
-      // 确认成功后，重新加载我的任务
-      await loadMyTasksFromCloud('all')
+      // 本地更新任务状态，并标记统计刷新
+      const idx = state.myTasks.findIndex((t) => t.id === id || t._id === id)
+      if (idx >= 0) {
+        const old = state.myTasks[idx]
+        state.myTasks[idx] = {
+          ...old,
+          status: 'completed',
+          complete_time: Date.now(),
+          completedAt: Date.now(),
+          content: {
+            ...(old.content || {}),
+            delivery_images: images
+          }
+        }
+      }
+      state.statsRefreshNeeded = true
       return true
     } else {
       uni.showToast({
@@ -235,15 +276,20 @@ async function confirmDelivery(id, images) {
  * 初始化数据（兼容旧接口）
  */
 async function initMock() {
-  await Promise.all([
+  const [hallOk, myOk] = await Promise.all([
     loadHallTasksFromCloud(),
     loadMyTasksFromCloud('all')
   ])
+  if (hallOk || myOk) inited = true
 }
 
 export function useRiderTaskStore() {
-  // 初始化时加载数据
-  initMock()
+  // 单例初始化：避免每次 useRiderTaskStore() 都打两份全量列表
+  if (!inited && !initPromise) {
+    initPromise = initMock().finally(() => {
+      initPromise = null
+    })
+  }
 
   return {
     get hallTasks() {
@@ -252,6 +298,12 @@ export function useRiderTaskStore() {
     get myTasks() {
       return state.myTasks
     },
+    get statsRefreshNeeded() {
+      return state.statsRefreshNeeded
+    },
+    setStatsRefreshNeeded: (v) => {
+      state.statsRefreshNeeded = !!v
+    },
     initMock,
     hallTasksSorted,
     grabTask,
@@ -259,6 +311,9 @@ export function useRiderTaskStore() {
     getTaskById,
     confirmPickup,
     confirmDelivery,
-    loadFromStorage: initMock // 保持接口一致
+    loadFromStorage: (force = true) => {
+      if (!force && inited) return Promise.resolve(true)
+      return initMock()
+    }
   }
 }

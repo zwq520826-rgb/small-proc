@@ -12,26 +12,56 @@ const state = reactive({
   loading: false
 })
 
+let inited = false
+let initPromise = null
+let lastBalanceLoadedAt = 0
+let lastTransactionsLoadedAt = 0
+let lastTxKey = ''
+let txPromise = null
+
+// 避免页面频繁切换导致重复请求（尤其在 onShow 中）
+const BALANCE_MIN_INTERVAL_MS = 8000
+const TRANSACTIONS_MIN_INTERVAL_MS = 8000
+
 /**
  * 从云端加载钱包信息
  */
-async function loadFromCloud() {
-  if (state.loading) return
-  state.loading = true
+async function loadFromCloud(force = false) {
+  const now = Date.now()
+  if (state.loading && !force) return
+
+  // 单例 + 冷却：已经加载过且在冷却时间内，则跳过
+  if (!force && inited && now - lastBalanceLoadedAt < BALANCE_MIN_INTERVAL_MS) {
+    return true
+  }
+
+  if (initPromise && !force) return initPromise
+
+  initPromise = (async () => {
+    state.loading = true
+    try {
+      const res = await walletService.getBalance()
+      if (res.code === 0 && res.data) {
+        state.balance = res.data.balance || 0
+        state.frozenBalance = res.data.frozen_balance || 0
+        state.totalIncome = res.data.total_income || 0
+        state.totalExpense = res.data.total_expense || 0
+        inited = true
+        lastBalanceLoadedAt = Date.now()
+      }
+    } catch (e) {
+      console.warn('加载钱包信息失败:', e)
+    } finally {
+      state.loading = false
+    }
+  })()
   
   try {
-    const res = await walletService.getBalance()
-    if (res.code === 0 && res.data) {
-      state.balance = res.data.balance || 0
-      state.frozenBalance = res.data.frozen_balance || 0
-      state.totalIncome = res.data.total_income || 0
-      state.totalExpense = res.data.total_expense || 0
-    }
-  } catch (e) {
-    console.warn('加载钱包信息失败:', e)
+    await initPromise
   } finally {
-    state.loading = false
+    initPromise = null
   }
+  return true
 }
 
 /**
@@ -101,10 +131,28 @@ async function pay(amount, orderId) {
  * @returns {array} 交易记录列表
  */
 async function getTransactions(params = {}) {
+  return getTransactionsInternal(params, false)
+}
+
+async function getTransactionsInternal(params = {}, force = false) {
+  const now = Date.now()
+  const { type, page = 1, pageSize = 20 } = params
+  const txKey = `${type || 'all'}|${page}|${pageSize}`
+
+  // 冷却：同一请求参数在短时间内重复触发，则直接复用缓存
+  if (!force && txKey === lastTxKey && now - lastTransactionsLoadedAt < TRANSACTIONS_MIN_INTERVAL_MS) {
+    return { success: true, data: state.transactions, total: state.transactions?.length || 0 }
+  }
+
+  if (txPromise && !force) return txPromise
+
+  txPromise = (async () => {
   try {
-    const res = await walletService.getTransactionList(params)
+    const res = await walletService.getTransactionList({ type, page, pageSize })
     if (res.code === 0) {
       state.transactions = res.data || []
+      lastTxKey = txKey
+      lastTransactionsLoadedAt = Date.now()
       return { success: true, data: res.data, total: res.total }
     } else {
       return { success: false, reason: res.message }
@@ -112,6 +160,13 @@ async function getTransactions(params = {}) {
   } catch (e) {
     console.error('获取交易记录失败:', e)
     return { success: false, reason: '网络错误，请稍后重试' }
+  }
+  })()
+
+  try {
+    return await txPromise
+  } finally {
+    txPromise = null
   }
 }
 
@@ -142,6 +197,6 @@ export function useWalletStore() {
     recharge,
     withdraw,
     pay,
-    getTransactions
+    getTransactions: (params, force = false) => getTransactionsInternal(params, force)
   }
 }

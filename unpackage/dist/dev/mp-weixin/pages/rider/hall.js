@@ -10,6 +10,7 @@ const _sfc_main = {
   setup(__props) {
     const store = store_riderTask.useRiderTaskStore();
     const levelInfo = common_vendor.ref(null);
+    let pulling = false;
     const activeFilter = common_vendor.ref("distance");
     const stats = common_vendor.computed(() => {
       const completed = store.myTasks.filter((t) => t.status === "completed");
@@ -81,7 +82,7 @@ const _sfc_main = {
       common_vendor.index.navigateTo({
         url: `/pages/rider/tasks/detail?id=${taskId}`,
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/rider/hall.vue:175", "跳转失败:", err);
+          common_vendor.index.__f__("error", "at pages/rider/hall.vue:176", "跳转失败:", err);
           common_vendor.index.showToast({ title: "页面不存在，请重新编译", icon: "none" });
         }
       });
@@ -99,12 +100,9 @@ const _sfc_main = {
     common_vendor.onShow(async () => {
       common_vendor.index.hideHomeButton();
       try {
-        await store.loadFromStorage();
-      } catch (error) {
-        common_vendor.index.__f__("error", "at pages/rider/hall.vue:246", "加载任务失败:", error);
-        common_vendor.index.hideLoading();
-      }
-      try {
+        const shouldRefresh = store.statsRefreshNeeded || !levelInfo.value;
+        if (!shouldRefresh)
+          return;
         const riderService = common_vendor.tr.importObject("rider-service");
         const res = await riderService.getMyStats();
         if (res && res.code === 0) {
@@ -112,10 +110,34 @@ const _sfc_main = {
         } else if (res && res.code === "NO_RIDER_PROFILE") {
           levelInfo.value = null;
         } else if (res && res.message) {
-          common_vendor.index.__f__("warn", "at pages/rider/hall.vue:260", "获取骑手等级信息失败:", res.message);
+          common_vendor.index.__f__("warn", "at pages/rider/hall.vue:258", "获取骑手等级信息失败:", res.message);
         }
+        store.setStatsRefreshNeeded(false);
       } catch (e) {
         common_vendor.index.__f__("error", "at pages/rider/hall.vue:263", "调用 rider-service.getMyStats 失败:", e);
+      }
+    });
+    common_vendor.onPullDownRefresh(async () => {
+      if (pulling)
+        return;
+      pulling = true;
+      try {
+        await store.loadFromStorage(true);
+        const riderService = common_vendor.tr.importObject("rider-service");
+        const res = await riderService.getMyStats();
+        if (res && res.code === 0) {
+          levelInfo.value = res.data;
+        } else if (res && res.code === "NO_RIDER_PROFILE") {
+          levelInfo.value = null;
+        } else if (res && res.message) {
+          common_vendor.index.__f__("warn", "at pages/rider/hall.vue:284", "获取骑手等级信息失败:", res.message);
+        }
+        store.setStatsRefreshNeeded(false);
+      } catch (e) {
+        common_vendor.index.__f__("error", "at pages/rider/hall.vue:289", "下拉刷新失败:", e);
+      } finally {
+        pulling = false;
+        common_vendor.index.stopPullDownRefresh();
       }
     });
     return (_ctx, _cache) => {

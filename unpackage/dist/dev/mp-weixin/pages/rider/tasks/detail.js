@@ -6,6 +6,12 @@ const _sfc_main = {
   setup(__props) {
     const store = store_riderTask.useRiderTaskStore();
     const task = common_vendor.ref(null);
+    const cancelPopupVisible = common_vendor.ref(false);
+    const cancelReasonType = common_vendor.ref("rider_personal");
+    const cancelReasonText = common_vendor.ref("");
+    const actualSmallQty = common_vendor.ref(0);
+    const actualMediumQty = common_vendor.ref(0);
+    const actualLargeQty = common_vendor.ref(0);
     common_vendor.onLoad(async (options) => {
       if (options.id) {
         await store.loadFromStorage();
@@ -51,6 +57,66 @@ const _sfc_main = {
         return;
       }
       common_vendor.index.makePhoneCall({ phoneNumber: phone.replace(/\*/g, "") });
+    };
+    const openCancelPopup = () => {
+      var _a, _b;
+      if (!task.value)
+        return;
+      cancelPopupVisible.value = true;
+      cancelReasonText.value = "";
+      cancelReasonType.value = "rider_personal";
+      const qs = ((_b = (_a = task.value) == null ? void 0 : _a.content) == null ? void 0 : _b.quantities) || {};
+      actualSmallQty.value = Number(qs.small || 0);
+      actualMediumQty.value = Number(qs.medium || 0);
+      actualLargeQty.value = Number(qs.large || 0);
+    };
+    const closeCancelPopup = () => {
+      cancelPopupVisible.value = false;
+    };
+    const onChangeReasonMode = (e) => {
+      var _a;
+      cancelReasonType.value = (_a = e == null ? void 0 : e.detail) == null ? void 0 : _a.value;
+    };
+    const confirmCancel = async () => {
+      if (!task.value)
+        return;
+      if (!cancelReasonText.value || cancelReasonText.value.trim().length < 6 || cancelReasonText.value.trim().length > 30) {
+        common_vendor.index.showToast({ title: "取消原因需在 6~30 字之间", icon: "none" });
+        return;
+      }
+      const reasonType = cancelReasonType.value;
+      const reasonText = cancelReasonText.value.trim();
+      if (reasonType === "user_illegal") {
+        const s = Number(actualSmallQty.value || 0);
+        const m = Number(actualMediumQty.value || 0);
+        const l = Number(actualLargeQty.value || 0);
+        if (s + m + l <= 0) {
+          common_vendor.index.showToast({ title: "请至少选择一种物品数量", icon: "none" });
+          return;
+        }
+        common_vendor.index.showLoading({ title: "取消中..." });
+        const res2 = await store.riderCancelOrder(task.value.id || task.value._id, {
+          reasonType: "user_illegal",
+          reasonText,
+          actualQuantities: { small: s, medium: m, large: l }
+        });
+        common_vendor.index.hideLoading();
+        if (res2 == null ? void 0 : res2.success) {
+          common_vendor.index.showToast({ title: "已触发全额退款", icon: "success" });
+          setTimeout(() => common_vendor.index.navigateBack(), 800);
+        }
+        return;
+      }
+      common_vendor.index.showLoading({ title: "取消中..." });
+      const res = await store.riderCancelOrder(task.value.id || task.value._id, {
+        reasonType: "rider_personal",
+        reasonText
+      });
+      common_vendor.index.hideLoading();
+      if (res == null ? void 0 : res.success) {
+        common_vendor.index.showToast({ title: "已回到大厅", icon: "success" });
+        setTimeout(() => common_vendor.index.navigateBack(), 800);
+      }
     };
     const handleGrab = async () => {
       common_vendor.index.showModal({
@@ -161,12 +227,39 @@ const _sfc_main = {
       } : {}, {
         s: task.value.status === "pending_pickup"
       }, task.value.status === "pending_pickup" ? {
-        t: common_vendor.o(handleConfirmPickup)
+        t: common_vendor.o(handleConfirmPickup),
+        v: common_vendor.o(openCancelPopup)
       } : {}, {
-        v: task.value.status === "delivering"
+        w: task.value.status === "delivering"
       }, task.value.status === "delivering" ? {
-        w: common_vendor.o(handleConfirmDelivery)
-      } : {}) : {});
+        x: common_vendor.o(handleConfirmDelivery),
+        y: common_vendor.o(openCancelPopup)
+      } : {}) : {}, {
+        z: cancelPopupVisible.value
+      }, cancelPopupVisible.value ? common_vendor.e({
+        A: common_vendor.o(onChangeReasonMode),
+        B: cancelReasonType.value,
+        C: cancelReasonText.value,
+        D: common_vendor.o(($event) => cancelReasonText.value = $event.detail.value),
+        E: cancelReasonType.value === "user_illegal"
+      }, cancelReasonType.value === "user_illegal" ? {
+        F: actualSmallQty.value,
+        G: common_vendor.o(common_vendor.m(($event) => actualSmallQty.value = $event.detail.value, {
+          number: true
+        })),
+        H: actualMediumQty.value,
+        I: common_vendor.o(common_vendor.m(($event) => actualMediumQty.value = $event.detail.value, {
+          number: true
+        })),
+        J: actualLargeQty.value,
+        K: common_vendor.o(common_vendor.m(($event) => actualLargeQty.value = $event.detail.value, {
+          number: true
+        }))
+      } : {}, {
+        L: common_vendor.o(closeCancelPopup),
+        M: common_vendor.o(confirmCancel),
+        N: common_vendor.o(closeCancelPopup)
+      }) : {});
     };
   }
 };

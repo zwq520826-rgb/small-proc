@@ -15,6 +15,13 @@ const _sfc_main = {
     userInfo() {
       return uni_modules_uniIdPages_common_store.store.userInfo;
     },
+    displayNickname() {
+      if (this.userInfo.nickname)
+        return this.userInfo.nickname;
+      if (this.userInfo._id)
+        return this.getDefaultNickname();
+      return "点击登录/完善资料";
+    },
     isRiderMode() {
       return store_user.isRiderMode();
     },
@@ -80,6 +87,24 @@ const _sfc_main = {
     this.walletStore = store_wallet.useWalletStore();
   },
   methods: {
+    // 默认昵称：同学 + 长度为 3 的“数字或英文”随机组合，并按 uid 缓存保证稳定展示
+    getDefaultNickname() {
+      const uid = this.userInfo && this.userInfo._id ? String(this.userInfo._id) : "";
+      if (!uid)
+        return "点击登录/完善资料";
+      const cacheKey = `default_nickname_${uid}`;
+      const cached = common_vendor.index.getStorageSync(cacheKey);
+      if (cached && typeof cached === "string")
+        return cached;
+      const chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      let code = "";
+      for (let i = 0; i < 3; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      const nickname = `同学${code}`;
+      common_vendor.index.setStorageSync(cacheKey, nickname);
+      return nickname;
+    },
     login() {
       common_vendor.index.navigateTo({
         url: "/uni_modules/uni-id-pages/pages/login/login-withoutpwd",
@@ -111,13 +136,13 @@ const _sfc_main = {
           uniIdCo.bindMobileByUniverify(e.authResult).then((res) => {
             uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
           }).catch((e2) => {
-            common_vendor.index.__f__("log", "at pages/mine/index.vue:239", e2);
+            common_vendor.index.__f__("log", "at pages/mine/index.vue:263", e2);
           }).finally((e2) => {
             common_vendor.index.closeAuthView();
           });
         },
         fail: (err) => {
-          common_vendor.index.__f__("log", "at pages/mine/index.vue:246", err);
+          common_vendor.index.__f__("log", "at pages/mine/index.vue:270", err);
           if (err.code == "30002" || err.code == "30001") {
             this.bindMobileBySmsCode();
           }
@@ -254,7 +279,7 @@ const _sfc_main = {
             await uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
           },
           fail: async (err) => {
-            common_vendor.index.__f__("log", "at pages/mine/index.vue:389", err);
+            common_vendor.index.__f__("log", "at pages/mine/index.vue:413", err);
             common_vendor.index.hideLoading();
           }
         });
@@ -288,7 +313,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       width: "120rpx",
       height: "120rpx"
     }),
-    b: common_vendor.t($options.userInfo.nickname || "点击登录/完善资料"),
+    b: common_vendor.t($options.displayNickname),
     c: $options.userInfo.studentNo
   }, $options.userInfo.studentNo ? {
     d: common_vendor.t($options.userInfo.studentNo)

@@ -59,6 +59,32 @@
   font-size: 26rpx;
   opacity: 0.9;
 }
+.illegal-reminder-card.data-v-00b5e79f {
+  margin: 20rpx 24rpx 0;
+  background: #fff7ed;
+  border: 1rpx solid #fed7aa;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+.illegal-title.data-v-00b5e79f {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #c2410c;
+  margin-bottom: 16rpx;
+}
+.illegal-row.data-v-00b5e79f {
+  margin-bottom: 12rpx;
+}
+.illegal-label.data-v-00b5e79f {
+  font-size: 26rpx;
+  color: #9a3412;
+  font-weight: 600;
+}
+.illegal-value.data-v-00b5e79f {
+  font-size: 26rpx;
+  color: #333;
+}
 
 /* Timeline Section */
 .timeline-section.data-v-00b5e79f {

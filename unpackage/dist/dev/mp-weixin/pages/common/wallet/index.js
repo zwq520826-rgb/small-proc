@@ -23,14 +23,14 @@ const _sfc_main = {
     const transactions = common_vendor.computed(() => walletStore.transactions);
     const refreshBalance = async () => {
       common_vendor.index.showLoading({ title: "刷新中..." });
-      await walletStore.loadFromCloud();
-      await walletStore.getTransactions({ page: 1, pageSize: 20 });
+      await walletStore.loadFromCloud(true);
+      await walletStore.getTransactions({ page: 1, pageSize: 20 }, true);
       common_vendor.index.hideLoading();
       common_vendor.index.showToast({ title: "已刷新", icon: "success" });
     };
     const loadMoreTransactions = async () => {
       common_vendor.index.showLoading({ title: "加载中..." });
-      await walletStore.getTransactions({ page: 1, pageSize: 50 });
+      await walletStore.getTransactions({ page: 1, pageSize: 50 }, true);
       common_vendor.index.hideLoading();
     };
     const onCustomAmountInput = (type) => {
@@ -70,7 +70,7 @@ const _sfc_main = {
       if (result.success) {
         common_vendor.index.showToast({ title: "提现成功", icon: "success" });
         closeWithdrawPopup();
-        await walletStore.getTransactions({ page: 1, pageSize: 20 });
+        await walletStore.getTransactions({ page: 1, pageSize: 20 }, true);
       } else {
         common_vendor.index.showToast({ title: result.reason || "提现失败", icon: "none" });
       }
