@@ -69,6 +69,7 @@ const store = useRiderTaskStore()
 // 骑手等级与统计信息
 const levelInfo = ref(null)
 let pulling = false
+let pageRefreshing = false
 
 const filterOptions = [
   { label: '距离最近', value: 'distance' },
@@ -238,53 +239,33 @@ const grab = async (task) => {
   // setTimeout(() => uni.reLaunch({ url: '/pages/rider/tasks/list' }), 500)
 }
 
+const refreshPageData = async (force = false) => {
+  if (pageRefreshing) return
+  pageRefreshing = true
+  try {
+    const shouldForce = force || store.statsRefreshNeeded
+    await store.loadFromStorage(shouldForce, { sortBy: activeFilter.value })
+    levelInfo.value = store.riderStats || null
+    store.setStatsRefreshNeeded(false)
+  } finally {
+    pageRefreshing = false
+  }
+}
+
 onShow(async () => {
   uni.hideHomeButton()
-
-  // 只在需要时刷新骑手统计，避免每次进入页面都打 rider-service
   try {
-    const shouldRefresh = store.statsRefreshNeeded || !levelInfo.value
-    if (!shouldRefresh) return
-
-    const riderService = uniCloud.importObject('rider-service')
-    const res = await riderService.getMyStats()
-
-    if (res && res.code === 0) {
-      levelInfo.value = res.data
-    } else if (res && res.code === 'NO_RIDER_PROFILE') {
-      // 未认证骑手，不提示错误
-      levelInfo.value = null
-    } else if (res && res.message) {
-      console.warn('获取骑手等级信息失败:', res.message)
-    }
-
-    store.setStatsRefreshNeeded(false)
+    await refreshPageData(false)
   } catch (e) {
-    console.error('调用 rider-service.getMyStats 失败:', e)
+    console.error('页面刷新失败:', e)
   }
 })
 
 onPullDownRefresh(async () => {
   if (pulling) return
   pulling = true
-
   try {
-    // 下拉刷新：强制刷新大厅/我的任务（缩小 pageSize 后降低额度消耗）
-    await store.loadFromStorage(true)
-
-    // 同步刷新骑手等级/今日统计
-    const riderService = uniCloud.importObject('rider-service')
-    const res = await riderService.getMyStats()
-
-    if (res && res.code === 0) {
-      levelInfo.value = res.data
-    } else if (res && res.code === 'NO_RIDER_PROFILE') {
-      levelInfo.value = null
-    } else if (res && res.message) {
-      console.warn('获取骑手等级信息失败:', res.message)
-    }
-
-    store.setStatsRefreshNeeded(false)
+    await refreshPageData(true)
   } catch (e) {
     console.error('下拉刷新失败:', e)
   } finally {

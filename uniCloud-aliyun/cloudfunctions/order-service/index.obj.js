@@ -4,6 +4,52 @@
 const uniID = require('uni-id-common')
 const db = uniCloud.database()
 const dbCmd = db.command
+const HALL_TASK_FIELD_PROJECTION = {
+	_id: 1,
+	type: 1,
+	type_label: 1,
+	price: 1,
+	pickup_location: 1,
+	pickup_distance: 1,
+	delivery_location: 1,
+	address: 1,
+	status: 1,
+	'content.dormNumber': 1,
+	'content.isUrgent': 1,
+	'content.isDelivery': 1,
+	'content.requiredRiderGender': 1,
+	tags: 1,
+	rider_id: 1,
+	user_id: 1,
+	accept_time: 1
+}
+
+const MY_TASK_FIELD_PROJECTION = {
+	_id: 1,
+	type: 1,
+	type_label: 1,
+	price: 1,
+	pickup_location: 1,
+	pickup_distance: 1,
+	delivery_location: 1,
+	address: 1,
+	status: 1,
+	'content.images': 1,
+	'content.delivery_images': 1,
+	'content.deliveryImages': 1,
+	'content.phone': 1,
+	'content.dormNumber': 1,
+	'content.isUrgent': 1,
+	'content.isDelivery': 1,
+	'content.requiredRiderGender': 1,
+	'content.rider_income': 1,
+	tags: 1,
+	rider_id: 1,
+	user_id: 1,
+	accept_time: 1,
+	pickup_time: 1,
+	complete_time: 1
+}
 
 function pad2(n) {
 	return String(n).padStart(2, '0')
@@ -33,6 +79,111 @@ function checkAuth(ctx) {
 		}
 	}
 	return { uid: ctx.uid }
+}
+
+function ensurePositiveInt(val, fallback) {
+	const n = Number(val)
+	if (!Number.isFinite(n) || n <= 0) return fallback
+	return Math.floor(n)
+}
+
+async function getRiderStatsByUid(uid) {
+	const profileRes = await db.collection('rider_profiles')
+		.where({ user_id: uid })
+		.limit(1)
+		.get()
+
+	if (!profileRes.data.length) {
+		return {
+			code: 'NO_RIDER_PROFILE',
+			message: '请先完成骑手认证'
+		}
+	}
+
+	const profile = profileRes.data[0]
+	const total = profile.total_completed_orders || 0
+
+	const levelRes = await db.collection('rider_levels')
+		.orderBy('min_orders', 'asc')
+		.get()
+
+	const levels = levelRes.data || []
+	if (!levels.length) {
+		return {
+			code: 'NO_LEVEL_CONFIG',
+			message: '未配置骑手等级规则'
+		}
+	}
+
+	let currentLevel = levels[0]
+	for (const lvl of levels) {
+		if (total >= (lvl.min_orders || 0)) currentLevel = lvl
+		else break
+	}
+	const nextLevel = levels.find(l => total < (l.min_orders || 0)) || null
+	const currentCommission = Number(currentLevel.commission_rate || 0)
+	const nextCommission = nextLevel ? Number(nextLevel.commission_rate || 0) : null
+	const needMore = nextLevel ? Math.max(0, (nextLevel.min_orders || 0) - total) : 0
+
+	return {
+		code: 0,
+		data: {
+			level: currentLevel.code,
+			level_name: currentLevel.name,
+			total_completed_orders: total,
+			need_more_orders: needMore,
+			current_commission_rate: currentCommission,
+			next_commission_rate: nextCommission,
+			current_rider_share: 1 - currentCommission,
+			next_rider_share: nextCommission != null ? (1 - nextCommission) : null
+		}
+	}
+}
+
+async function fetchHallTasksByUid(uid, sortBy = 'distance', page = 1, pageSize = 10) {
+	let query = db.collection('orders').where({
+		status: 'pending_accept',
+		pay_status: 'paid',
+		hall_visible: true,
+		rider_id: dbCmd.exists(false).or(dbCmd.eq(null)),
+		user_id: dbCmd.neq(uid)
+	})
+
+	if (sortBy === 'price') {
+		query = query.orderBy('price', 'desc')
+	} else {
+		query = query.orderBy('pickup_distance', 'asc')
+	}
+
+	const result = await query
+		.field(HALL_TASK_FIELD_PROJECTION)
+		.orderBy('create_time', 'desc')
+		.skip((page - 1) * pageSize)
+		.limit(pageSize)
+		.get()
+
+	return result.data || []
+}
+
+async function fetchMyTasksByUid(uid, status = 'all', page = 1, pageSize = 10) {
+	let query = db.collection('orders').where({
+		rider_id: uid
+	})
+
+	if (status && status !== 'all') {
+		query = query.where({
+			status: status
+		})
+	}
+
+	const result = await query
+		.field(MY_TASK_FIELD_PROJECTION)
+		.orderBy('accept_time', 'desc')
+		.skip((page - 1) * pageSize)
+		.limit(pageSize)
+		.get()
+
+	return result.data || []
 }
 
 module.exports = {
@@ -786,6 +937,61 @@ module.exports = {
 	// ==================== 骑手端功能 ====================
 
 	/**
+	 * 获取骑手首页聚合数据（大厅任务 + 我的任务）
+	 * 目的：减少前端首屏多次云函数调用
+	 */
+	async getRiderDashboard(params = {}) {
+		const authResult = checkAuth(this)
+		if (authResult.code) {
+			return authResult
+		}
+
+		const {
+			sortBy = 'distance',
+			page = 1,
+			pageSize = 7,
+			myStatus = 'all',
+			myPage = 1,
+			myPageSize = 7,
+			includeStats = true
+		} = params
+
+		try {
+			const safePage = ensurePositiveInt(page, 1)
+			const safePageSize = ensurePositiveInt(pageSize, 7)
+			const safeMyPage = ensurePositiveInt(myPage, 1)
+			const safeMyPageSize = ensurePositiveInt(myPageSize, 7)
+
+			const [hallTasks, myTasks] = await Promise.all([
+				fetchHallTasksByUid(authResult.uid, sortBy, safePage, safePageSize),
+				fetchMyTasksByUid(authResult.uid, myStatus, safeMyPage, safeMyPageSize)
+			])
+
+			let riderStats = null
+			if (includeStats) {
+				const statsRes = await getRiderStatsByUid(authResult.uid)
+				if (statsRes.code === 0) riderStats = statsRes.data
+			}
+
+			return {
+				code: 0,
+				message: '获取成功',
+				data: {
+					hallTasks,
+					myTasks,
+					riderStats
+				}
+			}
+		} catch (error) {
+			console.error('获取骑手聚合数据失败:', error)
+			return {
+				code: 'DB_ERROR',
+				message: '获取骑手聚合数据失败：' + error.message
+			}
+		}
+	},
+
+	/**
 	 * 获取大厅任务列表（待接单的订单）
 	 * @param {object} params 查询参数
 	 * @param {string} params.sortBy 排序方式：distance（距离最近）/price（金额最高）
@@ -800,37 +1006,19 @@ module.exports = {
 		}
 		const uid = authResult.uid
 
-		const { sortBy = 'distance', page = 1, pageSize = 10 } = params
+		const sortBy = params.sortBy || 'distance'
+		const page = ensurePositiveInt(params.page, 1)
+		const pageSize = ensurePositiveInt(params.pageSize, 10)
 
 		try {
-			// 查询待接单的订单（必须已支付且在大厅可见；没有骑手接单的；且不是自己发布的）
-			let query = db.collection('orders').where({
-				status: 'pending_accept',
-				pay_status: 'paid',
-				hall_visible: true,
-				rider_id: dbCmd.exists(false).or(dbCmd.eq(null)),
-				user_id: dbCmd.neq(uid) // 排除自己发布的订单
-			})
-
-			// 排序
-			if (sortBy === 'price') {
-				query = query.orderBy('price', 'desc')
-			} else {
-				query = query.orderBy('pickup_distance', 'asc')
-			}
-
-			const result = await query
-				.orderBy('create_time', 'desc')
-				.skip((page - 1) * pageSize)
-				.limit(pageSize)
-				.get()
+			const data = await fetchHallTasksByUid(uid, sortBy, page, pageSize)
 
 			return {
 				code: 0,
 				message: '获取成功',
-				data: result.data,
+				data,
 				// 兼容旧字段：前端当前不依赖精确 total，因此用当前返回的数量回填
-				total: (result.data && result.data.length) ? result.data.length : 0
+				total: data.length
 			}
 		} catch (error) {
 			console.error('获取大厅任务失败:', error)
@@ -994,32 +1182,19 @@ module.exports = {
 		}
 		const uid = authResult.uid
 
-		const { status = 'all', page = 1, pageSize = 10 } = params
+		const status = params.status || 'all'
+		const page = ensurePositiveInt(params.page, 1)
+		const pageSize = ensurePositiveInt(params.pageSize, 10)
 
 		try {
-			let query = db.collection('orders').where({
-				rider_id: uid
-			})
-
-			// 根据状态过滤
-			if (status && status !== 'all') {
-				query = query.where({
-					status: status
-				})
-			}
-
-			const result = await query
-				.orderBy('accept_time', 'desc')
-				.skip((page - 1) * pageSize)
-				.limit(pageSize)
-				.get()
+			const data = await fetchMyTasksByUid(uid, status, page, pageSize)
 
 			return {
 				code: 0,
 				message: '获取成功',
-				data: result.data,
+				data,
 				// 兼容旧字段：前端当前不依赖精确 total，因此用当前返回的数量回填
-				total: (result.data && result.data.length) ? result.data.length : 0
+				total: data.length
 			}
 		} catch (error) {
 			console.error('获取我的任务失败:', error)

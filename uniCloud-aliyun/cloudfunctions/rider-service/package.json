@@ -1,5 +1,8 @@
 {
   "name": "rider-service",
+  "cloudfunction-config": {
+    "memorySize": 256
+  },
   "dependencies": {
     "uni-id-common": "file:../../../uni_modules/uni-id-common/uniCloud/cloudfunctions/common/uni-id-common"
   },

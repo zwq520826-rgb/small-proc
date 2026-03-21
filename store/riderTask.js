@@ -6,12 +6,17 @@ const orderService = uniCloud.importObject('order-service')
 const state = reactive({
   hallTasks: [],
   myTasks: [],
+  riderStats: null,
   // 只在“送达完成”等关键事件后才触发统计刷新，避免 onShow 高频打 stats
   statsRefreshNeeded: false
 })
 
 let inited = false
 let initPromise = null
+let refreshPromise = null
+let lastLoadAt = 0
+const CACHE_TTL_MS = 15000
+const MIN_REQ_INTERVAL_MS = 800
 
 /**
  * 将数据库格式转换为前端格式
@@ -100,6 +105,43 @@ async function loadMyTasksFromCloud(status = 'all') {
     // 确保 loading 被隐藏
     uni.hideLoading()
     return false
+  }
+}
+
+/**
+ * 聚合加载：大厅任务 + 我的任务
+ */
+async function loadRiderDashboardFromCloud(sortBy = 'distance') {
+  try {
+    const res = await orderService.getRiderDashboard({
+      sortBy,
+      page: 1,
+      pageSize: 7,
+      myStatus: 'all',
+      myPage: 1,
+      myPageSize: 7
+    })
+
+    if (res.code === 0) {
+      state.hallTasks = (res.data?.hallTasks || []).map(formatTaskFromDB)
+      state.myTasks = (res.data?.myTasks || []).map(formatTaskFromDB)
+      state.riderStats = res.data?.riderStats || null
+      return true
+    }
+
+    console.warn('聚合接口失败，回退到分接口:', res.message)
+    const [hallOk, myOk] = await Promise.all([
+      loadHallTasksFromCloud(sortBy),
+      loadMyTasksFromCloud('all')
+    ])
+    return !!(hallOk || myOk)
+  } catch (error) {
+    console.error('加载骑手聚合数据失败:', error)
+    const [hallOk, myOk] = await Promise.all([
+      loadHallTasksFromCloud(sortBy),
+      loadMyTasksFromCloud('all')
+    ])
+    return !!(hallOk || myOk)
   }
 }
 
@@ -320,11 +362,12 @@ async function riderCancelOrder(id, payload = {}) {
  * 初始化数据（兼容旧接口）
  */
 async function initMock() {
-  const [hallOk, myOk] = await Promise.all([
-    loadHallTasksFromCloud(),
-    loadMyTasksFromCloud('all')
-  ])
-  if (hallOk || myOk) inited = true
+  const ok = await loadRiderDashboardFromCloud('distance')
+  if (ok) {
+    inited = true
+    lastLoadAt = Date.now()
+  }
+  return ok
 }
 
 export function useRiderTaskStore() {
@@ -345,6 +388,9 @@ export function useRiderTaskStore() {
     get statsRefreshNeeded() {
       return state.statsRefreshNeeded
     },
+    get riderStats() {
+      return state.riderStats
+    },
     setStatsRefreshNeeded: (v) => {
       state.statsRefreshNeeded = !!v
     },
@@ -356,9 +402,28 @@ export function useRiderTaskStore() {
     confirmPickup,
     confirmDelivery,
     riderCancelOrder,
-    loadFromStorage: (force = true) => {
-      if (!force && inited) return Promise.resolve(true)
-      return initMock()
+    loadFromStorage: (force = false, options = {}) => {
+      const now = Date.now()
+      const sortBy = options.sortBy || 'distance'
+      const hasFreshCache = inited && now - lastLoadAt < CACHE_TTL_MS
+
+      if (!force && hasFreshCache) return Promise.resolve(true)
+      if (refreshPromise) return refreshPromise
+      if (!force && now - lastLoadAt < MIN_REQ_INTERVAL_MS) return Promise.resolve(true)
+
+      refreshPromise = loadRiderDashboardFromCloud(sortBy)
+        .then((ok) => {
+          if (ok) {
+            inited = true
+            lastLoadAt = Date.now()
+          }
+          return ok
+        })
+        .finally(() => {
+          refreshPromise = null
+        })
+
+      return refreshPromise
     }
   }
 }

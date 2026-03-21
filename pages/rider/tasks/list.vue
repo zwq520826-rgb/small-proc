@@ -171,8 +171,25 @@ const tabs = [
 ]
 
 let pulling = false
+let pageRefreshing = false
+
+const refreshPageData = async (force = false) => {
+  if (pageRefreshing) return
+  pageRefreshing = true
+  try {
+    await store.loadFromStorage(force)
+  } finally {
+    pageRefreshing = false
+  }
+}
+
 onShow(async () => {
   uni.hideHomeButton()
+  try {
+    await refreshPageData(false)
+  } catch (e) {
+    console.error('任务列表刷新失败:', e)
+  }
 })
 
 onPullDownRefresh(async () => {
@@ -180,7 +197,7 @@ onPullDownRefresh(async () => {
   pulling = true
   try {
     // 下拉刷新：强制刷新大厅/我的任务（页面仅展示，不额外触发 stats）
-    await store.loadFromStorage(true)
+    await refreshPageData(true)
   } catch (e) {
     console.error('下拉刷新失败:', e)
   } finally {

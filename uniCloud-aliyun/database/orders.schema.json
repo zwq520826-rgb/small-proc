@@ -7,6 +7,104 @@
 		"update": "doc.user_id == auth.uid || doc.rider_id == auth.uid",
 		"delete": "doc.user_id == auth.uid"
 	},
+	"indexes": [
+		{
+			"name": "idx_hall_distance",
+			"unique": false,
+			"field": [
+				{
+					"name": "status",
+					"type": "asc"
+				},
+				{
+					"name": "pay_status",
+					"type": "asc"
+				},
+				{
+					"name": "hall_visible",
+					"type": "asc"
+				},
+				{
+					"name": "rider_id",
+					"type": "asc"
+				},
+				{
+					"name": "pickup_distance",
+					"type": "asc"
+				},
+				{
+					"name": "create_time",
+					"type": "desc"
+				}
+			]
+		},
+		{
+			"name": "idx_hall_price",
+			"unique": false,
+			"field": [
+				{
+					"name": "status",
+					"type": "asc"
+				},
+				{
+					"name": "pay_status",
+					"type": "asc"
+				},
+				{
+					"name": "hall_visible",
+					"type": "asc"
+				},
+				{
+					"name": "rider_id",
+					"type": "asc"
+				},
+				{
+					"name": "price",
+					"type": "desc"
+				},
+				{
+					"name": "create_time",
+					"type": "desc"
+				}
+			]
+		},
+		{
+			"name": "idx_rider_status_accept_time",
+			"unique": false,
+			"field": [
+				{
+					"name": "rider_id",
+					"type": "asc"
+				},
+				{
+					"name": "status",
+					"type": "asc"
+				},
+				{
+					"name": "accept_time",
+					"type": "desc"
+				}
+			]
+		},
+		{
+			"name": "idx_user_status_create_time",
+			"unique": false,
+			"field": [
+				{
+					"name": "user_id",
+					"type": "asc"
+				},
+				{
+					"name": "status",
+					"type": "asc"
+				},
+				{
+					"name": "create_time",
+					"type": "desc"
+				}
+			]
+		}
+	],
 	"properties": {
 		"_id": {
 			"description": "订单ID，系统自动生成"
