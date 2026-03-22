@@ -68,7 +68,7 @@ const _sfc_main = {
       const result = await walletStore.withdraw(amount);
       common_vendor.index.hideLoading();
       if (result.success) {
-        common_vendor.index.showToast({ title: "提现成功", icon: "success" });
+        common_vendor.index.showToast({ title: result.message || "提交成功", icon: "success" });
         closeWithdrawPopup();
         await walletStore.getTransactions({ page: 1, pageSize: 20 }, true);
       } else {
@@ -95,6 +95,27 @@ const _sfc_main = {
       };
       return titles[type] || "其他";
     };
+    const withdrawMeta = (item) => {
+      if (item.type !== "withdraw")
+        return null;
+      const amt = Number(item.amount || 0);
+      const st = item.status || "pending";
+      if (st === "pending")
+        return { kind: "plain", text: "待打款 · 等待运营处理" };
+      if (st === "success")
+        return { kind: "plain", text: `已打款 · ¥${amt.toFixed(2)}` };
+      if (st === "failed") {
+        const r = String(item.remark || "").trim();
+        let reason = "";
+        if (r.startsWith("提现已驳回：")) {
+          reason = r.slice("提现已驳回：".length).trim();
+        } else if (r) {
+          reason = r;
+        }
+        return { kind: "reject", reason };
+      }
+      return { kind: "plain", text: "" };
+    };
     const isIncome = (type) => {
       return ["recharge", "income", "refund"].includes(type);
     };
@@ -110,7 +131,7 @@ const _sfc_main = {
     };
     common_vendor.onShow(async () => {
       await walletStore.loadFromCloud();
-      await walletStore.getTransactions({ page: 1, pageSize: 20 });
+      await walletStore.getTransactions({ page: 1, pageSize: 20 }, true);
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
@@ -123,15 +144,33 @@ const _sfc_main = {
         g: transactions.value.length === 0
       }, transactions.value.length === 0 ? {} : {
         h: common_vendor.f(transactions.value, (item, k0, i0) => {
-          return {
+          return common_vendor.e({
             a: common_vendor.t(getTransIcon(item.type)),
             b: common_vendor.t(getTransTitle(item.type)),
-            c: common_vendor.t(formatTime(item.create_time)),
-            d: common_vendor.t(isIncome(item.type) ? "+" : "-"),
-            e: common_vendor.t(item.amount.toFixed(2)),
-            f: isIncome(item.type) ? 1 : "",
-            g: item._id
-          };
+            c: withdrawMeta(item)
+          }, withdrawMeta(item) ? common_vendor.e({
+            d: withdrawMeta(item).kind === "reject"
+          }, withdrawMeta(item).kind === "reject" ? common_vendor.e({
+            e: withdrawMeta(item).reason
+          }, withdrawMeta(item).reason ? {
+            f: common_vendor.t(withdrawMeta(item).reason)
+          } : {}) : {
+            g: common_vendor.t(withdrawMeta(item).text)
+          }) : {}, {
+            h: common_vendor.t(formatTime(item.create_time)),
+            i: item.type === "withdraw" && item.status === "failed"
+          }, item.type === "withdraw" && item.status === "failed" ? {
+            j: common_vendor.t(item.amount.toFixed(2))
+          } : item.type === "withdraw" && item.status === "success" ? {
+            l: common_vendor.t(item.amount.toFixed(2))
+          } : {
+            m: common_vendor.t(isIncome(item.type) ? "+" : "-"),
+            n: common_vendor.t(item.amount.toFixed(2)),
+            o: isIncome(item.type) ? 1 : ""
+          }, {
+            k: item.type === "withdraw" && item.status === "success",
+            p: item._id
+          });
         })
       }, {
         i: common_vendor.o(closeWithdrawPopup),

@@ -55,7 +55,8 @@ const _sfc_main = {
         points: 580
       },
       walletStore: null,
-      couponCount: 3
+      couponCount: 3,
+      servicePhone: "18608945191"
     };
   },
   watch: {
@@ -136,13 +137,13 @@ const _sfc_main = {
           uniIdCo.bindMobileByUniverify(e.authResult).then((res) => {
             uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
           }).catch((e2) => {
-            common_vendor.index.__f__("log", "at pages/mine/index.vue:263", e2);
+            common_vendor.index.__f__("log", "at pages/mine/index.vue:275", e2);
           }).finally((e2) => {
             common_vendor.index.closeAuthView();
           });
         },
         fail: (err) => {
-          common_vendor.index.__f__("log", "at pages/mine/index.vue:270", err);
+          common_vendor.index.__f__("log", "at pages/mine/index.vue:282", err);
           if (err.code == "30002" || err.code == "30001") {
             this.bindMobileBySmsCode();
           }
@@ -193,10 +194,21 @@ const _sfc_main = {
       common_vendor.index.showToast({ title: "消息通知（待实现）", icon: "none" });
     },
     goService() {
-      common_vendor.index.showToast({ title: "在线客服（待实现）", icon: "none" });
+      this.$refs.servicePopup && this.$refs.servicePopup.open();
+    },
+    closeServicePopup() {
+      this.$refs.servicePopup && this.$refs.servicePopup.close();
+    },
+    copyServicePhone() {
+      common_vendor.index.setClipboardData({
+        data: this.servicePhone,
+        success: () => {
+          common_vendor.index.showToast({ title: "已复制", icon: "success" });
+        }
+      });
     },
     goHelp() {
-      common_vendor.index.showToast({ title: "帮助中心（待实现）", icon: "none" });
+      common_vendor.index.navigateTo({ url: "/pages/common/feedback/index" });
     },
     goSettings() {
       common_vendor.index.showToast({ title: "设置（待实现）", icon: "none" });
@@ -279,7 +291,7 @@ const _sfc_main = {
             await uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
           },
           fail: async (err) => {
-            common_vendor.index.__f__("log", "at pages/mine/index.vue:413", err);
+            common_vendor.index.__f__("log", "at pages/mine/index.vue:436", err);
             common_vendor.index.hideLoading();
           }
         });
@@ -363,8 +375,17 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     H: common_vendor.p({
       type: "dialog"
     }),
-    I: common_vendor.sr("bind-mobile-by-sms", "569e925a-3"),
-    J: common_vendor.o($options.bindMobileSuccess)
+    I: common_vendor.t($data.servicePhone),
+    J: common_vendor.o((...args) => $options.copyServicePhone && $options.copyServicePhone(...args)),
+    K: common_vendor.o((...args) => $options.closeServicePopup && $options.closeServicePopup(...args)),
+    L: common_vendor.o(() => {
+    }),
+    M: common_vendor.sr("servicePopup", "569e925a-3"),
+    N: common_vendor.p({
+      type: "center"
+    }),
+    O: common_vendor.sr("bind-mobile-by-sms", "569e925a-4"),
+    P: common_vendor.o($options.bindMobileSuccess)
   });
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-569e925a"]]);

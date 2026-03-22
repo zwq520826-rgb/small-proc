@@ -1,0 +1,104 @@
+{
+	"bsonType": "object",
+	"required": ["user_id", "type", "content", "status"],
+	"permission": {
+		"read": "doc.user_id == auth.uid",
+		"create": "auth.uid != null",
+		"update": false,
+		"delete": false
+	},
+	"indexes": [
+		{
+			"name": "idx_status_create_time",
+			"unique": false,
+			"field": [
+				{ "name": "status", "type": "asc" },
+				{ "name": "create_time", "type": "desc" }
+			]
+		},
+		{
+			"name": "idx_order_id",
+			"unique": false,
+			"field": [{ "name": "order_id", "type": "asc" }]
+		}
+	],
+	"properties": {
+		"_id": { "description": "投诉ID" },
+		"user_id": {
+			"bsonType": "string",
+			"description": "投诉人",
+			"foreignKey": "uni-id-users._id",
+			"title": "用户ID"
+		},
+		"order_id": {
+			"bsonType": "string",
+			"description": "关联订单（可选）",
+			"foreignKey": "orders._id",
+			"title": "订单ID"
+		},
+		"type": {
+			"bsonType": "string",
+			"description": "类型",
+			"enum": ["refund", "service", "rider", "other"],
+			"enumDesc": {
+				"refund": "退款",
+				"service": "服务问题",
+				"rider": "骑手问题",
+				"other": "其他"
+			},
+			"title": "类型"
+		},
+		"content": {
+			"bsonType": "string",
+			"description": "投诉内容",
+			"title": "内容"
+		},
+		"feedback_kind": {
+			"bsonType": "string",
+			"description": "用户侧分类：complaint=投诉，suggestion=建议",
+			"title": "反馈类型"
+		},
+		"images": {
+			"bsonType": "array",
+			"description": "配图 cloud fileID 列表",
+			"items": {
+				"bsonType": "string"
+			},
+			"title": "图片"
+		},
+		"status": {
+			"bsonType": "string",
+			"description": "处理状态：未解决/已解决（历史数据可能含 processing、closed）",
+			"enum": ["pending", "processing", "resolved", "closed"],
+			"enumDesc": {
+				"pending": "未解决",
+				"processing": "未解决(旧)",
+				"resolved": "已解决",
+				"closed": "已解决(旧)"
+			},
+			"title": "状态"
+		},
+		"admin_remark": {
+			"bsonType": "string",
+			"description": "运营备注",
+			"title": "运营备注"
+		},
+		"handled_by_uid": {
+			"bsonType": "string",
+			"description": "处理人",
+			"foreignKey": "uni-id-users._id",
+			"title": "处理人"
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"description": "创建时间",
+			"forceDefaultValue": { "$env": "now" },
+			"title": "创建时间"
+		},
+		"update_time": {
+			"bsonType": "timestamp",
+			"description": "更新时间",
+			"title": "更新时间"
+		}
+	}
+}

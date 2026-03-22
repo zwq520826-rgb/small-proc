@@ -103,6 +103,48 @@
 					"type": "desc"
 				}
 			]
+		},
+		{
+			"name": "idx_create_time",
+			"unique": false,
+			"field": [
+				{
+					"name": "create_time",
+					"type": "desc"
+				}
+			]
+		},
+		{
+			"name": "idx_pay_status_create_time",
+			"unique": false,
+			"field": [
+				{
+					"name": "pay_status",
+					"type": "asc"
+				},
+				{
+					"name": "create_time",
+					"type": "desc"
+				}
+			]
+		},
+		{
+			"name": "idx_rider_complete_time",
+			"unique": false,
+			"field": [
+				{
+					"name": "rider_id",
+					"type": "asc"
+				},
+				{
+					"name": "status",
+					"type": "asc"
+				},
+				{
+					"name": "complete_time",
+					"type": "desc"
+				}
+			]
 		}
 	],
 	"properties": {

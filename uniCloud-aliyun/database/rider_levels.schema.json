@@ -1,15 +1,48 @@
 {
 	"bsonType": "object",
-	"required": [],
+	"required": ["code", "name", "min_orders", "commission_rate"],
 	"permission": {
 		"read": false,
 		"create": false,
 		"update": false,
 		"delete": false
 	},
+	"indexes": [
+		{
+			"name": "idx_min_orders",
+			"unique": false,
+			"field": [{ "name": "min_orders", "type": "asc" }]
+		}
+	],
 	"properties": {
-		"_id": {
-			"description": "ID，系统自动生成"
+		"_id": { "description": "文档 ID" },
+		"code": {
+			"bsonType": "string",
+			"description": "等级代码，如 L1、L2",
+			"title": "等级 code"
+		},
+		"name": {
+			"bsonType": "string",
+			"description": "用户可见等级名称",
+			"title": "等级名称"
+		},
+		"min_orders": {
+			"bsonType": "int",
+			"description": "达到该等级所需累计完成订单数（含本档）",
+			"title": "最低完成单数"
+		},
+		"commission_rate": {
+			"bsonType": "double",
+			"description": "平台抽成比例 0~1（如 0.11 表示 11%），骑手分成 = 1 - 抽成",
+			"title": "平台抽成比例"
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"title": "创建时间"
+		},
+		"update_time": {
+			"bsonType": "timestamp",
+			"title": "更新时间"
 		}
 	}
 }

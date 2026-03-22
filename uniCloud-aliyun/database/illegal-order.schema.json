@@ -8,6 +8,18 @@
 		"update": "doc.user_id == auth.uid || doc.rider_id == auth.uid",
 		"delete": false
 	},
+	"indexes": [
+		{
+			"name": "idx_create_time",
+			"unique": false,
+			"field": [{ "name": "create_time", "type": "desc" }]
+		},
+		{
+			"name": "idx_order_id",
+			"unique": false,
+			"field": [{ "name": "order_id", "type": "asc" }]
+		}
+	],
 	"properties": {
 		"_id": {
 			"description": "ID，系统自动生成"

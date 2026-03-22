@@ -1,0 +1,60 @@
+{
+	"bsonType": "object",
+	"required": ["stat_date"],
+	"permission": {
+		"read": false,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"indexes": [
+		{
+			"name": "idx_stat_date",
+			"unique": true,
+			"field": [{ "name": "stat_date", "type": "desc" }]
+		}
+	],
+	"properties": {
+		"_id": { "description": "主键" },
+		"stat_date": {
+			"bsonType": "string",
+			"description": "统计日期 YYYY-MM-DD",
+			"title": "日期"
+		},
+		"order_count": {
+			"bsonType": "int",
+			"description": "订单数（可按业务定义）",
+			"title": "订单数"
+		},
+		"paid_order_count": {
+			"bsonType": "int",
+			"description": "已支付订单数",
+			"title": "已支付单数"
+		},
+		"gmv": {
+			"bsonType": "double",
+			"description": "成交额（元）",
+			"title": "GMV"
+		},
+		"platform_income": {
+			"bsonType": "double",
+			"description": "平台收入/抽成（元，可选）",
+			"title": "平台收入"
+		},
+		"withdraw_paid_amount": {
+			"bsonType": "double",
+			"description": "当日已打款提现总额（元，可选）",
+			"title": "提现打款金额"
+		},
+		"complaint_count": {
+			"bsonType": "int",
+			"description": "投诉条数（可选）",
+			"title": "投诉数"
+		},
+		"update_time": {
+			"bsonType": "timestamp",
+			"description": "本条统计生成时间",
+			"title": "更新时间"
+		}
+	}
+}

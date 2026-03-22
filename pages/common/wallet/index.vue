@@ -52,11 +52,34 @@
             <text class="trans-icon">{{ getTransIcon(item.type) }}</text>
             <view class="trans-info">
               <text class="trans-title">{{ getTransTitle(item.type) }}</text>
+              <view v-if="withdrawMeta(item)" class="trans-sub-wrap">
+                <view v-if="withdrawMeta(item).kind === 'reject'" class="trans-sub-row">
+                  <text class="trans-sub-reject">已驳回</text>
+                  <text v-if="withdrawMeta(item).reason" class="trans-sub-reason"> · {{ withdrawMeta(item).reason }}</text>
+                </view>
+                <text v-else class="trans-sub">{{ withdrawMeta(item).text }}</text>
+              </view>
               <text class="trans-time">{{ formatTime(item.create_time) }}</text>
             </view>
           </view>
-          <text 
-            class="trans-amount" 
+          <!-- 提现驳回：金额删除线 + ❌ 覆盖 -->
+          <view
+            v-if="item.type === 'withdraw' && item.status === 'failed'"
+            class="trans-amount-wrap withdraw-failed"
+          >
+            <text class="withdraw-failed-text">-¥{{ item.amount.toFixed(2) }}</text>
+            <text class="withdraw-failed-x">❌</text>
+          </view>
+          <!-- 提现已打款：绿色金额 -->
+          <text
+            v-else-if="item.type === 'withdraw' && item.status === 'success'"
+            class="trans-amount trans-withdraw-paid"
+          >
+            -¥{{ item.amount.toFixed(2) }}
+          </text>
+          <text
+            v-else
+            class="trans-amount"
             :class="{ income: isIncome(item.type) }"
           >
             {{ isIncome(item.type) ? '+' : '-' }}¥{{ item.amount.toFixed(2) }}
@@ -99,10 +122,6 @@
             placeholder="请输入提现金额"
             @input="onCustomAmountInput('withdraw')"
           />
-        </view>
-
-        <view class="withdraw-tip">
-          <text class="tip-text">💡 模拟提现，实际项目需接入微信支付</text>
         </view>
 
         <button class="confirm-btn withdraw-confirm" @click="handleWithdraw">
@@ -192,7 +211,7 @@ const handleWithdraw = async () => {
   uni.hideLoading()
 
   if (result.success) {
-    uni.showToast({ title: '提现成功', icon: 'success' })
+    uni.showToast({ title: result.message || '提交成功', icon: 'success' })
     closeWithdrawPopup()
     // 刷新交易记录
     await walletStore.getTransactions({ page: 1, pageSize: 20 }, true)
@@ -224,6 +243,28 @@ const getTransTitle = (type) => {
   return titles[type] || '其他'
 }
 
+/**
+ * 提现副文案：驳回单独拆出「已驳回」便于标红；其余为整段灰字
+ */
+const withdrawMeta = (item) => {
+  if (item.type !== 'withdraw') return null
+  const amt = Number(item.amount || 0)
+  const st = item.status || 'pending'
+  if (st === 'pending') return { kind: 'plain', text: '待打款 · 等待运营处理' }
+  if (st === 'success') return { kind: 'plain', text: `已打款 · ¥${amt.toFixed(2)}` }
+  if (st === 'failed') {
+    const r = String(item.remark || '').trim()
+    let reason = ''
+    if (r.startsWith('提现已驳回：')) {
+      reason = r.slice('提现已驳回：'.length).trim()
+    } else if (r) {
+      reason = r
+    }
+    return { kind: 'reject', reason }
+  }
+  return { kind: 'plain', text: '' }
+}
+
 const isIncome = (type) => {
   return ['recharge', 'income', 'refund'].includes(type)
 }
@@ -238,10 +279,10 @@ const formatTime = (timestamp) => {
   return `${month}-${day} ${hour}:${minute}`
 }
 
-// 页面显示时加载数据
+// 页面显示时加载数据（交易记录强制拉取，避免 8s 缓存导致看不到后台刚更新的打款/驳回状态）
 onShow(async () => {
   await walletStore.loadFromCloud()
-  await walletStore.getTransactions({ page: 1, pageSize: 20 })
+  await walletStore.getTransactions({ page: 1, pageSize: 20 }, true)
 })
 </script>
 
@@ -438,10 +479,46 @@ onShow(async () => {
   color: #333333;
 }
 
+.trans-sub-wrap {
+  margin-top: 6rpx;
+}
+
+.trans-sub-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  line-height: 1.4;
+}
+
+.trans-sub-reject {
+  font-size: 24rpx;
+  color: #e53935;
+  font-weight: 600;
+}
+
+.trans-sub-reason {
+  font-size: 24rpx;
+  color: #666666;
+  line-height: 1.4;
+}
+
+.trans-sub-wrap > .trans-sub {
+  margin-top: 0;
+}
+
+.trans-sub {
+  display: block;
+  font-size: 24rpx;
+  color: #666666;
+  margin-top: 6rpx;
+  line-height: 1.4;
+}
+
 .trans-time {
   font-size: 24rpx;
   color: #999999;
-  margin-top: 4rpx;
+  margin-top: 6rpx;
 }
 
 .trans-amount {
@@ -452,6 +529,38 @@ onShow(async () => {
 
 .trans-amount.income {
   color: #4caf50;
+}
+
+.trans-withdraw-paid {
+  color: #07c160;
+}
+
+.trans-amount-wrap.withdraw-failed {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 140rpx;
+  min-height: 48rpx;
+}
+
+.withdraw-failed-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #e53935;
+  text-decoration: line-through;
+  text-decoration-color: #e53935;
+}
+
+.withdraw-failed-x {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -52%);
+  font-size: 52rpx;
+  line-height: 1;
+  opacity: 0.9;
+  pointer-events: none;
 }
 
 // 弹窗样式
@@ -551,18 +660,6 @@ onShow(async () => {
   padding: 0 24rpx;
   font-size: 30rpx;
   box-sizing: border-box;
-}
-
-.withdraw-tip {
-  margin-bottom: 24rpx;
-  padding: 16rpx;
-  background: #fff8e6;
-  border-radius: 12rpx;
-}
-
-.tip-text {
-  font-size: 24rpx;
-  color: #ff9800;
 }
 
 .confirm-btn {

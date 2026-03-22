@@ -1,0 +1,29 @@
+{
+	"bsonType": "object",
+	"required": [],
+	"permission": {
+		"read": false,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"properties": {
+		"_id": { "description": "单条首页顶部广告配置" },
+		"title": { "bsonType": "string", "title": "标题" },
+		"desc": { "bsonType": "string", "title": "副标题/说明" },
+		"cta_text": { "bsonType": "string", "description": "右侧按钮文案", "title": "按钮" },
+		"image_file_id": {
+			"bsonType": "string",
+			"description": "云存储 fileID，可选",
+			"title": "广告图"
+		},
+		"link_url": {
+			"bsonType": "string",
+			"description": "点击整图跳转（小程序内路径或 https），空则点按钮走联系运营",
+			"title": "跳转链接"
+		},
+		"enabled": { "bsonType": "bool", "title": "启用" },
+		"update_time": { "bsonType": "timestamp", "title": "更新时间" },
+		"create_time": { "bsonType": "timestamp", "title": "创建时间" }
+	}
+}

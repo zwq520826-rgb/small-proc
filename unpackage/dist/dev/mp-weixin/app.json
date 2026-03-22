@@ -10,6 +10,7 @@
     "pages/common/address/list",
     "pages/common/address/edit",
     "pages/common/wallet/index",
+    "pages/common/feedback/index",
     "pages/mine/index",
     "pages/rider/hall",
     "pages/rider/tasks/list",

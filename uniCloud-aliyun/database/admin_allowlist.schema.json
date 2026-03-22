@@ -1,0 +1,44 @@
+{
+	"bsonType": "object",
+	"required": [],
+	"permission": {
+		"read": false,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"indexes": [
+		{
+			"name": "idx_openid",
+			"unique": false,
+			"field": [{ "name": "openid", "type": "asc" }]
+		},
+		{
+			"name": "idx_wx_unionid",
+			"unique": false,
+			"field": [{ "name": "wx_unionid", "type": "asc" }]
+		},
+		{
+			"name": "idx_create_time",
+			"unique": false,
+			"field": [{ "name": "create_time", "type": "desc" }]
+		}
+	],
+	"properties": {
+		"_id": {},
+		"openid": {
+			"bsonType": "string",
+			"description": "微信某端 openid（与 uni-id-users.wx_openid.mp/h5/web/app 之一一致）。可与 unionid 二选一或同时填",
+			"title": "微信 openid"
+		},
+		"wx_unionid": {
+			"bsonType": "string",
+			"description": "微信 unionid（若开放平台已绑定，多端统一，优先用此字段）",
+			"title": "微信 unionid"
+		},
+		"remark": { "bsonType": "string", "title": "备注" },
+		"enabled": { "bsonType": "bool", "title": "启用" },
+		"create_time": { "bsonType": "timestamp", "title": "创建时间" },
+		"update_time": { "bsonType": "timestamp", "title": "更新时间" }
+	}
+}

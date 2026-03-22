@@ -13,6 +13,7 @@ if (!Math) {
   "./pages/common/address/list.js";
   "./pages/common/address/edit.js";
   "./pages/common/wallet/index.js";
+  "./pages/common/feedback/index.js";
   "./pages/mine/index.js";
   "./pages/rider/hall.js";
   "./pages/rider/tasks/list.js";

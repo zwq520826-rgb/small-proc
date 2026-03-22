@@ -188,7 +188,7 @@ module.exports = {
 	},
 
 	/**
-	 * 提现申请（模拟）
+	 * 提现申请：扣减余额 → 写入 withdraw_requests(pending) → 流水为 pending；人工打款后由 admin-service 将流水置为 success
 	 * @param {number} amount 提现金额
 	 * @returns {object} 提现结果
 	 */
@@ -235,7 +235,7 @@ module.exports = {
 			const balanceAfter = normalizeAmount(balanceBefore - amount)
 			const now = Date.now()
 
-			// 更新钱包余额
+			// 先扣余额（资金冻结在待打款流程中，驳回时由管理端退回）
 			await db.collection('wallets')
 				.doc(wallet._id)
 				.update({
@@ -243,23 +243,55 @@ module.exports = {
 					update_time: now
 				})
 
-			// 记录交易流水（模拟提现直接成功）
-			await db.collection('transactions').add({
-				user_id: uid,
-				type: 'withdraw',
-				amount: amount,
-				balance_before: balanceBefore,
-				balance_after: balanceAfter,
-				status: 'success',
-				remark: '余额提现',
-				create_time: now
-			})
+			let wrId = null
+			try {
+				const wrAdd = await db.collection('withdraw_requests').add({
+					user_id: uid,
+					amount,
+					status: 'pending',
+					create_time: now,
+					update_time: now
+				})
+				wrId = wrAdd.id || wrAdd._id
+
+				const txAdd = await db.collection('transactions').add({
+					user_id: uid,
+					type: 'withdraw',
+					amount,
+					balance_before: balanceBefore,
+					balance_after: balanceAfter,
+					status: 'pending',
+					remark: '提现申请（待人工打款）',
+					withdraw_request_id: wrId,
+					create_time: now
+				})
+				const newTxId = txAdd.id || txAdd._id
+
+				await db.collection('withdraw_requests').doc(wrId).update({
+					transaction_id: newTxId,
+					update_time: now
+				})
+			} catch (innerErr) {
+				if (wrId) {
+					try {
+						await db.collection('withdraw_requests').doc(wrId).remove()
+					} catch (e) {
+						console.error('回滚 withdraw_requests 失败', e)
+					}
+				}
+				await db.collection('wallets').doc(wallet._id).update({
+					balance: balanceBefore,
+					update_time: Date.now()
+				})
+				throw innerErr
+			}
 
 			return {
 				code: 0,
-				message: '提现成功',
+				message: '提现申请已提交，请等待人工打款',
 				data: {
-					balance: balanceAfter
+					balance: balanceAfter,
+					withdraw_request_id: wrId
 				}
 			}
 		} catch (error) {

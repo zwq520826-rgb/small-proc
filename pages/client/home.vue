@@ -1,4 +1,5 @@
 <template>
+  <view class="home-root">
   <view class="page">
     <view v-if="!isLoading">
       <view class="top">
@@ -8,25 +9,22 @@
         </view>
       </view>
 
-      <swiper
-        class="hero-swiper"
-        indicator-dots
-        autoplay
-        circular
-        interval="3500"
-        indicator-color="rgba(255,255,255,0.35)"
-        indicator-active-color="#ffffff"
-      >
-        <swiper-item v-for="(item, i) in slides" :key="i">
-          <view class="hero-card" :class="item.type">
-            <view class="main">
-              <text class="title">{{ item.title }}</text>
-              <text class="desc">{{ item.desc }}</text>
-            </view>
-            <view class="side">{{ item.cta }}</view>
+      <view class="hero-card hero-card-only ad" :class="{ 'hero-with-banner': hero.image_file_id }">
+        <image
+          v-if="hero.image_file_id"
+          class="hero-banner"
+          :src="hero.image_file_id"
+          mode="aspectFill"
+          @tap="onHeroBannerTap"
+        />
+        <view class="hero-text-row">
+          <view class="main">
+            <text class="title">{{ hero.title }}</text>
+            <text class="desc">{{ hero.desc }}</text>
           </view>
-        </swiper-item>
-      </swiper>
+          <view class="side" @tap.stop="onHeroCta">{{ hero.cta_text }}</view>
+        </view>
+      </view>
 
       <view class="grid">
         <view
@@ -40,16 +38,35 @@
         </view>
       </view>
 
-      <view class="notice">
-        <text class="tag">公告</text>
-        <view class="marquee">
-          <swiper v-if="announcements.length" autoplay circular interval="3000" vertical>
-            <swiper-item v-for="(n, i) in announcements" :key="i">
-              <text>{{ n }}</text>
-            </swiper-item>
-          </swiper>
-          <view v-else class="empty">暂无公告</view>
+      <view v-if="announcements.length" class="announce-section">
+        <view class="announce-head">
+          <text class="announce-title">公告</text>
         </view>
+        <swiper
+          class="announce-swiper"
+          :indicator-dots="announcements.length > 1"
+          indicator-color="rgba(0,0,0,0.2)"
+          indicator-active-color="#1a73e8"
+          :autoplay="announcements.length > 1"
+          :interval="5000"
+          :circular="announcements.length > 1"
+          :duration="400"
+        >
+          <swiper-item v-for="a in announcements" :key="a._id">
+            <view class="announce-slide">
+              <image
+                v-if="a.image_file_id"
+                class="announce-img"
+                :src="a.image_file_id"
+                mode="aspectFill"
+              />
+              <view class="announce-body">
+                <text class="announce-line-title">{{ a.title }}</text>
+                <text class="announce-line-content">{{ a.content }}</text>
+              </view>
+            </view>
+          </swiper-item>
+        </swiper>
       </view>
     </view>
 
@@ -58,13 +75,28 @@
       <view class="skeleton grid">
         <view class="skeleton grid-item pulse" v-for="i in 4" :key="i"></view>
       </view>
-      <view class="skeleton list">
-        <view class="skeleton line pulse"></view>
-        <view class="skeleton line pulse"></view>
-      </view>
     </view>
+
   </view>
   <TheTabBar />
+  <!-- 必须放在 TabBar 之后，否则自定义底栏会盖住遮罩，导致无法关闭 -->
+  <view
+    v-if="showContactModal"
+    class="contact-mask"
+    @tap="closeContactModal"
+  >
+    <view class="contact-modal" @tap.stop>
+      <view class="contact-close-x" @tap.stop="closeContactModal">×</view>
+      <text class="contact-title">联系运营</text>
+      <view class="contact-line">
+        <text class="contact-label">请联系电话：</text>
+        <text class="contact-phone" @tap.stop="copyPhone">{{ contactPhone }}</text>
+      </view>
+      <text class="contact-hint">点击号码可复制</text>
+      <view class="contact-btn" @tap.stop="closeContactModal">知道了</view>
+    </view>
+  </view>
+  </view>
 </template>
 
 <script setup>
@@ -72,20 +104,93 @@ import TheTabBar from '@/components/TheTabBar.vue'
 import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 
+const configService = uniCloud.importObject('config-service')
+
 const isLoading = ref(true)
-const slides = [
-  { title: '校园兼职内推', desc: '社团、助教、勤工俭学信息速递', cta: '查看更多', type: 'job' },
-  { title: '新学期寄件优惠', desc: '快递代取满 10 单立减 5 元', cta: '立即参与', type: 'promo' },
-  { title: '品牌赞助位', desc: '欢迎校内商家合作投放', cta: '联系运营', type: 'ad' }
-]
+const hero = ref({
+  title: '品牌赞助位',
+  desc: '欢迎校内商家合作投放',
+  cta_text: '联系运营',
+  image_file_id: '',
+  link_url: ''
+})
+const announcements = ref([])
 
 const features = [
   { icon: '/static/tabbar/kuaididaiqu.png', text: '快递代取', path: '/pages/client/forms/pickup' },
   { icon: '/static/tabbar/paotuifuwu.png', text: '跑腿服务', path: '/pages/client/forms/errand' }
 ]
 
-const announcements = ref([])
-const activeTasks = ref([])
+const showContactModal = ref(false)
+const contactPhone = '18608945191'
+
+const openContactModal = () => {
+  showContactModal.value = true
+}
+
+const handleHeroLink = () => {
+  const u = String(hero.value.link_url || '').trim()
+  if (u) {
+    if (u.startsWith('/pages')) {
+      uni.navigateTo({ url: u })
+    } else if (u.startsWith('http')) {
+      uni.setClipboardData({
+        data: u,
+        success: () => {
+          uni.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' })
+        }
+      })
+    } else {
+      uni.navigateTo({ url: u })
+    }
+  } else {
+    openContactModal()
+  }
+}
+
+const onHeroCta = () => {
+  handleHeroLink()
+}
+
+const onHeroBannerTap = () => {
+  if (hero.value.image_file_id) {
+    handleHeroLink()
+  }
+}
+
+const loadHomeContent = async () => {
+  try {
+    const res = await configService.getHomeContent()
+    if (res.code === 0 && res.data) {
+      const h = res.data.hero
+      if (h) {
+        hero.value = {
+          title: h.title || hero.value.title,
+          desc: h.desc || '',
+          cta_text: h.cta_text || '联系运营',
+          image_file_id: h.image_file_id || '',
+          link_url: h.link_url || ''
+        }
+      }
+      announcements.value = res.data.announcements || []
+    }
+  } catch (e) {
+    console.warn('loadHomeContent', e)
+  }
+}
+
+const closeContactModal = () => {
+  showContactModal.value = false
+}
+
+const copyPhone = () => {
+  uni.setClipboardData({
+    data: contactPhone,
+    success: () => {
+      uni.showToast({ title: '已复制到剪贴板', icon: 'none' })
+    }
+  })
+}
 
 const goFeature = (item) => {
   if (!item?.path) {
@@ -95,19 +200,10 @@ const goFeature = (item) => {
   uni.navigateTo({ url: item.path })
 }
 
-onLoad(() => {
+onLoad(async () => {
   isLoading.value = true
-  setTimeout(() => {
-    announcements.value = [
-      '[公告] 双十一快递代取积压，请提前预约',
-      '[通知] 打印服务上线，A4/彩印/装订均可'
-    ]
-    activeTasks.value = [
-      { id: 't1', title: '取件 · 菜鸟驿站', status: '进行中' },
-      { id: 't2', title: '帮寄 · 教学楼快递', status: '待取件' }
-    ]
-    isLoading.value = false
-  }, 1500)
+  await loadHomeContent()
+  isLoading.value = false
 })
 
 onShow(() => {
@@ -136,21 +232,46 @@ onShow(() => {
   font-size: 34rpx;
 }
 
-.hero-swiper {
+.hero-card-only {
   margin-top: 24rpx;
-  height: 220rpx;
 }
 
 .hero-card {
-  height: 220rpx;
+  min-height: 220rpx;
   background: #ffffff;
   color: #111827;
   border-radius: 20rpx;
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
   padding: 24rpx;
   box-sizing: border-box;
   box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.06);
+}
+
+.hero-card.hero-with-banner {
+  padding: 0;
+  overflow: hidden;
+}
+
+.hero-banner {
+  width: 100%;
+  height: 220rpx;
+  display: block;
+  background: #f0f0f0;
+}
+
+.hero-text-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.hero-with-banner .hero-text-row {
+  padding: 24rpx;
 }
 
 .hero-card .title {
@@ -164,20 +285,12 @@ onShow(() => {
   opacity: 0.8;
 }
 
-.hero-card .side {
+.hero-text-row .side {
   background: #f2f2f7;
   border-radius: 999rpx;
   padding: 12rpx 16rpx;
   font-weight: 600;
   height: fit-content;
-}
-
-.hero-card.job {
-  background: #ffffff;
-}
-
-.hero-card.promo {
-  background: #ffffff;
 }
 
 .hero-card.ad {
@@ -209,33 +322,157 @@ onShow(() => {
   height: 120rpx;
 }
 
-.notice {
-  margin-top: 20rpx;
+.announce-section {
+  margin-top: 28rpx;
   background: #ffffff;
-  border-radius: 14rpx;
-  padding: 14rpx;
+  border-radius: 20rpx;
+  padding: 20rpx 20rpx 24rpx;
+  box-shadow: 0 8rpx 26rpx rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
+}
+
+.announce-head {
+  margin-bottom: 16rpx;
+}
+
+.announce-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #111827;
+}
+
+.announce-swiper {
+  width: 100%;
+  height: 420rpx;
+}
+
+.announce-slide {
+  height: 100%;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #f5f5f7;
+  box-sizing: border-box;
 }
 
-.notice .tag {
-  background: #e8f2ff;
-  color: #1a73e8;
-  border-radius: 10rpx;
-  padding: 6rpx 12rpx;
-  font-size: 22rpx;
-  margin-right: 12rpx;
+.announce-img {
+  width: 100%;
+  height: 220rpx;
+  flex-shrink: 0;
+  background: #e5e7eb;
 }
 
-.marquee {
+.announce-body {
   flex: 1;
-  height: 50rpx;
+  padding: 16rpx 18rpx 20rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  min-height: 0;
   overflow: hidden;
 }
 
-.empty {
-  color: #9aa6b8;
+.announce-line-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.35;
+}
+
+.announce-line-content {
   font-size: 24rpx;
+  color: #4b5563;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+
+.contact-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+  box-sizing: border-box;
+}
+
+.contact-modal {
+  position: relative;
+  width: 100%;
+  max-width: 600rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx 32rpx;
+  box-sizing: border-box;
+}
+
+.contact-close-x {
+  position: absolute;
+  top: 16rpx;
+  right: 24rpx;
+  width: 56rpx;
+  height: 56rpx;
+  line-height: 52rpx;
+  text-align: center;
+  font-size: 44rpx;
+  color: #9ca3af;
+  font-weight: 300;
+}
+
+.contact-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 28rpx;
+  color: #111827;
+}
+
+.contact-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 30rpx;
+  line-height: 1.5;
+}
+
+.contact-label {
+  color: #374151;
+}
+
+.contact-phone {
+  color: #1a73e8;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.contact-hint {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
+.contact-btn {
+  margin-top: 32rpx;
+  width: 100%;
+  background: #111827;
+  color: #ffffff;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  text-align: center;
+  padding: 22rpx 0;
+  font-weight: 500;
 }
 
 .skeleton-container {

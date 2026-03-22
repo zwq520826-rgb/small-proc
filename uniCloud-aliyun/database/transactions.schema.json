@@ -51,6 +51,11 @@
 			"foreignKey": "orders._id",
 			"title": "订单ID"
 		},
+		"withdraw_request_id": {
+			"bsonType": "string",
+			"description": "关联提现申请 withdraw_requests._id（提现流水用）",
+			"title": "提现申请ID"
+		},
 		"status": {
 			"bsonType": "string",
 			"description": "交易状态",

@@ -61,6 +61,12 @@
 			}
 		},
 		{
+			"path": "pages/common/feedback/index",
+			"style": {
+				"navigationBarTitleText": "建议与投诉"
+			}
+		},
+		{
 			"path": "pages/mine/index",
 			"style": {
 				"navigationBarTitleText": "我的"

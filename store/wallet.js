@@ -94,7 +94,7 @@ async function withdraw(amount) {
     const res = await walletService.withdraw(amount)
     if (res.code === 0) {
       state.balance = res.data.balance
-      return { success: true }
+      return { success: true, message: res.message || '提交成功' }
     } else {
       return { success: false, reason: res.message }
     }

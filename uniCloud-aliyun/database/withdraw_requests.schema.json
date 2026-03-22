@@ -1,0 +1,87 @@
+{
+	"bsonType": "object",
+	"required": ["user_id", "amount", "status"],
+	"permission": {
+		"read": false,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"indexes": [
+		{
+			"name": "idx_status_create_time",
+			"unique": false,
+			"field": [
+				{ "name": "status", "type": "asc" },
+				{ "name": "create_time", "type": "desc" }
+			]
+		},
+		{
+			"name": "idx_user_id",
+			"unique": false,
+			"field": [{ "name": "user_id", "type": "asc" }]
+		}
+	],
+	"properties": {
+		"_id": { "description": "提现单ID" },
+		"user_id": {
+			"bsonType": "string",
+			"description": "申请人（骑手/用户）uni-id",
+			"foreignKey": "uni-id-users._id",
+			"title": "用户ID"
+		},
+		"amount": {
+			"bsonType": "double",
+			"description": "提现金额（元）",
+			"title": "金额"
+		},
+		"status": {
+			"bsonType": "string",
+			"description": "状态",
+			"enum": ["pending", "paid", "rejected"],
+			"enumDesc": {
+				"pending": "待打款",
+				"paid": "已打款",
+				"rejected": "已驳回"
+			},
+			"title": "状态"
+		},
+		"remark": {
+			"bsonType": "string",
+			"description": "用户备注或运营备注",
+			"title": "备注"
+		},
+		"reject_reason": {
+			"bsonType": "string",
+			"description": "驳回原因",
+			"title": "驳回原因"
+		},
+		"paid_by_uid": {
+			"bsonType": "string",
+			"description": "标记已打款的管理员 uid",
+			"foreignKey": "uni-id-users._id",
+			"title": "操作人"
+		},
+		"paid_time": {
+			"bsonType": "timestamp",
+			"description": "标记已打款时间",
+			"title": "打款时间"
+		},
+		"transaction_id": {
+			"bsonType": "string",
+			"description": "关联 transactions._id（可选）",
+			"title": "流水ID"
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"description": "申请时间",
+			"forceDefaultValue": { "$env": "now" },
+			"title": "创建时间"
+		},
+		"update_time": {
+			"bsonType": "timestamp",
+			"description": "更新时间",
+			"title": "更新时间"
+		}
+	}
+}

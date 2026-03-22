@@ -1,6 +1,6 @@
 {
 	"bsonType": "object",
-	"required": [],
+	"required": ["type", "price"],
 	"permission": {
 		"read": false,
 		"create": false,
@@ -8,8 +8,24 @@
 		"delete": false
 	},
 	"properties": {
-		"_id": {
-			"description": "ID，系统自动生成"
+		"_id": { "description": "文档 ID" },
+		"type": {
+			"bsonType": "string",
+			"description": "价格项类型，如 pickup_small / pickup_medium / pickup_large",
+			"title": "类型"
+		},
+		"price": {
+			"bsonType": "double",
+			"description": "价格（元）",
+			"title": "价格"
+		},
+		"create_time": {
+			"bsonType": "timestamp",
+			"title": "创建时间"
+		},
+		"update_time": {
+			"bsonType": "timestamp",
+			"title": "更新时间"
 		}
 	}
 }

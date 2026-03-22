@@ -1,0 +1,54 @@
+{
+	"bsonType": "object",
+	"required": ["username", "password_salt", "password_hash", "uni_id_uid"],
+	"permission": {
+		"read": false,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"indexes": [
+		{
+			"name": "idx_username_unique",
+			"unique": true,
+			"field": [{ "name": "username", "type": "asc" }]
+		},
+		{
+			"name": "idx_uni_id_uid",
+			"unique": false,
+			"field": [{ "name": "uni_id_uid", "type": "asc" }]
+		},
+		{
+			"name": "idx_create_time",
+			"unique": false,
+			"field": [{ "name": "create_time", "type": "desc" }]
+		}
+	],
+	"properties": {
+		"_id": {},
+		"username": {
+			"bsonType": "string",
+			"description": "登录用户名（小写存储）",
+			"title": "用户名"
+		},
+		"password_salt": {
+			"bsonType": "string",
+			"description": "密码盐（随机）",
+			"title": "盐"
+		},
+		"password_hash": {
+			"bsonType": "string",
+			"description": "HMAC-SHA256(password, salt) 十六进制",
+			"title": "密码哈希"
+		},
+		"uni_id_uid": {
+			"bsonType": "string",
+			"description": "关联 uni-id-users._id，用于签发 token",
+			"title": "uni-id 用户 UID"
+		},
+		"remark": { "bsonType": "string", "title": "备注" },
+		"enabled": { "bsonType": "bool", "title": "启用" },
+		"create_time": { "bsonType": "timestamp", "title": "创建时间" },
+		"update_time": { "bsonType": "timestamp", "title": "更新时间" }
+	}
+}

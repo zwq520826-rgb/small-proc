@@ -53,14 +53,14 @@
       <view class="menu-item" @click="goService">
         <view class="menu-left">
           <image class="menu-icon-img" src="/static/tabbar/zaixiankefu.png" mode="aspectFit" />
-          <text class="menu-text">在线客服</text>
+          <text class="menu-text">联系客服</text>
         </view>
       </view>
 
       <view class="menu-item" @click="goHelp">
         <view class="menu-left">
           <image class="menu-icon-img" src="/static/tabbar/bangzhuzhonxin.png" mode="aspectFit" />
-          <text class="menu-text">帮助中心</text>
+          <text class="menu-text">建议&投诉</text>
         </view>
       </view>
 
@@ -95,6 +95,17 @@
         title="设置昵称"
         placeholder="请输入要设置的昵称"
       />
+    </uni-popup>
+
+    <uni-popup ref="servicePopup" type="center">
+      <view class="service-popup" @click.stop>
+        <text class="service-popup-title">联系客服</text>
+        <text class="service-popup-phone">{{ servicePhone }}</text>
+        <view class="service-popup-actions">
+          <button class="service-popup-btn primary" @click="copyServicePhone">复制号码</button>
+          <button class="service-popup-btn ghost" @click="closeServicePopup">关闭</button>
+        </view>
+      </view>
     </uni-popup>
     <uni-id-pages-bind-mobile ref="bind-mobile-by-sms" @success="bindMobileSuccess"></uni-id-pages-bind-mobile>
   </scroll-view>
@@ -156,7 +167,8 @@ const riderService = uniCloud.importObject("rider-service")
           points: 580
         },
         walletStore: null,
-        couponCount: 3
+        couponCount: 3,
+        servicePhone: '18608945191'
 			}
 		},
     watch: {
@@ -318,10 +330,21 @@ const riderService = uniCloud.importObject("rider-service")
         uni.showToast({ title: '消息通知（待实现）', icon: 'none' })
       },
       goService() {
-        uni.showToast({ title: '在线客服（待实现）', icon: 'none' })
+        this.$refs.servicePopup && this.$refs.servicePopup.open()
+      },
+      closeServicePopup() {
+        this.$refs.servicePopup && this.$refs.servicePopup.close()
+      },
+      copyServicePhone() {
+        uni.setClipboardData({
+          data: this.servicePhone,
+          success: () => {
+            uni.showToast({ title: '已复制', icon: 'success' })
+          }
+        })
       },
       goHelp() {
-        uni.showToast({ title: '帮助中心（待实现）', icon: 'none' })
+        uni.navigateTo({ url: '/pages/common/feedback/index' })
       },
       goSettings() {
         uni.showToast({ title: '设置（待实现）', icon: 'none' })
@@ -619,6 +642,60 @@ const riderService = uniCloud.importObject("rider-service")
     background-color: #ffffff;
     color: #e54d42;
     border: 1rpx solid #e54d42;
+  }
+
+  .service-popup {
+    width: 560rpx;
+    padding: 40rpx 32rpx 32rpx;
+    background: #ffffff;
+    border-radius: 24rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .service-popup-title {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 24rpx;
+  }
+
+  .service-popup-phone {
+    font-size: 40rpx;
+    font-weight: 600;
+    color: #007aff;
+    letter-spacing: 2rpx;
+    margin-bottom: 36rpx;
+  }
+
+  .service-popup-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 20rpx;
+  }
+
+  .service-popup-btn {
+    flex: 1;
+    border-radius: 999rpx;
+    font-size: 28rpx;
+    line-height: 76rpx;
+    margin: 0;
+    padding: 0;
+  }
+
+  .service-popup-btn.primary {
+    background: #007aff;
+    color: #ffffff;
+    border: none;
+  }
+
+  .service-popup-btn.ghost {
+    background: #f3f4f6;
+    color: #374151;
+    border: none;
   }
 </style>
 
