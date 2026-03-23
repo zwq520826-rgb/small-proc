@@ -1109,58 +1109,76 @@ module.exports = {
 	},
 
 	/**
-	 * 读取首页顶部广告（管理端）
+	 * 读取首页顶部广告（管理端，多条）
 	 */
 	async getHomeHero() {
 		const auth = await assertAdmin(this.uid)
 		if (auth.code !== 0) return auth
 
-		const res = await db.collection('home_hero').limit(1).get()
-		const row = res.data && res.data[0] ? res.data[0] : null
+		const res = await db.collection('home_hero').orderBy('sort', 'asc').limit(100).get()
 		return {
 			code: 0,
 			data: {
-				doc: row,
-				hint: '建议图片尺寸：宽 702×高 280 px（对应小程序约 702rpx×280rpx），比例约 2.5:1；PNG/JPG，单张建议小于 500KB。过大会影响首屏加载。'
+				list: res.data || [],
+				hint: '建议图片尺寸：宽 702×高 280 px（对应小程序约 702rpx×280rpx），比例约 2.5:1；可配置多条轮播，排序数字越小越靠前。'
 			}
 		}
 	},
 
 	/**
-	 * 保存首页顶部广告（单条 upsert）
+	 * 保存首页顶部广告（新增或更新）
 	 */
 	async saveHomeHero({
+		id,
 		title,
 		desc,
 		cta_text,
 		image_file_id,
 		link_url,
+		sort = 0,
 		enabled = true
 	} = {}) {
 		const auth = await assertAdmin(this.uid)
 		if (auth.code !== 0) return auth
 
 		const now = Date.now()
-		const payload = {
+		const doc = {
 			title: title != null ? String(title) : '',
 			desc: desc != null ? String(desc) : '',
 			cta_text: cta_text != null ? String(cta_text) : '联系运营',
 			image_file_id: image_file_id ? String(image_file_id).trim() : '',
 			link_url: link_url ? String(link_url).trim() : '',
+			sort: Math.max(0, parseInt(sort, 10) || 0),
 			enabled: enabled !== false,
 			update_time: now
 		}
 
-		const col = db.collection('home_hero')
-		const existed = await col.limit(1).get()
-		if (existed.data && existed.data.length) {
-			await col.doc(existed.data[0]._id).update(payload)
+		if (id) {
+			const cur = await db.collection('home_hero').doc(id).get()
+			const row0 = Array.isArray(cur.data) ? cur.data[0] : cur.data
+			if (!row0) {
+				return { code: 404, message: '未找到广告' }
+			}
+			await db.collection('home_hero').doc(id).update(doc)
 		} else {
-			payload.create_time = now
-			await col.add(payload)
+			doc.create_time = now
+			await db.collection('home_hero').add(doc)
 		}
 
 		return { code: 0, message: '已保存' }
+	},
+
+	/**
+	 * 删除首页顶部广告
+	 */
+	async deleteHomeHero({ id } = {}) {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+		if (!id) {
+			return { code: 400, message: '缺少 id' }
+		}
+		await db.collection('home_hero').doc(id).remove()
+		return { code: 0, message: '已删除' }
 	},
 
 	/**

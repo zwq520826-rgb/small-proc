@@ -10,13 +10,7 @@ const _sfc_main = {
   setup(__props) {
     const configService = common_vendor.tr.importObject("config-service");
     const isLoading = common_vendor.ref(true);
-    const hero = common_vendor.ref({
-      title: "品牌赞助位",
-      desc: "欢迎校内商家合作投放",
-      cta_text: "联系运营",
-      image_file_id: "",
-      link_url: ""
-    });
+    const heroes = common_vendor.ref([]);
     const announcements = common_vendor.ref([]);
     const features = [
       { icon: "/static/tabbar/kuaididaiqu.png", text: "快递代取", path: "/pages/client/forms/pickup" },
@@ -26,8 +20,8 @@ const _sfc_main = {
     const openContactModal = () => {
       showContactModal.value = true;
     };
-    const handleHeroLink = () => {
-      const u = String(hero.value.link_url || "").trim();
+    const handleHeroLink = (hero) => {
+      const u = String(hero && hero.link_url || "").trim();
       if (u) {
         if (u.startsWith("/pages")) {
           common_vendor.index.navigateTo({ url: u });
@@ -45,32 +39,30 @@ const _sfc_main = {
         openContactModal();
       }
     };
-    const onHeroCta = () => {
-      handleHeroLink();
+    const onHeroCta = (hero) => {
+      handleHeroLink(hero);
     };
-    const onHeroBannerTap = () => {
-      if (hero.value.image_file_id) {
-        handleHeroLink();
+    const onHeroBannerTap = (hero) => {
+      if (hero && hero.image_file_id) {
+        handleHeroLink(hero);
       }
     };
     const loadHomeContent = async () => {
       try {
         const res = await configService.getHomeContent();
         if (res.code === 0 && res.data) {
-          const h = res.data.hero;
-          if (h) {
-            hero.value = {
-              title: h.title || hero.value.title,
-              desc: h.desc || "",
-              cta_text: h.cta_text || "联系运营",
-              image_file_id: h.image_file_id || "",
-              link_url: h.link_url || ""
-            };
-          }
+          heroes.value = (res.data.heroes || []).map((h) => ({
+            _id: h._id || "",
+            title: h.title || "品牌赞助位",
+            desc: h.desc || "",
+            cta_text: h.cta_text || "联系运营",
+            image_file_id: h.image_file_id || "",
+            link_url: h.link_url || ""
+          }));
           announcements.value = res.data.announcements || [];
         }
       } catch (e) {
-        common_vendor.index.__f__("warn", "at pages/client/home.vue:178", "loadHomeContent", e);
+        common_vendor.index.__f__("warn", "at pages/client/home.vue:193", "loadHomeContent", e);
       }
     };
     const closeContactModal = () => {
@@ -103,17 +95,30 @@ const _sfc_main = {
       return common_vendor.e({
         a: !isLoading.value
       }, !isLoading.value ? common_vendor.e({
-        b: hero.value.image_file_id
-      }, hero.value.image_file_id ? {
-        c: hero.value.image_file_id,
-        d: common_vendor.o(onHeroBannerTap)
-      } : {}, {
-        e: common_vendor.t(hero.value.title),
-        f: common_vendor.t(hero.value.desc),
-        g: common_vendor.t(hero.value.cta_text),
-        h: common_vendor.o(onHeroCta),
-        i: hero.value.image_file_id ? 1 : "",
-        j: common_vendor.f(features, (item, k0, i0) => {
+        b: heroes.value.length
+      }, heroes.value.length ? {
+        c: common_vendor.f(heroes.value, (hero, k0, i0) => {
+          return common_vendor.e({
+            a: hero.image_file_id
+          }, hero.image_file_id ? {
+            b: hero.image_file_id,
+            c: common_vendor.o(($event) => onHeroBannerTap(hero), hero._id || hero.title)
+          } : {}, {
+            d: common_vendor.t(hero.title),
+            e: common_vendor.t(hero.desc),
+            f: common_vendor.t(hero.cta_text || "联系运营"),
+            g: common_vendor.o(($event) => onHeroCta(hero), hero._id || hero.title),
+            h: hero.image_file_id ? 1 : "",
+            i: hero._id || hero.title
+          });
+        }),
+        d: heroes.value.length > 1,
+        e: heroes.value.length > 1,
+        f: heroes.value.length > 1
+      } : {
+        g: common_vendor.o(($event) => onHeroCta(null))
+      }, {
+        h: common_vendor.f(features, (item, k0, i0) => {
           return {
             a: item.icon,
             b: common_vendor.t(item.text),
@@ -121,9 +126,9 @@ const _sfc_main = {
             d: common_vendor.o(($event) => goFeature(item), item.text)
           };
         }),
-        k: announcements.value.length
+        i: announcements.value.length
       }, announcements.value.length ? {
-        l: common_vendor.f(announcements.value, (a, k0, i0) => {
+        j: common_vendor.f(announcements.value, (a, k0, i0) => {
           return common_vendor.e({
             a: a.image_file_id
           }, a.image_file_id ? {
@@ -134,25 +139,25 @@ const _sfc_main = {
             e: a._id
           });
         }),
-        m: announcements.value.length > 1,
-        n: announcements.value.length > 1,
-        o: announcements.value.length > 1
+        k: announcements.value.length > 1,
+        l: announcements.value.length > 1,
+        m: announcements.value.length > 1
       } : {}) : {
-        p: common_vendor.f(4, (i, k0, i0) => {
+        n: common_vendor.f(4, (i, k0, i0) => {
           return {
             a: i
           };
         })
       }, {
-        q: showContactModal.value
+        o: showContactModal.value
       }, showContactModal.value ? {
-        r: common_vendor.o(closeContactModal),
-        s: common_vendor.t(contactPhone),
-        t: common_vendor.o(copyPhone),
-        v: common_vendor.o(closeContactModal),
-        w: common_vendor.o(() => {
+        p: common_vendor.o(closeContactModal),
+        q: common_vendor.t(contactPhone),
+        r: common_vendor.o(copyPhone),
+        s: common_vendor.o(closeContactModal),
+        t: common_vendor.o(() => {
         }),
-        x: common_vendor.o(closeContactModal)
+        v: common_vendor.o(closeContactModal)
       } : {});
     };
   }

@@ -59,31 +59,29 @@ module.exports = {
 	 */
 	async getHomeContent() {
 		try {
-			const heroRes = await db.collection('home_hero').limit(1).get()
-			const heroRow = heroRes.data && heroRes.data[0] ? heroRes.data[0] : null
+			const heroRes = await db
+				.collection('home_hero')
+				.where(
+					dbCmd.or([
+						{ enabled: true },
+						{ enabled: dbCmd.exists(false) }
+					])
+				)
+				.orderBy('sort', 'asc')
+				.limit(20)
+				.get()
 
-			const defaultHero = {
-				title: '品牌赞助位',
-				desc: '欢迎校内商家合作投放',
-				cta_text: '联系运营',
-				image_file_id: '',
-				link_url: '',
-				enabled: true
-			}
-
-			let hero
-			if (!heroRow || heroRow.enabled === false) {
-				hero = { ...defaultHero }
-			} else {
-				hero = {
-					title: heroRow.title != null ? String(heroRow.title) : defaultHero.title,
-					desc: heroRow.desc != null ? String(heroRow.desc) : defaultHero.desc,
-					cta_text: heroRow.cta_text != null ? String(heroRow.cta_text) : defaultHero.cta_text,
-					image_file_id: heroRow.image_file_id ? String(heroRow.image_file_id) : '',
-					link_url: heroRow.link_url ? String(heroRow.link_url) : '',
-					enabled: true
-				}
-			}
+			const heroes = (heroRes.data || [])
+				.filter((row) => row.enabled !== false)
+				.map((row) => ({
+					_id: row._id,
+					title: row.title != null ? String(row.title) : '',
+					desc: row.desc != null ? String(row.desc) : '',
+					cta_text: row.cta_text != null ? String(row.cta_text) : '联系运营',
+					image_file_id: row.image_file_id ? String(row.image_file_id) : '',
+					link_url: row.link_url ? String(row.link_url) : '',
+					sort: row.sort != null ? row.sort : 0
+				}))
 
 			const annRes = await db
 				.collection('home_announcements')
@@ -110,7 +108,7 @@ module.exports = {
 			return {
 				code: 0,
 				data: {
-					hero,
+					heroes,
 					announcements
 				}
 			}

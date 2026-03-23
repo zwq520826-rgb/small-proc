@@ -19,6 +19,12 @@
 .hero-card-only.data-v-462fe6d9 {
   margin-top: 24rpx;
 }
+.hero-swiper.data-v-462fe6d9 {
+  margin-top: 24rpx;
+  height: 340rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+}
 .hero-card.data-v-462fe6d9 {
   min-height: 220rpx;
   background: #ffffff;

@@ -7,8 +7,20 @@
 		"update": false,
 		"delete": false
 	},
+	"indexes": [
+		{
+			"name": "idx_sort",
+			"unique": false,
+			"field": [{ "name": "sort", "type": "asc" }]
+		},
+		{
+			"name": "idx_create_time",
+			"unique": false,
+			"field": [{ "name": "create_time", "type": "desc" }]
+		}
+	],
 	"properties": {
-		"_id": { "description": "单条首页顶部广告配置" },
+		"_id": { "description": "首页顶部广告配置（支持多条）" },
 		"title": { "bsonType": "string", "title": "标题" },
 		"desc": { "bsonType": "string", "title": "副标题/说明" },
 		"cta_text": { "bsonType": "string", "description": "右侧按钮文案", "title": "按钮" },
@@ -21,6 +33,11 @@
 			"bsonType": "string",
 			"description": "点击整图跳转（小程序内路径或 https），空则点按钮走联系运营",
 			"title": "跳转链接"
+		},
+		"sort": {
+			"bsonType": "int",
+			"description": "排序数字越小越靠前",
+			"title": "排序"
 		},
 		"enabled": { "bsonType": "bool", "title": "启用" },
 		"update_time": { "bsonType": "timestamp", "title": "更新时间" },

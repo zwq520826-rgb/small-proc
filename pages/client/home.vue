@@ -9,20 +9,43 @@
         </view>
       </view>
 
-      <view class="hero-card hero-card-only ad" :class="{ 'hero-with-banner': hero.image_file_id }">
-        <image
-          v-if="hero.image_file_id"
-          class="hero-banner"
-          :src="hero.image_file_id"
-          mode="aspectFill"
-          @tap="onHeroBannerTap"
-        />
+      <swiper
+        v-if="heroes.length"
+        class="hero-swiper hero-card-only"
+        :indicator-dots="heroes.length > 1"
+        indicator-color="rgba(255,255,255,0.45)"
+        indicator-active-color="#ffffff"
+        :autoplay="heroes.length > 1"
+        :interval="4200"
+        :circular="heroes.length > 1"
+        :duration="350"
+      >
+        <swiper-item v-for="hero in heroes" :key="hero._id || hero.title">
+          <view class="hero-card ad" :class="{ 'hero-with-banner': hero.image_file_id }">
+            <image
+              v-if="hero.image_file_id"
+              class="hero-banner"
+              :src="hero.image_file_id"
+              mode="aspectFill"
+              @tap="onHeroBannerTap(hero)"
+            />
+            <view class="hero-text-row">
+              <view class="main">
+                <text class="title">{{ hero.title }}</text>
+                <text class="desc">{{ hero.desc }}</text>
+              </view>
+              <view class="side" @tap.stop="onHeroCta(hero)">{{ hero.cta_text || '联系运营' }}</view>
+            </view>
+          </view>
+        </swiper-item>
+      </swiper>
+      <view v-else class="hero-card hero-card-only ad">
         <view class="hero-text-row">
           <view class="main">
-            <text class="title">{{ hero.title }}</text>
-            <text class="desc">{{ hero.desc }}</text>
+            <text class="title">品牌赞助位</text>
+            <text class="desc">欢迎校内商家合作投放</text>
           </view>
-          <view class="side" @tap.stop="onHeroCta">{{ hero.cta_text }}</view>
+          <view class="side" @tap.stop="onHeroCta(null)">联系运营</view>
         </view>
       </view>
 
@@ -107,13 +130,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 const configService = uniCloud.importObject('config-service')
 
 const isLoading = ref(true)
-const hero = ref({
-  title: '品牌赞助位',
-  desc: '欢迎校内商家合作投放',
-  cta_text: '联系运营',
-  image_file_id: '',
-  link_url: ''
-})
+const heroes = ref([])
 const announcements = ref([])
 
 const features = [
@@ -128,8 +145,8 @@ const openContactModal = () => {
   showContactModal.value = true
 }
 
-const handleHeroLink = () => {
-  const u = String(hero.value.link_url || '').trim()
+const handleHeroLink = (hero) => {
+  const u = String((hero && hero.link_url) || '').trim()
   if (u) {
     if (u.startsWith('/pages')) {
       uni.navigateTo({ url: u })
@@ -148,13 +165,13 @@ const handleHeroLink = () => {
   }
 }
 
-const onHeroCta = () => {
-  handleHeroLink()
+const onHeroCta = (hero) => {
+  handleHeroLink(hero)
 }
 
-const onHeroBannerTap = () => {
-  if (hero.value.image_file_id) {
-    handleHeroLink()
+const onHeroBannerTap = (hero) => {
+  if (hero && hero.image_file_id) {
+    handleHeroLink(hero)
   }
 }
 
@@ -162,16 +179,14 @@ const loadHomeContent = async () => {
   try {
     const res = await configService.getHomeContent()
     if (res.code === 0 && res.data) {
-      const h = res.data.hero
-      if (h) {
-        hero.value = {
-          title: h.title || hero.value.title,
-          desc: h.desc || '',
-          cta_text: h.cta_text || '联系运营',
-          image_file_id: h.image_file_id || '',
-          link_url: h.link_url || ''
-        }
-      }
+      heroes.value = (res.data.heroes || []).map((h) => ({
+        _id: h._id || '',
+        title: h.title || '品牌赞助位',
+        desc: h.desc || '',
+        cta_text: h.cta_text || '联系运营',
+        image_file_id: h.image_file_id || '',
+        link_url: h.link_url || ''
+      }))
       announcements.value = res.data.announcements || []
     }
   } catch (e) {
@@ -234,6 +249,12 @@ onShow(() => {
 
 .hero-card-only {
   margin-top: 24rpx;
+}
+.hero-swiper {
+  margin-top: 24rpx;
+  height: 340rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
 }
 
 .hero-card {
