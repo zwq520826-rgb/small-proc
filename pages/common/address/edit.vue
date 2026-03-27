@@ -51,7 +51,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useAddressStore } from '@/store/address'
 
 const addressStore = useAddressStore()
-const addressService = uniCloud.importObject('address-service')
+const addressService = uniCloud.importObject('order-service')
 
 const id = ref('')
 const name = ref('')
@@ -187,5 +187,4 @@ const saveAddress = async () => {
   font-size: 30rpx;
 }
 </style>
-
 

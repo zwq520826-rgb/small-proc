@@ -72,12 +72,6 @@
             @click="previewImages(idx)"
           />
         </view>
-
-        <!-- Description -->
-        <view class="description-section">
-          <text class="description-label">订单描述</text>
-          <text class="description-text">{{ getOrderDescription() }}</text>
-        </view>
       </view>
 
       <!-- Address Section (only delivery address) -->
@@ -134,7 +128,7 @@
         <button class="action-btn btn-cancel" @click="handleCancelOrder">
           取消订单
         </button>
-        <button class="action-btn btn-urgent" @click="handleUrgent">
+        <button v-if="!order?.content?.isUrgent" class="action-btn btn-urgent" @click="handleUrgent">
           加急 (+¥1)
         </button>
       </template>
@@ -387,11 +381,87 @@ const handleUrgent = () => {
     content: '加急服务将额外收取 ¥1.00，是否确认？',
     success: (res) => {
       if (res.confirm) {
-        // 这里可以调用加急接口
-        uni.showToast({ title: '加急成功', icon: 'success' })
+        uni.showActionSheet({
+          itemList: ['微信支付 ¥1.00'],
+          success: (sheetRes) => {
+            if (sheetRes.tapIndex === 0) {
+              doUrgentPay('wechat')
+            }
+          }
+        })
       }
     }
   })
+}
+
+const doUrgentPay = async (method) => {
+  uni.showLoading({ title: '处理中...' })
+  try {
+    const orderService = uniCloud.importObject('order-service')
+    let createRes
+    try {
+      createRes = await orderService.createUrgentOrder({
+        orderId: order.value.id || order.value._id,
+        amount: 1
+      })
+    } catch (innerErr) {
+      const errMsg = String(innerErr?.message || innerErr || '')
+      if (errMsg.includes('createUrgentOrder')) {
+        uni.hideLoading()
+        uni.showToast({ title: '云端未实现 createUrgentOrder，请先部署 order-service', icon: 'none' })
+        return
+      }
+      throw innerErr
+    }
+
+    if (createRes.code !== 0) {
+      uni.hideLoading()
+      uni.showToast({ title: createRes.message || '创建加急订单失败', icon: 'none' })
+      return
+    }
+    
+    const urgentOrderId = createRes.data?.orderId
+    const paymentService = uniCloud.importObject('payment-service')
+    const payRes = await paymentService.createJsapiOrder({ orderId: urgentOrderId })
+    
+    if (payRes.code !== 0) {
+      uni.hideLoading()
+      uni.showToast({ title: payRes.message || '支付失败', icon: 'none' })
+      return
+    }
+    
+    const { appId, timeStamp, nonceStr, package: packageValue, signType, paySign } = payRes.data
+    
+    uni.requestPayment({
+      provider: 'wxpay',
+      appId,
+      timeStamp,
+      nonceStr,
+      package: packageValue,
+      signType,
+      paySign,
+      success: async () => {
+        try {
+          await paymentService.confirmPaid({ outTradeNo: payRes.data.outTradeNo })
+        } catch (e) {}
+        uni.hideLoading()
+        uni.showToast({ title: '加急成功', icon: 'success' })
+        loadOrder()
+      },
+      fail: (err) => {
+        uni.hideLoading()
+        if (err.errMsg?.includes('cancel')) {
+          uni.showToast({ title: '已取消支付', icon: 'none' })
+        } else {
+          uni.showToast({ title: '支付失败', icon: 'none' })
+        }
+      }
+    })
+  } catch (e) {
+    uni.hideLoading()
+    console.error('加急支付异常:', e)
+    uni.showToast({ title: '加急失败，请稍后重试', icon: 'none' })
+  }
 }
 
 // Handle confirm delivery
@@ -910,5 +980,4 @@ onShow(async () => {
   }
 }
 </style>
-
 

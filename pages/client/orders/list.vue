@@ -40,24 +40,19 @@
           <text class="place">{{ order.pickupLocation }}</text>
           <text class="place">{{ order.deliveryLocation || order.address }}</text>
         </view>
-        <view
-          v-if="order.tags && order.tags.length"
-          class="row tag-row"
-        >
-          <text
-            v-for="tag in order.tags"
-            :key="tag"
-            class="tag"
-            :class="{
-              'tag-urgent': tag.includes('加急'),
-              'tag-delivery': tag.includes('送货上门')
-            }"
+        <view v-if="order.visualTags && order.visualTags.length" class="row tag-row">
+          <view
+            v-for="tag in order.visualTags"
+            :key="tag.key"
+            class="tag-chip"
+            :class="`tag-${tag.type}`"
           >
-            {{ tag }}
-          </text>
+            <text v-if="tag.icon" class="chip-icon">{{ tag.icon }}</text>
+            <text>{{ tag.text }}</text>
+          </view>
         </view>
         <view class="row">
-          <text class="desc">{{ order.content?.description || '订单详情' }}</text>
+          <text class="desc">{{ order.content?.description || order.content?.remark || '订单详情' }}</text>
         </view>
         <view class="row between footer-row">
           <view class="price-info">
@@ -109,10 +104,10 @@
 
 <script setup>
 import TheTabBar from '@/components/TheTabBar.vue'
-import { ref, computed } from 'vue' // 引入 computed
+import { ref, computed } from 'vue'
 import { onPullDownRefresh } from '@dcloudio/uni-app'
-// 【修改点1】引入正确的 store (clientOrder.js)
 import { useClientOrderStore } from '@/store/clientOrder'
+import { buildVisualTags } from '@/utils/orderTags'
 
 // 【修改点2】使用新的 store 名称
 const store = useClientOrderStore()
@@ -144,25 +139,19 @@ const displayList = computed(() => {
   // 使用 clientOrder store 提供的 getter
   const list = store.ordersByStatus(status)
 
-  return list.map((o) => {
-    const tags =
-      (o.tags && o.tags.length
-        ? o.tags
-        : [
-            o.content?.isUrgent ? '加急处理' : '',
-            o.content?.isDelivery ? '送货上门' : ''
-          ].filter(Boolean)) || []
-
-    return {
-      ...o,
-      tags
-    }
-  })
+  return list.map((o) => ({
+    ...o,
+    visualTags: buildVisualTags({
+      rawTags: o.tags,
+      content: o.content,
+      requiredGender: o.content?.requiredRiderGender
+    })
+  }))
 })
 
 // 【修改点4】简化加载逻辑 (因为改成了 computed，不需要手动 loadData)
 const loadData = () => {
-  // 暂时留空，或者用来做下拉刷新的模拟延迟
+  // 暂时留空，或者用来做下拉刷新的占位
   if (loadStatus.value === 'loading') return
   loadStatus.value = 'loading'
   
@@ -342,26 +331,43 @@ onPullDownRefresh(async () => {
 .tag-row {
   margin-top: 4rpx;
   flex-wrap: wrap;
+  gap: 8rpx;
 }
 
-.tag {
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
   font-size: 22rpx;
   padding: 4rpx 12rpx;
   border-radius: 999rpx;
-  background: #f4f5f7;
-  color: #555555;
+  background: #f3f4f6;
+  color: #374151;
+  font-weight: 600;
 }
 
-.tag-urgent {
-  background: #ffe8e6;
-  color: #e53935;
-  font-weight: 700;
+.tag-chip.tag-urgent {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
-.tag-delivery {
-  background: #e6f6ff;
-  color: #0288d1;
-  font-weight: 700;
+.tag-chip.tag-delivery {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.tag-chip.tag-info {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.tag-chip.tag-neutral {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.chip-icon {
+  font-size: 20rpx;
 }
 .footer-row {
   margin-top: 12rpx;
@@ -436,5 +442,3 @@ onPullDownRefresh(async () => {
   font-size: 26rpx;
 }
 </style>
-
-

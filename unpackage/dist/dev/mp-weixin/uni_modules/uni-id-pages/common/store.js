@@ -1,13 +1,13 @@
 "use strict";
 const common_vendor = require("../../../common/vendor.js");
 const uni_modules_uniIdPages_config = require("../config.js");
-const uniIdCo = common_vendor.tr.importObject("uni-id-co");
+const uniIdCo = common_vendor._r.importObject("uni-id-co");
 function getUsersTable() {
   try {
-    if (typeof common_vendor.tr === "undefined" || !common_vendor.tr || typeof common_vendor.tr.database !== "function") {
+    if (typeof common_vendor._r === "undefined" || !common_vendor._r || typeof common_vendor._r.database !== "function") {
       return null;
     }
-    const db = common_vendor.tr.database();
+    const db = common_vendor._r.database();
     if (!db || typeof db.collection !== "function")
       return null;
     return db.collection("uni-id-users");
@@ -47,7 +47,7 @@ const mutations = {
         }
       });
     } else {
-      const uniIdCo2 = common_vendor.tr.importObject("uni-id-co", {
+      const uniIdCo2 = common_vendor._r.importObject("uni-id-co", {
         customUI: true
       });
       try {
@@ -71,7 +71,7 @@ const mutations = {
     return data2;
   },
   async logout() {
-    if (common_vendor.tr.getCurrentUserInfo().tokenExpired > Date.now()) {
+    if (common_vendor._r.getCurrentUserInfo().tokenExpired > Date.now()) {
       try {
         await uniIdCo.logout();
       } catch (e) {

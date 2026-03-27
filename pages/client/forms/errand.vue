@@ -111,6 +111,17 @@
       </view>
     </view>
 
+    <!-- 卡片D 备注 -->
+    <view class="card">
+      <view class="section-title">备注（选填）</view>
+      <textarea
+        class="textarea"
+        v-model="extraRemark"
+        placeholder="补充说明，例如：完成后拍照反馈、到达前联系我等"
+        auto-height
+      ></textarea>
+    </view>
+
     <!-- 底部栏 -->
     <view class="bottom-bar">
       <view class="total">
@@ -127,7 +138,6 @@ import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useAddressStore } from '@/store/address'
 import { useClientOrderStore  } from '@/store/clientOrder'
-import { useWalletStore } from '@/store/wallet'
 import { payForOrder } from '@/store/pay'
 
 // 状态
@@ -137,11 +147,9 @@ const images = ref([])
 const isUrgent = ref(false)
 const isDelivery = ref(false)
 const dormNumber = ref('')
+const extraRemark = ref('')
 // 男生宿舍 / 女生宿舍，对应 male / female
 const deliveryDormType = ref('') // 'male' | 'female'
-const walletStore = useWalletStore()
-const balance = computed(() => walletStore.balance)
-
 // 地址 & 订单
 const addressStore = useAddressStore()
 const store = useClientOrderStore()
@@ -245,18 +253,7 @@ const handlePayClick = () => {
     }
   }
 
-  const amount = Number(totalPrice.value).toFixed(2)
-  uni.showActionSheet({
-    itemList: [`余额支付 ¥${amount}`, '微信支付'],
-    success: (res) => {
-      const index = res.tapIndex
-      if (index === 0) {
-        onPayConfirm('balance')
-      } else if (index === 1) {
-        onPayConfirm('wechat')
-      }
-    }
-  })
+  onPayConfirm('wechat')
 }
 
 // 上传任务图片（可选），返回可跨设备访问的 fileID
@@ -279,7 +276,7 @@ const uploadImages = async (list = []) => {
   return uploaded
 }
 
-const onPayConfirm = async (method = 'balance') => {
+const onPayConfirm = async (method = 'wechat') => {
   uni.showLoading({ title: '处理中...' })
 
   try {
@@ -289,6 +286,7 @@ const onPayConfirm = async (method = 'balance') => {
     const amount = Number(totalPrice.value)
     const addr = currentAddress.value || {}
     const deliveryLocation = addr.schoolArea ? `${addr.schoolArea}・${addr.detail}` : addr.detail
+    const remarkText = extraRemark.value.trim()
     
     // 1. 先创建订单（后端会统一创建为待支付，支付成功后才会放到大厅）
       const payload = {
@@ -321,6 +319,10 @@ const onPayConfirm = async (method = 'balance') => {
           : ''
       ].filter(Boolean),
       createTime: new Date().toLocaleString()
+    }
+
+    if (remarkText) {
+      payload.content.remark = remarkText
     }
 
     const order = await store.addOrder(payload)
@@ -664,7 +666,3 @@ onShow(() => {
   border-radius: 12rpx;
 }
 </style>
-
-
-
-

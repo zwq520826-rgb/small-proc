@@ -53,7 +53,7 @@
       <view class="menu-item" @click="goService">
         <view class="menu-left">
           <image class="menu-icon-img" src="/static/tabbar/zaixiankefu.png" mode="aspectFit" />
-          <text class="menu-text">联系客服</text>
+          <text class="menu-text">校事屋客服</text>
         </view>
       </view>
 
@@ -99,12 +99,26 @@
 
     <uni-popup ref="servicePopup" type="center">
       <view class="service-popup" @click.stop>
-        <text class="service-popup-title">联系客服</text>
+        <text class="service-popup-title">校事屋客服</text>
+        <text class="service-popup-subtitle">专业校园服务，用心为您解答</text>
         <text class="service-popup-phone">{{ servicePhone }}</text>
-        <view class="service-popup-actions">
+      <view class="service-popup-actions">
+          <!-- 微信小程序内直接唤起在线客服会话 -->
+          <!-- #ifdef MP-WEIXIN -->
+          <button
+            class="service-popup-btn primary"
+            open-type="contact"
+            session-from="mine_service"
+            @contact="onContact"
+          >在线客服</button>
+          <!-- #endif -->
+          <!-- 其他端不支持在线客服时，提供复制号码作为降级方案 -->
+          <!-- #ifndef MP-WEIXIN -->
           <button class="service-popup-btn primary" @click="copyServicePhone">复制号码</button>
+          <!-- #endif -->
+          <button class="service-popup-btn ghost" @click="callServicePhone">拨打电话</button>
           <button class="service-popup-btn ghost" @click="closeServicePopup">关闭</button>
-        </view>
+      </view>
       </view>
     </uni-popup>
     <uni-id-pages-bind-mobile ref="bind-mobile-by-sms" @success="bindMobileSuccess"></uni-id-pages-bind-mobile>
@@ -143,7 +157,7 @@ const riderService = uniCloud.importObject("rider-service")
 		    }
 
 		    return this.userInfo.realNameAuth.authStatus
-	    },
+      },
       walletAmount() {
         return this.walletStore ? this.walletStore.balance : 0
       }
@@ -185,7 +199,6 @@ const riderService = uniCloud.importObject("rider-service")
 		async onShow() {
 			this.univerifyStyle.authButton.title = "本机号码一键绑定"
 			this.univerifyStyle.otherLoginButton.title = "其他号码绑定"
-			// 刷新钱包余额
 			if (this.walletStore) {
 				await this.walletStore.loadFromCloud()
 			}
@@ -247,9 +260,7 @@ const riderService = uniCloud.importObject("rider-service")
 				uni.preLogin({
 					provider: 'univerify',
 					success: this.univerify(), //预登录成功
-					fail: (res) => { // 预登录失败
-						// 不显示一键登录选项（或置灰）
-						console.log(res)
+					fail: () => { // 预登录失败
 						this.bindMobileBySmsCode()
 					}
 				})
@@ -269,19 +280,22 @@ const riderService = uniCloud.importObject("rider-service")
 					"provider": 'univerify',
 					"univerifyStyle": this.univerifyStyle,
 					success: async e => {
-						uniIdCo.bindMobileByUniverify(e.authResult).then(res => {
-							mutations.updateUserInfo()
-						}).catch(e => {
-							console.log(e);
-						}).finally(e => {
-							// console.log(e);
-							uni.closeAuthView()
-						})
+						uniIdCo.bindMobileByUniverify(e.authResult)
+							.then(() => {
+								mutations.updateUserInfo()
+							})
+							.catch(err => {
+								uni.showToast({ title: err?.message || '绑定失败', icon: 'none' })
+							})
+							.finally(() => {
+								uni.closeAuthView()
+							})
 					},
 					fail: (err) => {
-						console.log(err);
 						if (err.code == '30002' || err.code == '30001') {
 							this.bindMobileBySmsCode()
+						} else {
+							uni.showToast({ title: err?.errMsg || '操作已取消', icon: 'none' })
 						}
 					}
 				})
@@ -313,6 +327,10 @@ const riderService = uniCloud.importObject("rider-service")
         })
       },
       goWallet() {
+        if (!this.isRiderMode) {
+          uni.showToast({ title: '仅骑手可用', icon: 'none' })
+          return
+        }
         uni.navigateTo({ url: '/pages/common/wallet/index' })
       },
       goAddress() {
@@ -342,6 +360,18 @@ const riderService = uniCloud.importObject("rider-service")
             uni.showToast({ title: '已复制', icon: 'success' })
           }
         })
+      },
+      callServicePhone() {
+        uni.makePhoneCall({
+          phoneNumber: this.servicePhone,
+          fail: () => {
+            uni.showToast({ title: '拨打失败，请重试', icon: 'none' })
+          }
+        })
+      },
+      onContact(e) {
+        // 预留回调：可在此记录来源或做埋点
+        // console.log('contact session from mine page', e)
       },
       goHelp() {
         uni.navigateTo({ url: '/pages/common/feedback/index' })
@@ -433,8 +463,8 @@ const riderService = uniCloud.importObject("rider-service")
 							await mutations.updateUserInfo()
 						},
 						fail: async (err) => {
-							console.log(err);
 							uni.hideLoading()
+							uni.showToast({ title: err?.errMsg || '操作已取消', icon: 'none' })
 						}
 					})
 				}
@@ -658,7 +688,14 @@ const riderService = uniCloud.importObject("rider-service")
     font-size: 32rpx;
     font-weight: 600;
     color: #111827;
+    margin-bottom: 12rpx;
+  }
+
+  .service-popup-subtitle {
+    font-size: 24rpx;
+    color: #6b7280;
     margin-bottom: 24rpx;
+    display: block;
   }
 
   .service-popup-phone {
@@ -697,5 +734,5 @@ const riderService = uniCloud.importObject("rider-service")
     color: #374151;
     border: none;
   }
-</style>
 
+</style>

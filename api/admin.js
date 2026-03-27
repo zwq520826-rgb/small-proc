@@ -92,6 +92,16 @@ export async function setRiderProfileStatus(params = {}) {
 }
 
 export async function listRidersWithBalances(params = {}) {
-	const res = await adminService.listRidersWithBalances(params)
-	return assertAdminResponse(res, { dataOnly: true })
+  const res = await adminService.listRidersWithBalances(params)
+  return assertAdminResponse(res, { dataOnly: true })
+}
+
+export async function listUserTransactions(params = {}) {
+  const res = await adminService.listUserTransactions(params)
+  return assertAdminResponse(res, { dataOnly: true })
+}
+
+export async function getFinanceDaily(params = {}) {
+  const res = await adminService.getFinanceDaily(params)
+  return assertAdminResponse(res, { dataOnly: true })
 }

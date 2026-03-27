@@ -48,23 +48,23 @@
 				"navigationBarTitleText": "地址管理"
 			}
 		},
-		{
-			"path": "pages/common/address/edit",
-			"style": {
-				"navigationBarTitleText": "编辑地址"
-			}
-		},
-		{
-			"path": "pages/common/wallet/index",
-			"style": {
-				"navigationBarTitleText": "我的钱包"
-			}
-		},
-		{
-			"path": "pages/common/feedback/index",
-			"style": {
-				"navigationBarTitleText": "建议与投诉"
-			}
+        {
+            "path": "pages/common/address/edit",
+            "style": {
+                "navigationBarTitleText": "编辑地址"
+            }
+        },
+        {
+            "path": "pages/common/wallet/index",
+            "style": {
+                "navigationBarTitleText": "我的钱包"
+            }
+        },
+        {
+            "path": "pages/common/feedback/index",
+            "style": {
+                "navigationBarTitleText": "建议与投诉"
+            }
 		},
 		{
 			"path": "pages/mine/index",
@@ -90,16 +90,22 @@
 				"navigationBarTitleText": "订单详情"
 			}
 		},
-		{
-			"path": "pages/rider/verify",
-			"style": {
-				"navigationBarTitleText": "骑手实名认证"
-			}
-		},
-		{
-			"path": "uni_modules/uni-id-pages/pages/userinfo/deactivate/deactivate",
-			"style": {
-				"navigationBarTitleText": "注销账号"
+    {
+      "path": "pages/rider/verify",
+      "style": {
+        "navigationBarTitleText": "骑手实名认证"
+      }
+    },
+    {
+      "path": "pages/rider/levels",
+      "style": {
+        "navigationBarTitleText": "等级说明"
+      }
+    },
+    {
+      "path": "uni_modules/uni-id-pages/pages/userinfo/deactivate/deactivate",
+      "style": {
+        "navigationBarTitleText": "注销账号"
 			}
 		},
 		{

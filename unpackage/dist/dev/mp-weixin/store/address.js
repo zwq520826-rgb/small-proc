@@ -1,6 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-const addressService = common_vendor.tr.importObject("address-service");
+const addressService = common_vendor._r.importObject("order-service");
 const state = common_vendor.reactive({
   selectedAddress: null,
   addressList: []

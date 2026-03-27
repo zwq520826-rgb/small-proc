@@ -94,23 +94,37 @@
 .tag-row.data-v-5857953e {
   margin-top: 4rpx;
   flex-wrap: wrap;
+  gap: 8rpx;
 }
-.tag.data-v-5857953e {
+.tag-chip.data-v-5857953e {
+  display: inline-flex;
+  align-items: center;
+  gap: 4rpx;
   font-size: 22rpx;
   padding: 4rpx 12rpx;
   border-radius: 999rpx;
-  background: #f4f5f7;
-  color: #555555;
+  background: #f3f4f6;
+  color: #374151;
+  font-weight: 600;
 }
-.tag-urgent.data-v-5857953e {
-  background: #ffe8e6;
-  color: #e53935;
-  font-weight: 700;
+.tag-chip.tag-urgent.data-v-5857953e {
+  background: #fee2e2;
+  color: #b91c1c;
 }
-.tag-delivery.data-v-5857953e {
-  background: #e6f6ff;
-  color: #0288d1;
-  font-weight: 700;
+.tag-chip.tag-delivery.data-v-5857953e {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.tag-chip.tag-info.data-v-5857953e {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.tag-chip.tag-neutral.data-v-5857953e {
+  background: #f3f4f6;
+  color: #374151;
+}
+.chip-icon.data-v-5857953e {
+  font-size: 20rpx;
 }
 .footer-row.data-v-5857953e {
   margin-top: 12rpx;

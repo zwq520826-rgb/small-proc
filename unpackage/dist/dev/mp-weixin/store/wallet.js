@@ -1,6 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-const walletService = common_vendor.tr.importObject("wallet-service");
+const walletService = common_vendor._r.importObject("wallet-service");
 const state = common_vendor.reactive({
   balance: 0,
   frozenBalance: 0,
@@ -57,11 +57,10 @@ async function recharge(amount) {
     if (res.code === 0) {
       state.balance = res.data.balance;
       return { success: true };
-    } else {
-      return { success: false, reason: res.message };
     }
+    return { success: false, reason: res.message };
   } catch (e) {
-    common_vendor.index.__f__("error", "at store/wallet.js:82", "充值失败:", e);
+    common_vendor.index.__f__("error", "at store/wallet.js:81", "充值失败:", e);
     return { success: false, reason: "网络错误，请稍后重试" };
   }
 }
@@ -71,11 +70,10 @@ async function withdraw(amount) {
     if (res.code === 0) {
       state.balance = res.data.balance;
       return { success: true, message: res.message || "提交成功" };
-    } else {
-      return { success: false, reason: res.message };
     }
+    return { success: false, reason: res.message };
   } catch (e) {
-    common_vendor.index.__f__("error", "at store/wallet.js:102", "提现失败:", e);
+    common_vendor.index.__f__("error", "at store/wallet.js:100", "提现失败:", e);
     return { success: false, reason: "网络错误，请稍后重试" };
   }
 }
@@ -85,11 +83,10 @@ async function pay(amount, orderId) {
     if (res.code === 0) {
       state.balance = res.data.balance;
       return { success: true };
-    } else {
-      return { success: false, reason: res.message };
     }
+    return { success: false, reason: res.message };
   } catch (e) {
-    common_vendor.index.__f__("error", "at store/wallet.js:123", "支付失败:", e);
+    common_vendor.index.__f__("error", "at store/wallet.js:120", "支付失败:", e);
     return { success: false, reason: "网络错误，请稍后重试" };
   }
 }
@@ -111,11 +108,10 @@ async function getTransactionsInternal(params = {}, force = false) {
         lastTxKey = txKey;
         lastTransactionsLoadedAt = Date.now();
         return { success: true, data: res.data, total: res.total };
-      } else {
-        return { success: false, reason: res.message };
       }
+      return { success: false, reason: res.message };
     } catch (e) {
-      common_vendor.index.__f__("error", "at store/wallet.js:161", "获取交易记录失败:", e);
+      common_vendor.index.__f__("error", "at store/wallet.js:157", "获取交易记录失败:", e);
       return { success: false, reason: "网络错误，请稍后重试" };
     }
   })();

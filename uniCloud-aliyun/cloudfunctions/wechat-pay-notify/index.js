@@ -351,19 +351,28 @@ async function processPaymentNotification(decryptedData) {
 
     if (orderRes.data.length > 0) {
       const order = orderRes.data[0]
+      const isAddon = order.order_class === 'urgent_addon'
+      const nowTs = Date.now()
       const updateData = {
         pay_status: 'paid',
-        pay_time: Date.now(),
-        hall_visible: true,
-        update_time: Date.now()
+        pay_time: nowTs,
+        hall_visible: isAddon ? false : true,
+        update_time: nowTs
       }
 
       // 如果订单状态是 pending_pay，则更新为 pending_accept
-      if (order.status === 'pending_pay') {
+      if (isAddon) {
+        updateData.status = 'completed'
+        updateData.complete_time = nowTs
+      } else if (order.status === 'pending_pay') {
         updateData.status = 'pending_accept'
       }
 
       await db.collection('orders').doc(transaction.order_id).update(updateData)
+
+      if (isAddon && order.parent_order_id) {
+        await markParentOrderUrgent(order.parent_order_id, order)
+      }
     }
   }
 
@@ -372,6 +381,34 @@ async function processPaymentNotification(decryptedData) {
     message: '支付成功，订单已更新',
     outTradeNo: out_trade_no,
     transactionId: transaction_id
+  }
+}
+
+async function markParentOrderUrgent(parentOrderId, addonOrder = {}) {
+  if (!parentOrderId) return
+  try {
+    const parentRes = await db.collection('orders').doc(parentOrderId).get()
+    if (!parentRes.data.length) return
+    const parent = parentRes.data[0]
+    const now = Date.now()
+    const tags = Array.isArray(parent.tags) ? parent.tags.filter(Boolean) : []
+    if (!tags.includes('加急')) tags.push('加急')
+
+    const updateData = {
+      update_time: now,
+      tags
+    }
+    updateData['content.isUrgent'] = true
+    updateData['content.urgent_fee'] = Number(addonOrder.price || 0)
+    updateData['content.urgent_paid'] = true
+    updateData['content.urgent_paid_time'] = now
+    if (addonOrder._id) {
+      updateData['content.urgent_addon_id'] = addonOrder._id
+    }
+
+    await db.collection('orders').doc(parentOrderId).update(updateData)
+  } catch (e) {
+    console.error('回调中更新加急状态失败:', e)
   }
 }
 

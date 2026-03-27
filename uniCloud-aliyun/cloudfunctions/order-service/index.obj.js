@@ -4,6 +4,10 @@
 const uniID = require('uni-id-common')
 const db = uniCloud.database()
 const dbCmd = db.command
+const ORDER_CLASS = {
+	NORMAL: 'normal',
+	URGENT_ADDON: 'urgent_addon'
+}
 const HALL_TASK_FIELD_PROJECTION = {
 	_id: 1,
 	type: 1,
@@ -14,6 +18,7 @@ const HALL_TASK_FIELD_PROJECTION = {
 	delivery_location: 1,
 	address: 1,
 	status: 1,
+	'content.images': 1,
 	'content.dormNumber': 1,
 	'content.isUrgent': 1,
 	'content.isDelivery': 1,
@@ -85,6 +90,12 @@ function ensurePositiveInt(val, fallback) {
 	const n = Number(val)
 	if (!Number.isFinite(n) || n <= 0) return fallback
 	return Math.floor(n)
+}
+
+function normalizeAmount(val) {
+	const n = Number(val || 0)
+	if (!Number.isFinite(n)) return 0
+	return Math.round(n * 100) / 100
 }
 
 async function getRiderStatsByUid(uid) {
@@ -224,6 +235,111 @@ module.exports = {
 			this.authInfo = null
 		}
 	},
+
+	/**
+	 * 创建加急附加订单（仅用于微信支付加急费用）
+	 * @param {object} payload
+	 * @param {string} payload.orderId 主订单ID
+	 * @param {number} payload.amount 加急费用（元）
+	 */
+	async createUrgentOrder(payload = {}) {
+		const authResult = checkAuth(this)
+		if (authResult.code) {
+			return authResult
+		}
+		const uid = authResult.uid
+
+		const orderId = payload.orderId
+		let amount = normalizeAmount(payload.amount || 1)
+
+		if (!orderId) {
+			return { code: 'INVALID_PARAM', message: '订单ID不能为空' }
+		}
+		if (amount <= 0) {
+			return { code: 'INVALID_PARAM', message: '加急金额必须大于0' }
+		}
+		if (amount > 20) {
+			return { code: 'INVALID_PARAM', message: '单笔加急费用不能超过 ¥20' }
+		}
+
+		// 查询主订单
+		const orderResult = await db.collection('orders').doc(orderId).get()
+		if (!orderResult.data.length) {
+			return { code: 'NOT_FOUND', message: '订单不存在' }
+		}
+		const parentOrder = orderResult.data[0]
+
+		if (parentOrder.user_id !== uid) {
+			return { code: 'NO_PERMISSION', message: '无权限操作该订单' }
+		}
+
+		if (!['pending_accept', 'pending_pickup', 'delivering'].includes(parentOrder.status)) {
+			return { code: 'INVALID_STATUS', message: '当前状态不可加急' }
+		}
+
+		if (parentOrder.pay_status !== 'paid') {
+			return { code: 'NOT_PAID', message: '订单未支付，无法加急' }
+		}
+
+		if (parentOrder.content && parentOrder.content.isUrgent) {
+			return { code: 'ALREADY_URGENT', message: '该订单已加急' }
+		}
+
+		// 复用已有的待支付加急单，避免重复创建
+		const existedAddon = await db.collection('orders')
+			.where({
+				parent_order_id: orderId,
+				order_class: ORDER_CLASS.URGENT_ADDON,
+				pay_status: 'unpaid'
+			})
+			.orderBy('create_time', 'desc')
+			.limit(1)
+			.get()
+
+		if (existedAddon.data && existedAddon.data.length) {
+			return {
+				code: 0,
+				message: '已为您生成待支付的加急订单',
+				data: {
+					orderId: existedAddon.data[0]._id || existedAddon.data[0].id
+				}
+			}
+		}
+
+		const now = Date.now()
+		const urgentOrder = {
+			order_no: generateOrderNo(new Date()) + 'U',
+			user_id: uid,
+			parent_order_id: orderId,
+			order_class: ORDER_CLASS.URGENT_ADDON,
+			type: 'urgent_addon',
+			type_label: '加急服务',
+			status: 'pending_pay',
+			pay_method: 'wechat',
+			pay_status: 'unpaid',
+			hall_visible: false,
+			refund_status: 'none',
+			price: amount,
+			content: {
+				parent_order_id: orderId,
+				urgent_fee: amount
+			},
+			tags: [],
+			create_time: now,
+			update_time: now
+		}
+
+		const addRes = await db.collection('orders').add(urgentOrder)
+		const newId = addRes.id || addRes._id
+
+		return {
+			code: 0,
+			message: '加急订单已生成',
+			data: {
+				orderId: newId
+			}
+		}
+	},
 	// ==================== 用户端功能 ====================
 
 	/**
@@ -257,6 +373,7 @@ module.exports = {
 		const order = {
 			order_no: generateOrderNo(new Date()),
 			user_id: uid,
+			order_class: ORDER_CLASS.NORMAL,
 			type: orderData.type,
 			type_label: orderData.type_label || '',
 			status: 'pending_pay',
@@ -312,7 +429,8 @@ module.exports = {
 
 		try {
 			let query = db.collection('orders').where({
-				user_id: uid
+				user_id: uid,
+				order_class: dbCmd.neq(ORDER_CLASS.URGENT_ADDON)
 			})
 
 			// 根据状态过滤
@@ -908,11 +1026,12 @@ module.exports = {
 				}
 			}
 
-			// 只能删除已完成的订单
-			if (order.status !== 'completed') {
+			// 仅允许删除已完成或已取消的订单
+			const deletableStatuses = ['completed', 'cancelled']
+			if (!deletableStatuses.includes(order.status)) {
 				return {
 					code: 'INVALID_STATUS',
-					message: '只能删除已完成的订单'
+					message: '只能删除已完成或已取消的订单'
 				}
 			}
 
@@ -1290,10 +1409,10 @@ module.exports = {
 	 * @param {array} images 送达凭证图片
 	 * @returns {object} 确认结果
 	 */
-	async confirmDelivery(orderId, images = []) {
-		const authResult = checkAuth(this)
-		if (authResult.code) {
-			return authResult
+  async confirmDelivery(orderId, images = []) {
+    const authResult = checkAuth(this)
+    if (authResult.code) {
+      return authResult
 		}
 		const uid = authResult.uid
 
@@ -1371,5 +1490,271 @@ module.exports = {
 				message: '确认送达失败：' + error.message
 			}
 		}
-	}
+	},
+
+  /**
+   * 获取当前用户的地址列表
+   */
+  async getAddressList () {
+    const authResult = checkAuth(this)
+    if (authResult.code) {
+      return authResult
+    }
+    const uid = authResult.uid
+
+    try {
+      const res = await db.collection('addresses')
+        .where({ user_id: uid })
+        .orderBy('create_time', 'desc')
+        .get()
+
+      return {
+        code: 0,
+        message: '获取成功',
+        data: res.data
+      }
+    } catch (error) {
+      console.error('获取地址列表失败:', error)
+      return {
+        code: 'DB_ERROR',
+        message: '获取地址列表失败：' + error.message
+      }
+    }
+  },
+
+  /**
+   * 新增地址
+   */
+  async addAddress (addressData) {
+    const authResult = checkAuth(this)
+    if (authResult.code) {
+      return authResult
+    }
+    const uid = authResult.uid
+
+    if (!addressData || !addressData.name || !addressData.phone || !addressData.detail) {
+      return {
+        code: 'INVALID_PARAM',
+        message: '联系人、手机号和详细地址不能为空'
+      }
+    }
+
+    const doc = {
+      user_id: uid,
+      name: addressData.name,
+      phone: addressData.phone,
+      detail: addressData.detail,
+      school_area: addressData.schoolArea || '',
+      is_default: !!addressData.isDefault,
+      create_time: Date.now()
+    }
+
+    try {
+      if (doc.is_default) {
+        await db.collection('addresses')
+          .where({ user_id: uid, is_default: true })
+          .update({ is_default: false })
+      }
+
+      const res = await db.collection('addresses').add(doc)
+
+      return {
+        code: 0,
+        message: '新增地址成功',
+        data: { _id: res.id, ...doc }
+      }
+    } catch (error) {
+      console.error('新增地址失败:', error)
+      return {
+        code: 'DB_ERROR',
+        message: '新增地址失败：' + error.message
+      }
+    }
+  },
+
+  /**
+   * 更新地址
+   */
+  async updateAddress (id, addressData = {}) {
+    const authResult = checkAuth(this)
+    if (authResult.code) {
+      return authResult
+    }
+    const uid = authResult.uid
+
+    if (!id) {
+      return { code: 'INVALID_PARAM', message: '地址ID不能为空' }
+    }
+
+    const updateDoc = {}
+    if (addressData.name) updateDoc.name = addressData.name
+    if (addressData.phone) updateDoc.phone = addressData.phone
+    if (addressData.detail) updateDoc.detail = addressData.detail
+    if (addressData.schoolArea !== undefined) {
+      updateDoc.school_area = addressData.schoolArea
+    }
+    if (addressData.isDefault !== undefined) {
+      updateDoc.is_default = !!addressData.isDefault
+    }
+
+    if (Object.keys(updateDoc).length === 0) {
+      return { code: 'INVALID_PARAM', message: '没有需要更新的字段' }
+    }
+
+    try {
+      const collection = db.collection('addresses')
+      const findRes = await collection.where({ _id: id, user_id: uid }).limit(1).get()
+      if (findRes.data.length === 0) {
+        return { code: 'NOT_FOUND', message: '地址不存在或无权访问' }
+      }
+
+      if (updateDoc.is_default) {
+        await collection.where({ user_id: uid, is_default: true, _id: dbCmd.neq(id) }).update({ is_default: false })
+      }
+
+      await collection.doc(id).update(updateDoc)
+
+      return { code: 0, message: '更新地址成功' }
+    } catch (error) {
+      console.error('更新地址失败:', error)
+      return { code: 'DB_ERROR', message: '更新地址失败：' + error.message }
+    }
+  },
+
+  /**
+   * 删除地址
+   */
+  async deleteAddress (id) {
+    const authResult = checkAuth(this)
+    if (authResult.code) {
+      return authResult
+    }
+    const uid = authResult.uid
+
+    if (!id) {
+      return { code: 'INVALID_PARAM', message: '地址ID不能为空' }
+    }
+
+    try {
+      const collection = db.collection('addresses')
+      const findRes = await collection.where({ _id: id, user_id: uid }).limit(1).get()
+
+      if (!findRes.data.length) {
+        return { code: 'NOT_FOUND', message: '地址不存在或无权访问' }
+      }
+
+      await collection.doc(id).remove()
+
+      return { code: 0, message: '删除地址成功' }
+    } catch (error) {
+      console.error('删除地址失败:', error)
+      return { code: 'DB_ERROR', message: '删除地址失败：' + error.message }
+    }
+  },
+
+  /**
+   * 设置默认地址
+   */
+  async setDefaultAddress (id) {
+    const authResult = checkAuth(this)
+    if (authResult.code) {
+      return authResult
+    }
+    const uid = authResult.uid
+
+    if (!id) {
+      return { code: 'INVALID_PARAM', message: '地址ID不能为空' }
+    }
+
+    try {
+      const collection = db.collection('addresses')
+      const findRes = await collection.where({ _id: id, user_id: uid }).limit(1).get()
+      if (!findRes.data.length) {
+        return { code: 'NOT_FOUND', message: '地址不存在或无权访问' }
+      }
+
+      await collection.where({ user_id: uid, is_default: true, _id: dbCmd.neq(id) }).update({ is_default: false })
+      await collection.doc(id).update({ is_default: true })
+
+      return { code: 0, message: '设置默认地址成功' }
+    } catch (error) {
+      console.error('设置默认地址失败:', error)
+      return { code: 'DB_ERROR', message: '设置默认地址失败：' + error.message }
+    }
+  },
+
+  /**
+   * 获取快递代取价格配置
+   */
+  async getPickupRates () {
+    try {
+      const res = await db.collection('item_price_config')
+        .where({ type: dbCmd.in(['pickup_small', 'pickup_medium', 'pickup_large']) })
+        .get()
+
+      const list = res.data || []
+      const rates = { small: 1.5, medium: 2, large: 3 }
+
+      list.forEach((item) => {
+        if (item.type === 'pickup_small' && typeof item.price === 'number') {
+          rates.small = item.price
+        } else if (item.type === 'pickup_medium' && typeof item.price === 'number') {
+          rates.medium = item.price
+        } else if (item.type === 'pickup_large' && typeof item.price === 'number') {
+          rates.large = item.price
+        }
+      })
+
+      return { code: 0, data: rates }
+    } catch (error) {
+      console.error('获取快递代取价格失败:', error)
+      return { code: 'DB_ERROR', message: '获取价格配置失败：' + error.message }
+    }
+  },
+
+  /**
+   * 首页内容：广告位 + 公告列表
+   */
+  async getHomeContent () {
+    try {
+      const heroRes = await db.collection('home_hero')
+        .where(dbCmd.or([{ enabled: true }, { enabled: dbCmd.exists(false) }]))
+        .orderBy('sort', 'asc')
+        .limit(20)
+        .get()
+
+      const heroes = (heroRes.data || [])
+        .filter((row) => row.enabled !== false)
+        .map((row) => ({
+          _id: row._id,
+          title: row.title != null ? String(row.title) : '',
+          desc: row.desc != null ? String(row.desc) : '',
+          cta_text: row.cta_text != null ? String(row.cta_text) : '联系运营',
+          image_file_id: row.image_file_id ? String(row.image_file_id) : '',
+          link_url: row.link_url ? String(row.link_url) : '',
+          sort: row.sort != null ? row.sort : 0
+        }))
+
+      const annRes = await db.collection('home_announcements')
+        .where(dbCmd.or([{ enabled: true }, { enabled: dbCmd.exists(false) }]))
+        .orderBy('sort', 'asc')
+        .limit(30)
+        .get()
+
+      const announcements = (annRes.data || [])
+        .filter((row) => row.enabled !== false)
+        .map((row) => ({
+          _id: row._id,
+          title: row.title || '',
+          content: row.content || '',
+          image_file_id: row.image_file_id ? String(row.image_file_id) : '',
+          sort: row.sort != null ? row.sort : 0
+        }))
+
+      return { code: 0, data: { heroes, announcements } }
+    } catch (error) {
+      console.error('getHomeContent', error)
+      return { code: 'DB_ERROR', message: '获取首页内容失败：' + error.message }
+    }
+  }
 }

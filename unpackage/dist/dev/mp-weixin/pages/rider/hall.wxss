@@ -15,6 +15,19 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16rpx;
+  position: relative;
+}
+.level-row.data-v-7d101352 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.level-btn.data-v-7d101352 {
+  font-size: 22rpx;
+  padding: 6rpx 14rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.4);
 }
 .metric.data-v-7d101352 {
   display: flex;
@@ -56,18 +69,103 @@
   background: #f5f5f5;
   transform: scale(0.98);
 }
+.hall-skeleton.data-v-7d101352 {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+.hall-skeleton .skeleton.data-v-7d101352 {
+  border-radius: 16rpx;
+  background: #e3e8f0;
+  position: relative;
+  overflow: hidden;
+}
+.hall-skeleton .skeleton.data-v-7d101352::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  transform: translateX(-100%);
+  animation: hallPulse-7d101352 1.2s ease-in-out infinite;
+}
+.hall-skeleton .skeleton.stats.data-v-7d101352 {
+  height: 240rpx;
+}
+.hall-skeleton .skeleton.task.data-v-7d101352 {
+  height: 180rpx;
+}
+.error-card.data-v-7d101352 {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 60rpx 30rpx;
+  text-align: center;
+  box-shadow: 0 12rpx 30rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 40rpx;
+}
+.error-illustration.data-v-7d101352 {
+  font-size: 72rpx;
+}
+.error-title.data-v-7d101352 {
+  font-size: 32rpx;
+  font-weight: 700;
+}
+.error-desc.data-v-7d101352 {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+.retry-btn.data-v-7d101352 {
+  margin-top: 10rpx;
+  background: #1a73e8;
+  color: #ffffff;
+}
+@keyframes hallPulse-7d101352 {
+0% {
+    transform: translateX(-100%);
+}
+50% {
+    transform: translateX(0%);
+}
+100% {
+    transform: translateX(100%);
+}
+}
 .tags.data-v-7d101352 {
   display: flex;
   gap: 8rpx;
   flex-wrap: wrap;
 }
-.tag.data-v-7d101352 {
-  background: #e8f2ff;
-  color: #1e88e5;
+.tag-chip.data-v-7d101352 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  background: #eef2ff;
+  color: #1d4ed8;
   border-radius: 999rpx;
-  padding: 8rpx 18rpx;
-  font-size: 24rpx;
+  padding: 6rpx 16rpx;
+  font-size: 22rpx;
   font-weight: 600;
+}
+.tag-chip.tag-urgent.data-v-7d101352 {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.tag-chip.tag-delivery.data-v-7d101352 {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.tag-chip.tag-info.data-v-7d101352 {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+.tag-chip.tag-neutral.data-v-7d101352 {
+  background: #f3f4f6;
+  color: #374151;
+}
+.chip-icon.data-v-7d101352 {
+  font-size: 22rpx;
 }
 .route.data-v-7d101352 {
   margin: 10rpx 0;

@@ -57,6 +57,8 @@
 }
 .desc-text.data-v-163fccdb { color: #555; font-size: 28rpx;
 }
+.desc-line.data-v-163fccdb { display: block; margin-bottom: 6rpx;
+}
 .img-section.data-v-163fccdb { margin-top: 20rpx; border-top: 1rpx solid #eee; padding-top: 20rpx;
 }
 .imgs.data-v-163fccdb { display: flex; gap: 10rpx; margin-top: 10rpx;

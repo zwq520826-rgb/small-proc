@@ -3,13 +3,10 @@ const common_vendor = require("../../../common/vendor.js");
 const common_assets = require("../../../common/assets.js");
 const store_address = require("../../../store/address.js");
 const store_clientOrder = require("../../../store/clientOrder.js");
-const store_wallet = require("../../../store/wallet.js");
 const store_pay = require("../../../store/pay.js");
-if (!Math) {
-  PaymentPopup();
-}
-const PaymentPopup = () => "../../../components/PaymentPopup.js";
 const PICKUP_RATES_MIN_INTERVAL_MS = 60 * 60 * 1e3;
+const PICKUP_RATES_TTL_MS = 6 * 60 * 60 * 1e3;
+const PICKUP_RATES_CACHE_KEY = "pickup_rates_cache_v1";
 const _sfc_main = {
   __name: "pickup",
   setup(__props) {
@@ -22,12 +19,10 @@ const _sfc_main = {
     const isUrgent = common_vendor.ref(false);
     const isDelivery = common_vendor.ref(false);
     const dormNumber = common_vendor.ref("");
+    const remark = common_vendor.ref("");
     const deliveryDormType = common_vendor.ref("");
     const addressStore = store_address.useAddressStore();
     const store = store_clientOrder.useClientOrderStore();
-    const walletStore = store_wallet.useWalletStore();
-    const showPayPopup = common_vendor.ref(false);
-    const balance = common_vendor.computed(() => walletStore.balance);
     const toFen = (yuan) => Math.round(Number(yuan || 0) * 100);
     const fromFen = (fen) => Number(fen || 0) / 100;
     const sizeOptions = common_vendor.computed(() => [
@@ -67,7 +62,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:212", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:215", "选择图片失败:", err);
         }
       });
     };
@@ -112,18 +107,7 @@ const _sfc_main = {
           return;
         }
       }
-      const amount = Number(totalPrice.value).toFixed(2);
-      common_vendor.index.showActionSheet({
-        itemList: [`余额支付 ¥${amount}`, "微信支付"],
-        success: (res) => {
-          const index = res.tapIndex;
-          if (index === 0) {
-            onPayConfirm("balance");
-          } else if (index === 1) {
-            onPayConfirm("wechat");
-          }
-        }
-      });
+      onPayConfirm("wechat");
     };
     const uploadImages = async (list = []) => {
       const uploaded = [];
@@ -134,7 +118,7 @@ const _sfc_main = {
           uploaded.push(path);
           continue;
         }
-        const res = await common_vendor.tr.uploadFile({
+        const res = await common_vendor._r.uploadFile({
           filePath: path,
           cloudPath: `orders/pickup/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
         });
@@ -144,8 +128,7 @@ const _sfc_main = {
       }
       return uploaded;
     };
-    const onPayConfirm = async (method = "balance") => {
-      showPayPopup.value = false;
+    const onPayConfirm = async (method = "wechat") => {
       common_vendor.index.showLoading({ title: "处理中..." });
       try {
         const uploadedImages = await uploadImages(images.value);
@@ -157,28 +140,29 @@ const _sfc_main = {
         const amount = Number(totalPrice.value);
         const addr = currentAddress.value || {};
         const deliveryLocation = addr.schoolArea ? `${addr.schoolArea}・${addr.detail}` : addr.detail;
+        const remarkText = remark.value.trim();
+        const content = {
+          phone: addr.phone || "",
+          name: addr.name || "",
+          images: uploadedImages,
+          quantities: quantities.value,
+          isUrgent: isUrgent.value,
+          isDelivery: isDelivery.value,
+          dormNumber: dormNumber.value,
+          requiredRiderGender: isDelivery.value ? deliveryDormType.value || "" : ""
+        };
+        if (remarkText) {
+          content.remark = remarkText;
+        }
         const payload = {
           type: "pickup",
           typeLabel: "快递代取",
           price: amount,
           pickupLocation: "",
-          // 不再使用“待指定”，改为通过取件凭证照片识别取件点
           deliveryLocation,
           address: `${addr.name || ""} ${addr.phone || ""}
 ${deliveryLocation}`,
-          content: {
-            phone: addr.phone || "",
-            // 单独存储用户电话，方便骑手拨打
-            name: addr.name || "",
-            // 单独存储用户姓名
-            images: uploadedImages,
-            quantities: quantities.value,
-            isUrgent: isUrgent.value,
-            isDelivery: isDelivery.value,
-            dormNumber: dormNumber.value,
-            // 送货上门时要求的骑手性别（male/female）
-            requiredRiderGender: isDelivery.value ? deliveryDormType.value || "" : ""
-          },
+          content,
           tags: [
             isUrgent.value ? "加急" : "",
             isDelivery.value ? deliveryDormType.value === "male" ? "男生宿舍送货上门" : deliveryDormType.value === "female" ? "女生宿舍送货上门" : "送货上门" : ""
@@ -213,7 +197,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:391", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:387", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -231,29 +215,50 @@ ${deliveryLocation}`,
         rates.value = { ...pickupRatesCache };
         return;
       }
-      if (pickupRatesPromise)
-        return pickupRatesPromise;
-      pickupRatesPromise = (async () => {
+      if (!pickupRatesCache) {
         try {
-          const configService = common_vendor.tr.importObject("config-service");
-          const res = await configService.getPickupRates();
-          if (res && res.code === 0 && res.data) {
-            const nextRates = {
-              small: Number(res.data.small) || rates.value.small,
-              medium: Number(res.data.medium) || rates.value.medium,
-              large: Number(res.data.large) || rates.value.large
-            };
-            pickupRatesCache = nextRates;
-            lastPickupRatesLoadedAt = Date.now();
-            rates.value = { ...nextRates };
+          const raw = common_vendor.index.getStorageSync(PICKUP_RATES_CACHE_KEY);
+          if (raw) {
+            const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+            if ((parsed == null ? void 0 : parsed.ts) && now - parsed.ts < PICKUP_RATES_TTL_MS && parsed.data) {
+              pickupRatesCache = parsed.data;
+              lastPickupRatesLoadedAt = parsed.ts;
+              rates.value = { ...pickupRatesCache };
+              refreshPickupRates();
+              return;
+            }
           }
         } catch (e) {
-          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:432", "加载快递代取价格失败，将使用默认价格:", e);
-        } finally {
-          pickupRatesPromise = null;
         }
-      })();
+      }
+      if (pickupRatesPromise)
+        return pickupRatesPromise;
+      pickupRatesPromise = refreshPickupRates();
       return pickupRatesPromise;
+    }
+    async function refreshPickupRates() {
+      try {
+        const configService = common_vendor._r.importObject("order-service");
+        const res = await configService.getPickupRates();
+        if (res && res.code === 0 && res.data) {
+          const nextRates = {
+            small: Number(res.data.small) || rates.value.small,
+            medium: Number(res.data.medium) || rates.value.medium,
+            large: Number(res.data.large) || rates.value.large
+          };
+          pickupRatesCache = nextRates;
+          lastPickupRatesLoadedAt = Date.now();
+          rates.value = { ...nextRates };
+          try {
+            common_vendor.index.setStorageSync(PICKUP_RATES_CACHE_KEY, JSON.stringify({ ts: lastPickupRatesLoadedAt, data: nextRates }));
+          } catch (e) {
+          }
+        }
+      } catch (e) {
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:458", "加载快递代取价格失败，将使用默认价格:", e);
+      } finally {
+        pickupRatesPromise = null;
+      }
     }
     common_vendor.onLoad(async () => {
       await loadPickupRatesIfNeeded();
@@ -267,7 +272,7 @@ ${deliveryLocation}`,
         d: common_vendor.t(currentAddress.value.name),
         e: common_vendor.t(formatPhone(currentAddress.value.phone))
       } : {}, {
-        f: common_vendor.o(goSelectAddress),
+        f: common_vendor.o(goSelectAddress, "f8"),
         g: common_vendor.f(images.value, (img, idx, i0) => {
           return {
             a: img,
@@ -277,7 +282,7 @@ ${deliveryLocation}`,
         }),
         h: images.value.length < 9
       }, images.value.length < 9 ? {
-        i: common_vendor.o(chooseImage)
+        i: common_vendor.o(chooseImage, "e2")
       } : {}, {
         j: common_vendor.f(sizeOptions.value, (item, k0, i0) => {
           return {
@@ -291,28 +296,23 @@ ${deliveryLocation}`,
         }),
         k: common_assets._imports_0$1,
         l: isUrgent.value,
-        m: common_vendor.o((e) => isUrgent.value = e.detail.value),
+        m: common_vendor.o((e) => isUrgent.value = e.detail.value, "9c"),
         n: common_assets._imports_1,
         o: isDelivery.value,
-        p: common_vendor.o(onDeliveryToggle),
+        p: common_vendor.o(onDeliveryToggle, "e9"),
         q: isDelivery.value
       }, isDelivery.value ? {
         r: deliveryDormType.value === "male" ? 1 : "",
-        s: common_vendor.o(($event) => deliveryDormType.value = "male"),
+        s: common_vendor.o(($event) => deliveryDormType.value = "male", "28"),
         t: deliveryDormType.value === "female" ? 1 : "",
-        v: common_vendor.o(($event) => deliveryDormType.value = "female"),
+        v: common_vendor.o(($event) => deliveryDormType.value = "female", "aa"),
         w: dormNumber.value,
-        x: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
+        x: common_vendor.o(($event) => dormNumber.value = $event.detail.value, "38")
       } : {}, {
-        y: common_vendor.t(totalPrice.value),
-        z: common_vendor.o(handlePayClick),
-        A: common_vendor.o(onPayConfirm),
-        B: common_vendor.o(($event) => showPayPopup.value = $event),
-        C: common_vendor.p({
-          amount: Number(totalPrice.value),
-          balance: balance.value,
-          show: showPayPopup.value
-        })
+        y: remark.value,
+        z: common_vendor.o(($event) => remark.value = $event.detail.value, "e2"),
+        A: common_vendor.t(totalPrice.value),
+        B: common_vendor.o(handlePayClick, "23")
       });
     };
   }

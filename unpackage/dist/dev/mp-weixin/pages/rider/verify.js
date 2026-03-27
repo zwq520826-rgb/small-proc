@@ -11,7 +11,7 @@ if (!Math) {
 const _sfc_main = {
   __name: "verify",
   setup(__props) {
-    const riderService = common_vendor.tr.importObject("rider-service");
+    const riderService = common_vendor._r.importObject("rider-service");
     const form = common_vendor.ref({
       name: "",
       student_no: "",
@@ -84,19 +84,19 @@ const _sfc_main = {
     return (_ctx, _cache) => {
       return common_vendor.e({
         a: form.value.name,
-        b: common_vendor.o(($event) => form.value.name = $event.detail.value),
+        b: common_vendor.o(($event) => form.value.name = $event.detail.value, "2f"),
         c: form.value.student_no,
-        d: common_vendor.o(($event) => form.value.student_no = $event.detail.value),
+        d: common_vendor.o(($event) => form.value.student_no = $event.detail.value, "4d"),
         e: form.value.college_class,
-        f: common_vendor.o(($event) => form.value.college_class = $event.detail.value),
+        f: common_vendor.o(($event) => form.value.college_class = $event.detail.value, "31"),
         g: form.value.id_card,
-        h: common_vendor.o(($event) => form.value.id_card = $event.detail.value),
+        h: common_vendor.o(($event) => form.value.id_card = $event.detail.value, "92"),
         i: form.value.mobile,
-        j: common_vendor.o(($event) => form.value.mobile = $event.detail.value),
+        j: common_vendor.o(($event) => form.value.mobile = $event.detail.value, "f8"),
         k: common_vendor.sr(captchaRef, "df7b148f-0", {
           "k": "captchaRef"
         }),
-        l: common_vendor.o(($event) => form.value.captcha = $event),
+        l: common_vendor.o(($event) => form.value.captcha = $event, "fc"),
         m: common_vendor.p({
           scene: "rider-verify",
           focus: focusCaptchaInput.value,
@@ -104,7 +104,7 @@ const _sfc_main = {
         }),
         n: profile.value
       }, profile.value ? {} : {}, {
-        o: common_vendor.o(submit)
+        o: common_vendor.o(submit, "48")
       });
     };
   }

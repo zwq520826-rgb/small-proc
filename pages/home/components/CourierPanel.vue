@@ -126,7 +126,6 @@ function changeQty(key, delta) {
 
 function handleChooseAddress() {
   // TODO: 在此接入“我的地址”选择逻辑
-  console.log('handleChooseAddress TODO')
   uni.showToast({
     title: '地址选择待接入',
     icon: 'none'
@@ -375,4 +374,3 @@ function previewImage(index) {
   line-height: 36rpx;
 }
 </style>
-

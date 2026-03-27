@@ -114,19 +114,19 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   }, ["apple", "weixin", "weixinMobile"].includes($data.type) ? common_vendor.e({
     c: $data.type !== "weixinMobile"
   }, $data.type !== "weixinMobile" ? {
-    d: common_vendor.o((...args) => $options.quickLogin && $options.quickLogin(...args)),
+    d: common_vendor.o((...args) => $options.quickLogin && $options.quickLogin(...args), "b1"),
     e: $options.imgSrc
   } : {
-    f: common_vendor.o((...args) => $options.quickLogin && $options.quickLogin(...args))
+    f: common_vendor.o((...args) => $options.quickLogin && $options.quickLogin(...args), "01")
   }, {
     g: common_vendor.sr("agreements", "f1f87fcd-0"),
     h: common_vendor.p({
       scope: "register"
     })
   }) : {
-    i: common_vendor.o((...args) => $options.chooseArea && $options.chooseArea(...args)),
-    j: common_vendor.o(($event) => $data.focusPhone = false),
-    k: common_vendor.o(($event) => $data.phone = $event),
+    i: common_vendor.o((...args) => $options.chooseArea && $options.chooseArea(...args), "27"),
+    j: common_vendor.o(($event) => $data.focusPhone = false, "d1"),
+    k: common_vendor.o(($event) => $data.phone = $event, "dc"),
     l: common_vendor.p({
       focus: $data.focusPhone,
       type: "number",
@@ -139,7 +139,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     n: common_vendor.p({
       scope: "register"
     }),
-    o: common_vendor.o((...args) => $options.toSmsPage && $options.toSmsPage(...args))
+    o: common_vendor.o((...args) => $options.toSmsPage && $options.toSmsPage(...args), "71")
   }, {
     p: common_vendor.sr("uniFabLogin", "f1f87fcd-3")
   });

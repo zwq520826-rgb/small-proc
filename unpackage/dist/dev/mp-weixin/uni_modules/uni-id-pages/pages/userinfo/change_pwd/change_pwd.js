@@ -2,7 +2,7 @@
 const common_vendor = require("../../../../../common/vendor.js");
 const uni_modules_uniIdPages_common_loginPage_mixin = require("../../../common/login-page.mixin.js");
 const uni_modules_uniIdPages_common_password = require("../../../common/password.js");
-const uniIdCo = common_vendor.tr.importObject("uni-id-co", {
+const uniIdCo = common_vendor._r.importObject("uni-id-co", {
   customUI: true
 });
 const _sfc_main = {
@@ -88,8 +88,8 @@ if (!Math) {
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
     a: $data.logo,
-    b: common_vendor.o(($event) => $data.focusOldPassword = false),
-    c: common_vendor.o(($event) => $data.formData.oldPassword = $event),
+    b: common_vendor.o(($event) => $data.focusOldPassword = false, "db"),
+    c: common_vendor.o(($event) => $data.formData.oldPassword = $event, "9d"),
     d: common_vendor.p({
       focus: $data.focusOldPassword,
       type: "password",
@@ -100,8 +100,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     e: common_vendor.p({
       name: "oldPassword"
     }),
-    f: common_vendor.o(($event) => $data.focusNewPassword = false),
-    g: common_vendor.o(($event) => $data.formData.newPassword = $event),
+    f: common_vendor.o(($event) => $data.focusNewPassword = false, "2a"),
+    g: common_vendor.o(($event) => $data.formData.newPassword = $event, "be"),
     h: common_vendor.p({
       focus: $data.focusNewPassword,
       type: "password",
@@ -112,8 +112,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     i: common_vendor.p({
       name: "newPassword"
     }),
-    j: common_vendor.o(($event) => $data.focusNewPassword2 = false),
-    k: common_vendor.o(($event) => $data.formData.newPassword2 = $event),
+    j: common_vendor.o(($event) => $data.focusNewPassword2 = false, "cf"),
+    k: common_vendor.o(($event) => $data.formData.newPassword2 = $event, "83"),
     l: common_vendor.p({
       focus: $data.focusNewPassword2,
       type: "password",
@@ -124,8 +124,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     m: common_vendor.p({
       name: "newPassword2"
     }),
-    n: common_vendor.o((...args) => $options.submit && $options.submit(...args)),
-    o: common_vendor.sr("form", "62ffb79a-0"),
+    n: common_vendor.o((...args) => $options.submit && $options.submit(...args), "71"),
+    o: common_vendor.sr("form", "641a4865-0"),
     p: common_vendor.p({
       value: $data.formData,
       ["err-show-type"]: "toast"

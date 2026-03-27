@@ -4,8 +4,8 @@ const uni_modules_uniIdPages_common_store = require("../../uni_modules/uni-id-pa
 const store_user = require("../../store/user.js");
 const store_wallet = require("../../store/wallet.js");
 const common_assets = require("../../common/assets.js");
-const uniIdCo = common_vendor.tr.importObject("uni-id-co");
-const riderService = common_vendor.tr.importObject("rider-service");
+const uniIdCo = common_vendor._r.importObject("uni-id-co");
+const riderService = common_vendor._r.importObject("rider-service");
 const TheTabBar = () => "../../components/TheTabBar.js";
 const _sfc_main = {
   components: {
@@ -134,18 +134,19 @@ const _sfc_main = {
         "provider": "univerify",
         "univerifyStyle": this.univerifyStyle,
         success: async (e) => {
-          uniIdCo.bindMobileByUniverify(e.authResult).then((res) => {
+          uniIdCo.bindMobileByUniverify(e.authResult).then(() => {
             uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
-          }).catch((e2) => {
-            common_vendor.index.__f__("log", "at pages/mine/index.vue:275", e2);
-          }).finally((e2) => {
+          }).catch((err) => {
+            common_vendor.index.showToast({ title: (err == null ? void 0 : err.message) || "绑定失败", icon: "none" });
+          }).finally(() => {
             common_vendor.index.closeAuthView();
           });
         },
         fail: (err) => {
-          common_vendor.index.__f__("log", "at pages/mine/index.vue:282", err);
           if (err.code == "30002" || err.code == "30001") {
             this.bindMobileBySmsCode();
+          } else {
+            common_vendor.index.showToast({ title: (err == null ? void 0 : err.errMsg) || "操作已取消", icon: "none" });
           }
         }
       });
@@ -177,6 +178,10 @@ const _sfc_main = {
       });
     },
     goWallet() {
+      if (!this.isRiderMode) {
+        common_vendor.index.showToast({ title: "仅骑手可用", icon: "none" });
+        return;
+      }
       common_vendor.index.navigateTo({ url: "/pages/common/wallet/index" });
     },
     goAddress() {
@@ -206,6 +211,16 @@ const _sfc_main = {
           common_vendor.index.showToast({ title: "已复制", icon: "success" });
         }
       });
+    },
+    callServicePhone() {
+      common_vendor.index.makePhoneCall({
+        phoneNumber: this.servicePhone,
+        fail: () => {
+          common_vendor.index.showToast({ title: "拨打失败，请重试", icon: "none" });
+        }
+      });
+    },
+    onContact(e) {
     },
     goHelp() {
       common_vendor.index.navigateTo({ url: "/pages/common/feedback/index" });
@@ -264,7 +279,7 @@ const _sfc_main = {
       });
     },
     async bindThirdAccount(provider) {
-      const uniIdCo2 = common_vendor.tr.importObject("uni-id-co");
+      const uniIdCo2 = common_vendor._r.importObject("uni-id-co");
       const bindField = {
         weixin: "wx_openid",
         alipay: "ali_openid",
@@ -291,8 +306,8 @@ const _sfc_main = {
             await uni_modules_uniIdPages_common_store.mutations.updateUserInfo();
           },
           fail: async (err) => {
-            common_vendor.index.__f__("log", "at pages/mine/index.vue:436", err);
             common_vendor.index.hideLoading();
+            common_vendor.index.showToast({ title: (err == null ? void 0 : err.errMsg) || "操作已取消", icon: "none" });
           }
         });
       }
@@ -332,38 +347,38 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   } : !$options.userInfo._id ? {} : {}, {
     e: !$options.userInfo._id,
     f: common_vendor.t($options.userInfo._id ? "编辑名称" : "登录"),
-    g: common_vendor.o(($event) => $options.userInfo._id ? $options.setNickname("") : $options.login()),
+    g: common_vendor.o(($event) => $options.userInfo._id ? $options.setNickname("") : $options.login(), "77"),
     h: !$options.isRiderMode
   }, !$options.isRiderMode ? {
     i: common_assets._imports_0$2,
-    j: common_vendor.o((...args) => $options.goBecomeRider && $options.goBecomeRider(...args))
+    j: common_vendor.o((...args) => $options.goBecomeRider && $options.goBecomeRider(...args), "39")
   } : {}, {
     k: common_assets._imports_1$1,
     l: common_vendor.t($options.walletAmount),
-    m: common_vendor.o((...args) => $options.goWallet && $options.goWallet(...args)),
+    m: common_vendor.o((...args) => $options.goWallet && $options.goWallet(...args), "64"),
     n: common_assets._imports_2,
-    o: common_vendor.o((...args) => $options.goAddress && $options.goAddress(...args)),
+    o: common_vendor.o((...args) => $options.goAddress && $options.goAddress(...args), "74"),
     p: common_assets._imports_3,
-    q: common_vendor.o((...args) => $options.goMessages && $options.goMessages(...args)),
+    q: common_vendor.o((...args) => $options.goMessages && $options.goMessages(...args), "b0"),
     r: common_assets._imports_4,
-    s: common_vendor.o((...args) => $options.goService && $options.goService(...args)),
+    s: common_vendor.o((...args) => $options.goService && $options.goService(...args), "8c"),
     t: common_assets._imports_5,
-    v: common_vendor.o((...args) => $options.goHelp && $options.goHelp(...args)),
+    v: common_vendor.o((...args) => $options.goHelp && $options.goHelp(...args), "cc"),
     w: common_assets._imports_6,
-    x: common_vendor.o((...args) => $options.goSettings && $options.goSettings(...args)),
+    x: common_vendor.o((...args) => $options.goSettings && $options.goSettings(...args), "c8"),
     y: $options.isRiderMode
   }, $options.isRiderMode ? {
-    z: common_vendor.o((...args) => $options.goClientMode && $options.goClientMode(...args))
+    z: common_vendor.o((...args) => $options.goClientMode && $options.goClientMode(...args), "e4")
   } : {}, {
     A: $data.showLoginManage
   }, $data.showLoginManage ? common_vendor.e({
     B: $options.userInfo._id
   }, $options.userInfo._id ? {
-    C: common_vendor.o((...args) => $options.logout && $options.logout(...args))
+    C: common_vendor.o((...args) => $options.logout && $options.logout(...args), "bc")
   } : {
-    D: common_vendor.o((...args) => $options.login && $options.login(...args))
+    D: common_vendor.o((...args) => $options.login && $options.login(...args), "f1")
   }) : {}, {
-    E: common_vendor.o($options.setNickname),
+    E: common_vendor.o($options.setNickname, "1a"),
     F: common_vendor.p({
       mode: "input",
       value: $options.userInfo.nickname,
@@ -376,16 +391,17 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       type: "dialog"
     }),
     I: common_vendor.t($data.servicePhone),
-    J: common_vendor.o((...args) => $options.copyServicePhone && $options.copyServicePhone(...args)),
-    K: common_vendor.o((...args) => $options.closeServicePopup && $options.closeServicePopup(...args)),
-    L: common_vendor.o(() => {
-    }),
-    M: common_vendor.sr("servicePopup", "569e925a-3"),
-    N: common_vendor.p({
+    J: common_vendor.o((...args) => $options.onContact && $options.onContact(...args), "10"),
+    K: common_vendor.o((...args) => $options.callServicePhone && $options.callServicePhone(...args), "2b"),
+    L: common_vendor.o((...args) => $options.closeServicePopup && $options.closeServicePopup(...args), "13"),
+    M: common_vendor.o(() => {
+    }, "2f"),
+    N: common_vendor.sr("servicePopup", "569e925a-3"),
+    O: common_vendor.p({
       type: "center"
     }),
-    O: common_vendor.sr("bind-mobile-by-sms", "569e925a-4"),
-    P: common_vendor.o($options.bindMobileSuccess)
+    P: common_vendor.sr("bind-mobile-by-sms", "569e925a-4"),
+    Q: common_vendor.o($options.bindMobileSuccess, "5d")
   });
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-569e925a"]]);

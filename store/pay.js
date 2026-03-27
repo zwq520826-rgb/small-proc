@@ -1,16 +1,10 @@
-/**
- * 统一支付入口
- * 支持余额支付和微信支付
- */
-import { useWalletStore } from './wallet'
-
 // 导入云对象
 const paymentService = uniCloud.importObject('payment-service')
 
 /**
  * 统一支付方法
  * @param {Object} params
- * @param {String} params.method - 支付方式：'balance' | 'wechat'
+ * @param {String} params.method - 支付方式：仅支持 'wechat'
  * @param {String} params.orderId - 订单ID（orders._id）
  * @param {Number} params.amount - 支付金额（可选，用于校验）
  * @returns {Object} { success: boolean, reason?: string }
@@ -24,25 +18,7 @@ export async function payForOrder({ method, orderId, amount }) {
   }
 
   try {
-    if (method === 'balance') {
-      // 余额支付
-      const walletStore = useWalletStore()
-      const payRes = await walletStore.pay(amount || 0, orderId)
-      
-      if (!payRes?.success) {
-        return {
-          success: false,
-          reason: payRes?.reason || '余额不足'
-        }
-      }
-
-      // 余额支付成功，更新订单状态
-      // 注意：这里假设 wallet-service.pay 已经处理了订单状态更新
-      // 如果没有，需要在这里调用 order-service 更新订单状态
-      return {
-        success: true
-      }
-    } else if (method === 'wechat') {
+    if (method === 'wechat') {
       // 微信支付
       uni.showLoading({ title: '正在调起支付...' })
 
@@ -70,8 +46,7 @@ export async function payForOrder({ method, orderId, amount }) {
             package: packageValue,
             signType,
             paySign,
-            success: async (payRes) => {
-              console.log('微信支付成功:', payRes)
+            success: async () => {
               uni.hideLoading()
               
               // 3. 支付成功，提示用户支付处理中
@@ -121,11 +96,10 @@ export async function payForOrder({ method, orderId, amount }) {
           reason: error.message || '支付失败，请重试'
         }
       }
-    } else {
-      return {
-        success: false,
-        reason: `不支持的支付方式: ${method}`
-      }
+    }
+    return {
+      success: false,
+      reason: `不支持的支付方式: ${method}`
     }
   } catch (error) {
     console.error('payForOrder 异常:', error)

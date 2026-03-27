@@ -1,6 +1,7 @@
 "use strict";
 const common_vendor = require("../../../common/vendor.js");
 const store_riderTask = require("../../../store/riderTask.js");
+const utils_orderTags = require("../../../utils/orderTags.js");
 if (!Math) {
   TheTabBar();
 }
@@ -32,7 +33,7 @@ const _sfc_main = {
       try {
         await refreshPageData(false);
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:191", "任务列表刷新失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:185", "任务列表刷新失败:", e);
       }
     });
     common_vendor.onPullDownRefresh(async () => {
@@ -42,7 +43,7 @@ const _sfc_main = {
       try {
         await refreshPageData(true);
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:202", "下拉刷新失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:196", "下拉刷新失败:", e);
       } finally {
         pulling = false;
         common_vendor.index.stopPullDownRefresh();
@@ -60,32 +61,27 @@ const _sfc_main = {
         });
       }
       return list.map((t) => {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+        var _a, _b, _c, _d, _e, _f, _g, _h;
         let delivery = t.deliveryLocation || t.delivery || t.address || "";
         if (!delivery) {
           delivery = "送达地址";
         }
-        const dorm = (_a = t.content) == null ? void 0 : _a.dormNumber;
-        const rawTags = (t.tags && t.tags.length ? t.tags : [
-          ((_b = t.content) == null ? void 0 : _b.isUrgent) ? "加急" : "",
-          ((_c = t.content) == null ? void 0 : _c.isDelivery) ? "送货上门" : ""
-        ].filter(Boolean)) || [];
-        const tags = rawTags.map((tag) => {
-          if (tag.includes("送货上门") && dorm) {
-            return `${tag} ${dorm}`;
-          }
-          return tag;
+        (_a = t.content) == null ? void 0 : _a.dormNumber;
+        const visualTags = utils_orderTags.buildVisualTags({
+          rawTags: t.tags,
+          content: t.content,
+          requiredGender: (_b = t.content) == null ? void 0 : _b.requiredRiderGender
         });
         return {
           ...t,
           pickup: t.pickupLocation || t.pickup || "取件点",
           delivery,
           // 用户上传的取件凭证在 content.images 中
-          pickupImages: ((_d = t.content) == null ? void 0 : _d.images) || [],
-          deliveryImage: ((_f = (_e = t.content) == null ? void 0 : _e.deliveryImages) == null ? void 0 : _f[0]) || ((_h = (_g = t.content) == null ? void 0 : _g.delivery_images) == null ? void 0 : _h[0]) || "",
+          pickupImages: ((_c = t.content) == null ? void 0 : _c.images) || [],
+          deliveryImage: ((_e = (_d = t.content) == null ? void 0 : _d.deliveryImages) == null ? void 0 : _e[0]) || ((_g = (_f = t.content) == null ? void 0 : _f.delivery_images) == null ? void 0 : _g[0]) || "",
           // 客户电话：优先从 content.phone 获取，如果没有则尝试从 address 字段解析
-          phone: ((_i = t.content) == null ? void 0 : _i.phone) || t.phone || extractPhoneFromAddress(t.address) || "",
-          tags
+          phone: ((_h = t.content) == null ? void 0 : _h.phone) || t.phone || extractPhoneFromAddress(t.address) || "",
+          visualTags
         };
       });
     });
@@ -116,12 +112,12 @@ const _sfc_main = {
       const hasCloudFile = urls.some((url) => url && url.startsWith("cloud://"));
       if (hasCloudFile) {
         try {
-          const res = await common_vendor.tr.getTempFileURL({
+          const res = await common_vendor._r.getTempFileURL({
             fileList: urls
           });
           urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
         } catch (e) {
-          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:312", "获取临时文件 URL 失败:", e);
+          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:296", "获取临时文件 URL 失败:", e);
           common_vendor.index.showToast({ title: "图片加载失败，请稍后重试", icon: "none" });
           return;
         }
@@ -136,20 +132,15 @@ const _sfc_main = {
       const images = task.pickupImages || ((_a = task.content) == null ? void 0 : _a.images) || [];
       await previewCloudImages(images);
     };
-    const copyPhone = (phone) => {
+    const callCustomer = (task) => {
+      var _a;
+      const phone = ((_a = task.content) == null ? void 0 : _a.phone) || task.phone || "";
       if (!phone) {
         common_vendor.index.showToast({ title: "暂无客户电话", icon: "none" });
         return;
       }
-      const cleanPhone = phone.replace(/\*/g, "");
-      common_vendor.index.setClipboardData({
-        data: cleanPhone,
-        success: () => {
-          common_vendor.index.showToast({ title: "电话已复制", icon: "success" });
-        },
-        fail: () => {
-          common_vendor.index.showToast({ title: "复制失败", icon: "none" });
-        }
+      common_vendor.index.makePhoneCall({
+        phoneNumber: phone.replace(/\*/g, "")
       });
     };
     const confirmPickup = (task) => {
@@ -181,7 +172,7 @@ const _sfc_main = {
           const tempFilePath = res.tempFilePaths[0];
           common_vendor.index.showLoading({ title: "上传中..." });
           try {
-            const uploadRes = await common_vendor.tr.uploadFile({
+            const uploadRes = await common_vendor._r.uploadFile({
               filePath: tempFilePath,
               cloudPath: `delivery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
             });
@@ -201,7 +192,7 @@ const _sfc_main = {
             } else {
             }
           } catch (e) {
-            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:429", "上传/送达确认失败:", e);
+            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:394", "上传/送达确认失败:", e);
             common_vendor.index.hideLoading();
             common_vendor.index.showToast({ title: e.message || "上传失败，请重试", icon: "none" });
           }
@@ -216,6 +207,13 @@ const _sfc_main = {
         return;
       common_vendor.index.navigateTo({
         url: "/pages/rider/tasks/detail?id=" + encodeURIComponent(String(task.id)) + "&openCancel=1"
+      });
+    };
+    const goTaskDetail = (task) => {
+      if (!task || !task.id)
+        return;
+      common_vendor.index.navigateTo({
+        url: "/pages/rider/tasks/detail?id=" + encodeURIComponent(String(task.id))
       });
     };
     const formatTime = (timestamp) => {
@@ -256,26 +254,30 @@ const _sfc_main = {
             b: common_vendor.t(task.price.toFixed(2)),
             c: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
             d: common_vendor.t(statusMap[task.status]),
-            e: task.tags && task.tags.length
-          }, task.tags && task.tags.length ? {
-            f: common_vendor.f(task.tags, (tag, k1, i1) => {
-              return {
-                a: common_vendor.t(tag),
-                b: tag,
-                c: tag.includes("加急") ? 1 : "",
-                d: tag.includes("送货上门") ? 1 : ""
-              };
+            e: task.visualTags && task.visualTags.length
+          }, task.visualTags && task.visualTags.length ? {
+            f: common_vendor.f(task.visualTags, (tag, k1, i1) => {
+              return common_vendor.e({
+                a: tag.icon
+              }, tag.icon ? {
+                b: common_vendor.t(tag.icon)
+              } : {}, {
+                c: common_vendor.t(tag.text),
+                d: tag.key,
+                e: common_vendor.n(`tag-${tag.type}`)
+              });
             })
           } : {}, {
             g: task.phone
           }, task.phone ? {
             h: common_vendor.t(task.phone),
-            i: common_vendor.o(($event) => copyPhone(task.phone), task.id)
+            i: common_vendor.o(($event) => callCustomer(task), task.id)
           } : {}, {
             j: common_vendor.o(($event) => viewPickupImages(task), task.id),
             k: common_vendor.o(($event) => confirmPickup(task), task.id),
             l: common_vendor.o(($event) => goDetailAndOpenCancel(task), task.id),
-            m: task.id
+            m: task.id,
+            n: common_vendor.o(($event) => goTaskDetail(task), task.id)
           });
         })
       } : {}, {
@@ -286,25 +288,29 @@ const _sfc_main = {
             a: common_vendor.t(task.delivery),
             b: common_vendor.t(task.price.toFixed(2)),
             c: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
-            d: task.tags && task.tags.length
-          }, task.tags && task.tags.length ? {
-            e: common_vendor.f(task.tags, (tag, k1, i1) => {
-              return {
-                a: common_vendor.t(tag),
-                b: tag,
-                c: tag.includes("加急") ? 1 : "",
-                d: tag.includes("送货上门") ? 1 : ""
-              };
+            d: task.visualTags && task.visualTags.length
+          }, task.visualTags && task.visualTags.length ? {
+            e: common_vendor.f(task.visualTags, (tag, k1, i1) => {
+              return common_vendor.e({
+                a: tag.icon
+              }, tag.icon ? {
+                b: common_vendor.t(tag.icon)
+              } : {}, {
+                c: common_vendor.t(tag.text),
+                d: tag.key,
+                e: common_vendor.n(`tag-${tag.type}`)
+              });
             })
           } : {}, {
             f: task.phone
           }, task.phone ? {
             g: common_vendor.t(task.phone),
-            h: common_vendor.o(($event) => copyPhone(task.phone), task.id)
+            h: common_vendor.o(($event) => callCustomer(task), task.id)
           } : {}, {
             i: common_vendor.o(($event) => confirmDelivery(task), task.id),
             j: common_vendor.o(($event) => goDetailAndOpenCancel(task), task.id),
-            k: task.id
+            k: task.id,
+            l: common_vendor.o(($event) => goTaskDetail(task), task.id)
           });
         })
       } : {}, {
@@ -316,23 +322,29 @@ const _sfc_main = {
             b: common_vendor.t(((task.content && task.content.rider_income) != null ? Number(task.content.rider_income) : Number(task.price || 0)).toFixed(2)),
             c: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
             d: common_vendor.t(formatTime(task.completedAt)),
-            e: task.tags && task.tags.length
-          }, task.tags && task.tags.length ? {
-            f: common_vendor.f(task.tags, (tag, k1, i1) => {
-              return {
-                a: common_vendor.t(tag),
-                b: tag,
-                c: tag.includes("加急") ? 1 : "",
-                d: tag.includes("送货上门") ? 1 : ""
-              };
+            e: task.visualTags && task.visualTags.length
+          }, task.visualTags && task.visualTags.length ? {
+            f: common_vendor.f(task.visualTags, (tag, k1, i1) => {
+              return common_vendor.e({
+                a: tag.icon
+              }, tag.icon ? {
+                b: common_vendor.t(tag.icon)
+              } : {}, {
+                c: common_vendor.t(tag.text),
+                d: tag.key,
+                e: common_vendor.n(`tag-${tag.type}`)
+              });
             })
           } : {}, {
             g: task.deliveryImage
           }, task.deliveryImage ? {
             h: task.deliveryImage,
-            i: common_vendor.o(($event) => _ctx.previewDeliveryImage(task), task.id)
+            i: common_vendor.o(($event) => _ctx.previewDeliveryImage(task), task.id),
+            j: common_vendor.o(() => {
+            }, task.id)
           } : {}, {
-            j: task.id
+            k: task.id,
+            l: common_vendor.o(($event) => goTaskDetail(task), task.id)
           });
         })
       } : {});

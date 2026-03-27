@@ -2,6 +2,7 @@
 const common_vendor = require("../../../common/vendor.js");
 const common_assets = require("../../../common/assets.js");
 const store_clientOrder = require("../../../store/clientOrder.js");
+const utils_orderTags = require("../../../utils/orderTags.js");
 if (!Math) {
   TheTabBar();
 }
@@ -31,14 +32,14 @@ const _sfc_main = {
       const status = tabs[currentTab.value].status;
       const list = store.ordersByStatus(status);
       return list.map((o) => {
-        var _a, _b;
-        const tags = (o.tags && o.tags.length ? o.tags : [
-          ((_a = o.content) == null ? void 0 : _a.isUrgent) ? "加急处理" : "",
-          ((_b = o.content) == null ? void 0 : _b.isDelivery) ? "送货上门" : ""
-        ].filter(Boolean)) || [];
+        var _a;
         return {
           ...o,
-          tags
+          visualTags: utils_orderTags.buildVisualTags({
+            rawTags: o.tags,
+            content: o.content,
+            requiredGender: (_a = o.content) == null ? void 0 : _a.requiredRiderGender
+          })
         };
       });
     });
@@ -114,7 +115,7 @@ const _sfc_main = {
         c: common_assets._imports_0
       } : {}, {
         d: common_vendor.f(displayList.value, (order, k0, i0) => {
-          var _a;
+          var _a, _b;
           return common_vendor.e({
             a: common_vendor.t(order.typeLabel),
             b: common_vendor.n(order.type),
@@ -122,18 +123,21 @@ const _sfc_main = {
             d: common_vendor.n(order.status),
             e: common_vendor.t(order.pickupLocation),
             f: common_vendor.t(order.deliveryLocation || order.address),
-            g: order.tags && order.tags.length
-          }, order.tags && order.tags.length ? {
-            h: common_vendor.f(order.tags, (tag, k1, i1) => {
-              return {
-                a: common_vendor.t(tag),
-                b: tag,
-                c: tag.includes("加急") ? 1 : "",
-                d: tag.includes("送货上门") ? 1 : ""
-              };
+            g: order.visualTags && order.visualTags.length
+          }, order.visualTags && order.visualTags.length ? {
+            h: common_vendor.f(order.visualTags, (tag, k1, i1) => {
+              return common_vendor.e({
+                a: tag.icon
+              }, tag.icon ? {
+                b: common_vendor.t(tag.icon)
+              } : {}, {
+                c: common_vendor.t(tag.text),
+                d: tag.key,
+                e: common_vendor.n(`tag-${tag.type}`)
+              });
             })
           } : {}, {
-            i: common_vendor.t(((_a = order.content) == null ? void 0 : _a.description) || "订单详情"),
+            i: common_vendor.t(((_a = order.content) == null ? void 0 : _a.description) || ((_b = order.content) == null ? void 0 : _b.remark) || "订单详情"),
             j: common_vendor.t(Number(order.price || 0).toFixed(2)),
             k: common_vendor.t(order.publishedAt || order.createTime),
             l: order.status === "completed"
@@ -155,7 +159,7 @@ const _sfc_main = {
         e: loadStatus.value === "loading"
       }, loadStatus.value === "loading" ? {} : loadStatus.value === "noMore" ? {} : {}, {
         f: loadStatus.value === "noMore",
-        g: common_vendor.o(handleReachBottom)
+        g: common_vendor.o(handleReachBottom, "3f")
       });
     };
   }

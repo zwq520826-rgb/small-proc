@@ -132,7 +132,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     d: common_vendor.s($options.positionStyle),
     e: common_vendor.s($props.customStyle),
     f: common_vendor.s($options.dotStyle),
-    g: common_vendor.o(($event) => $options.onClick())
+    g: common_vendor.o(($event) => $options.onClick(), "57")
   } : {});
 }
 const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render]]);

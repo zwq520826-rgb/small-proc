@@ -33,7 +33,7 @@ const _sfc_main = {
     src: {
       handler(src) {
         if (src && src.substring(0, 8) == "cloud://") {
-          common_vendor.tr.getTempFileURL({
+          common_vendor._r.getTempFileURL({
             fileList: [src]
           }).then((res) => {
             this.cSrc = res.fileList[0].tempFileURL;
@@ -65,7 +65,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     d: $data.cSrc,
     e: $props.mode
   } : {}, {
-    f: common_vendor.o((...args) => $options.onClick && $options.onClick(...args)),
+    f: common_vendor.o((...args) => $options.onClick && $options.onClick(...args), "9c"),
     g: $props.width,
     h: $props.height
   });

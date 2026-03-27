@@ -1,6 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-const orderService = common_vendor.tr.importObject("order-service");
+const orderService = common_vendor._r.importObject("order-service");
 const state = common_vendor.reactive({
   hallTasks: [],
   myTasks: [],
@@ -12,8 +12,8 @@ let inited = false;
 let initPromise = null;
 let refreshPromise = null;
 let lastLoadAt = 0;
-const CACHE_TTL_MS = 15e3;
-const MIN_REQ_INTERVAL_MS = 800;
+const CACHE_TTL_MS = 2e4;
+const MIN_REQ_INTERVAL_MS = 3e3;
 function formatTaskFromDB(task) {
   return {
     id: task._id,

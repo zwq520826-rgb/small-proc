@@ -1,6 +1,6 @@
 import { reactive } from 'vue'
 
-const addressService = uniCloud.importObject('address-service')
+const addressService = uniCloud.importObject('order-service')
 
 const state = reactive({
   selectedAddress: null,
@@ -182,7 +182,6 @@ export function useAddressStore() {
     reloadFromCloud
   }
 }
-
 
 
 

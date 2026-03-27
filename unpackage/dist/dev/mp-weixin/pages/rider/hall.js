@@ -1,6 +1,7 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
 const store_riderTask = require("../../store/riderTask.js");
+const utils_orderTags = require("../../utils/orderTags.js");
 if (!Math) {
   TheTabBar();
 }
@@ -10,6 +11,8 @@ const _sfc_main = {
   setup(__props) {
     const store = store_riderTask.useRiderTaskStore();
     const levelInfo = common_vendor.ref(null);
+    const isLoading = common_vendor.ref(true);
+    const loadError = common_vendor.ref("");
     let pulling = false;
     let pageRefreshing = false;
     const activeFilter = common_vendor.ref("distance");
@@ -24,7 +27,7 @@ const _sfc_main = {
     const filteredTasks = common_vendor.computed(() => {
       const list = store.hallTasksSorted ? store.hallTasksSorted(activeFilter.value) : [...store.hallTasks];
       return list.map((o) => {
-        var _a, _b;
+        var _a;
         let delivery = o.deliveryLocation || o.delivery || "";
         if (!delivery && o.address) {
           const lines = o.address.split("\n");
@@ -37,26 +40,18 @@ const _sfc_main = {
         if (!delivery) {
           delivery = "送达地址";
         }
-        const dorm = (_a = o.content) == null ? void 0 : _a.dormNumber;
-        const requiredGender = (_b = o.content) == null ? void 0 : _b.requiredRiderGender;
-        const rawTags = o.tags || [];
-        const tags = rawTags.map((tag) => {
-          if (tag.includes("送货上门") && dorm) {
-            return `${tag} ${dorm}`;
-          }
-          return tag;
+        const requiredGender = (_a = o.content) == null ? void 0 : _a.requiredRiderGender;
+        const visualTags = utils_orderTags.buildVisualTags({
+          rawTags: o.tags,
+          content: o.content,
+          requiredGender
         });
-        if (requiredGender === "male") {
-          tags.push("限男骑手");
-        } else if (requiredGender === "female") {
-          tags.push("限女骑手");
-        }
         return {
           ...o,
           pickupDistance: o.pickupDistance || 1,
           pickup: o.pickupLocation || o.pickup || "取件点",
           delivery,
-          tags
+          visualTags
         };
       });
     });
@@ -74,6 +69,9 @@ const _sfc_main = {
         nextRate
       };
     });
+    const goLevelTable = () => {
+      common_vendor.index.navigateTo({ url: "/pages/rider/levels" });
+    };
     const viewDetail = (task) => {
       const taskId = task.id || task._id;
       if (!taskId) {
@@ -83,10 +81,39 @@ const _sfc_main = {
       common_vendor.index.navigateTo({
         url: `/pages/rider/tasks/detail?id=${taskId}`,
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/rider/hall.vue:177", "跳转失败:", err);
+          common_vendor.index.__f__("error", "at pages/rider/hall.vue:196", "跳转失败:", err);
           common_vendor.index.showToast({ title: "页面不存在，请重新编译", icon: "none" });
         }
       });
+    };
+    const previewCloudImages = async (images = []) => {
+      if (!images || images.length === 0) {
+        common_vendor.index.showToast({ title: "暂无取件凭证", icon: "none" });
+        return;
+      }
+      let urls = [...images];
+      const hasCloudFile = urls.some((url) => url && url.startsWith("cloud://"));
+      if (hasCloudFile) {
+        try {
+          const res = await common_vendor._r.getTempFileURL({
+            fileList: urls
+          });
+          urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
+        } catch (e) {
+          common_vendor.index.__f__("error", "at pages/rider/hall.vue:224", "获取临时文件 URL 失败:", e);
+          common_vendor.index.showToast({ title: "图片加载失败，请稍后重试", icon: "none" });
+          return;
+        }
+      }
+      common_vendor.index.previewImage({
+        urls,
+        current: urls[0]
+      });
+    };
+    const viewPickupInfo = async (task) => {
+      var _a;
+      const images = ((_a = task.content) == null ? void 0 : _a.images) || [];
+      await previewCloudImages(images);
     };
     const grab = async (task) => {
       common_vendor.index.showLoading({ title: "抢单中..." });
@@ -98,25 +125,36 @@ const _sfc_main = {
       }
       common_vendor.index.showToast({ title: "抢单成功", icon: "success" });
     };
-    const refreshPageData = async (force = false) => {
+    const refreshPageData = async (force = false, options = {}) => {
       if (pageRefreshing)
         return;
       pageRefreshing = true;
+      if (options.showSkeleton) {
+        isLoading.value = true;
+      }
+      loadError.value = "";
       try {
         const shouldForce = force || store.statsRefreshNeeded;
         await store.loadFromStorage(shouldForce, { sortBy: activeFilter.value });
         levelInfo.value = store.riderStats || null;
         store.setStatsRefreshNeeded(false);
+      } catch (e) {
+        common_vendor.index.__f__("error", "at pages/rider/hall.vue:274", "[rider-hall] refresh failed", e);
+        loadError.value = (e == null ? void 0 : e.message) || "大厅数据加载失败，请稍后重试";
       } finally {
+        isLoading.value = false;
         pageRefreshing = false;
       }
+    };
+    const retryHall = () => {
+      refreshPageData(true, { showSkeleton: true });
     };
     common_vendor.onShow(async () => {
       common_vendor.index.hideHomeButton();
       try {
-        await refreshPageData(false);
+        await refreshPageData(false, { showSkeleton: isLoading.value });
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/rider/hall.vue:260", "页面刷新失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/hall.vue:291", "页面刷新失败:", e);
       }
     });
     common_vendor.onPullDownRefresh(async () => {
@@ -126,7 +164,7 @@ const _sfc_main = {
       try {
         await refreshPageData(true);
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/rider/hall.vue:270", "下拉刷新失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/hall.vue:301", "下拉刷新失败:", e);
       } finally {
         pulling = false;
         common_vendor.index.stopPullDownRefresh();
@@ -134,39 +172,62 @@ const _sfc_main = {
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: displayLevel.value
-      }, displayLevel.value ? common_vendor.e({
-        b: common_vendor.t(displayLevel.value.name),
-        c: common_vendor.t(displayLevel.value.totalOrders),
-        d: displayLevel.value.needMore > 0
-      }, displayLevel.value.needMore > 0 ? {
-        e: common_vendor.t(displayLevel.value.needMore)
-      } : {}) : {}, {
-        f: common_vendor.t(stats.value.orders),
-        g: common_vendor.t(stats.value.income.toFixed(1)),
-        h: displayLevel.value
-      }, displayLevel.value ? {
-        i: common_vendor.t(displayLevel.value.currentRate.toFixed(0))
-      } : {}, {
-        j: displayLevel.value && displayLevel.value.nextRate !== null
-      }, displayLevel.value && displayLevel.value.nextRate !== null ? {
-        k: common_vendor.t(displayLevel.value.nextRate.toFixed(0))
-      } : {}, {
-        l: common_vendor.f(filteredTasks.value, (task, k0, i0) => {
+        a: isLoading.value
+      }, isLoading.value ? {
+        b: common_vendor.f(3, (i, k0, i0) => {
           return {
-            a: common_vendor.f(task.tags, (tag, k1, i1) => {
-              return {
-                a: common_vendor.t(tag),
-                b: tag
-              };
-            }),
-            b: common_vendor.t(task.delivery),
-            c: common_vendor.t(task.price.toFixed(1)),
-            d: common_vendor.o(($event) => grab(task), task.id),
-            e: task.id,
-            f: common_vendor.o(($event) => viewDetail(task), task.id)
+            a: `hall-skeleton-${i}`
           };
         })
+      } : loadError.value ? {
+        d: common_vendor.t(loadError.value),
+        e: common_vendor.o(retryHall, "c7")
+      } : common_vendor.e({
+        f: displayLevel.value
+      }, displayLevel.value ? common_vendor.e({
+        g: common_vendor.o(goLevelTable, "67"),
+        h: common_vendor.t(displayLevel.value.name),
+        i: common_vendor.t(displayLevel.value.totalOrders),
+        j: displayLevel.value.needMore > 0
+      }, displayLevel.value.needMore > 0 ? {
+        k: common_vendor.t(displayLevel.value.needMore)
+      } : {}) : {}, {
+        l: common_vendor.t(stats.value.orders),
+        m: common_vendor.t(stats.value.income.toFixed(1)),
+        n: displayLevel.value
+      }, displayLevel.value ? {
+        o: common_vendor.t(displayLevel.value.currentRate.toFixed(0))
+      } : {}, {
+        p: displayLevel.value && displayLevel.value.nextRate !== null
+      }, displayLevel.value && displayLevel.value.nextRate !== null ? {
+        q: common_vendor.t(displayLevel.value.nextRate.toFixed(0))
+      } : {}, {
+        r: common_vendor.f(filteredTasks.value, (task, k0, i0) => {
+          return common_vendor.e({
+            a: task.visualTags && task.visualTags.length
+          }, task.visualTags && task.visualTags.length ? {
+            b: common_vendor.f(task.visualTags, (tag, k1, i1) => {
+              return common_vendor.e({
+                a: tag.icon
+              }, tag.icon ? {
+                b: common_vendor.t(tag.icon)
+              } : {}, {
+                c: common_vendor.t(tag.text),
+                d: tag.key,
+                e: common_vendor.n(`tag-${tag.type}`)
+              });
+            })
+          } : {}, {
+            c: common_vendor.t(task.delivery),
+            d: common_vendor.t(Number(task.price || 0).toFixed(2)),
+            e: common_vendor.o(($event) => viewPickupInfo(task), task.id),
+            f: common_vendor.o(($event) => grab(task), task.id),
+            g: task.id,
+            h: common_vendor.o(($event) => viewDetail(task), task.id)
+          });
+        })
+      }), {
+        c: loadError.value
       });
     };
   }

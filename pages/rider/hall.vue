@@ -1,58 +1,89 @@
 <template>
   <view class="page">
-    <view class="stats-card">
-      <!-- 左侧：等级与累计订单 -->
-      <view class="metric wide" v-if="displayLevel">
-        <text class="label">我的等级</text>
-        <text class="value">{{ displayLevel.name }}</text>
-        <text class="sub">累计订单：{{ displayLevel.totalOrders }}单</text>
-        <text class="sub" v-if="displayLevel.needMore > 0">
-          距离升级：还差{{ displayLevel.needMore }}单
-        </text>
-        <text class="sub" v-else>已是最高等级</text>
-      </view>
-
-      <!-- 右侧：今日数据 & 抽成信息 -->
-      <view class="metric small">
-        <text class="label">今日单数</text>
-        <text class="value">{{ stats.orders }}</text>
-        <text class="sub">今日收入：¥{{ stats.income.toFixed(1) }}</text>
-        <text class="sub" v-if="displayLevel">
-          当前抽成：{{ displayLevel.currentRate.toFixed(0) }}%
-        </text>
-        <text class="sub" v-if="displayLevel && displayLevel.nextRate !== null">
-          升级后抽成：{{ displayLevel.nextRate.toFixed(0) }}%
-        </text>
-      </view>
+    <view v-if="isLoading" class="hall-skeleton">
+      <view class="skeleton stats"></view>
+      <view class="skeleton task" v-for="i in 3" :key="`hall-skeleton-${i}`"></view>
     </view>
+    <view v-else-if="loadError" class="error-card">
+      <view class="error-illustration">🚚</view>
+      <text class="error-title">任务列表加载失败</text>
+      <text class="error-desc">{{ loadError }}</text>
+      <button class="retry-btn" @click="retryHall">重新加载</button>
+    </view>
+    <template v-else>
+      <view class="stats-card">
+        <!-- 左侧：等级与累计订单 -->
+        <view class="metric wide" v-if="displayLevel">
+          <view class="level-row">
+            <text class="label">我的等级</text>
+            <text class="level-btn" @click="goLevelTable">查看等级表</text>
+          </view>
+          <text class="value">{{ displayLevel.name }}</text>
+          <text class="sub">累计订单：{{ displayLevel.totalOrders }}单</text>
+          <text class="sub" v-if="displayLevel.needMore > 0">
+            距离升级：还差{{ displayLevel.needMore }}单
+          </text>
+          <text class="sub" v-else>已是最高等级</text>
+        </view>
 
-    <view class="task-card" v-for="task in filteredTasks" :key="task.id" @click="viewDetail(task)">
-      <view class="tags">
-        <text v-for="tag in task.tags" :key="tag" class="tag">{{ tag }}</text>
+        <!-- 右侧：今日数据 & 抽成信息 -->
+        <view class="metric small">
+          <text class="label">今日单数</text>
+          <text class="value">{{ stats.orders }}</text>
+          <text class="sub">今日收入：¥{{ stats.income.toFixed(1) }}</text>
+          <text class="sub" v-if="displayLevel">
+            当前抽成：{{ displayLevel.currentRate.toFixed(0) }}%
+          </text>
+          <text class="sub" v-if="displayLevel && displayLevel.nextRate !== null">
+            升级后抽成：{{ displayLevel.nextRate.toFixed(0) }}%
+          </text>
+        </view>
       </view>
-      <view class="route">
-        <view class="destination">
-          <text class="dot red">🔴</text>
-          <view class="dest-info">
-            <text class="dest-label">目的地</text>
-            <text class="place">{{ task.delivery }}</text>
+
+      <view class="task-card" v-for="task in filteredTasks" :key="task.id" @click="viewDetail(task)">
+      <view v-if="task.visualTags && task.visualTags.length" class="tags">
+        <view
+          v-for="tag in task.visualTags"
+          :key="tag.key"
+          class="tag-chip"
+          :class="`tag-${tag.type}`"
+        >
+          <text v-if="tag.icon" class="chip-icon">{{ tag.icon }}</text>
+          <text>{{ tag.text }}</text>
+        </view>
+      </view>
+        <view class="route">
+          <view class="destination">
+            <text class="dot red">🔴</text>
+            <view class="dest-info">
+              <text class="dest-label">目的地</text>
+              <text class="place">{{ task.delivery }}</text>
+            </view>
+          </view>
+        </view>
+        <view class="footer">
+          <view class="price">¥{{ Number(task.price || 0).toFixed(2) }}</view>
+          <view class="actions">
+            <button
+              type="default"
+              size="mini"
+              class="view-btn"
+              @click.stop="viewPickupInfo(task)"
+            >
+              📦 取件信息
+            </button>
+            <button
+              type="primary"
+              size="mini"
+              class="grab"
+              @click.stop="grab(task)"
+            >
+              ⚡ 立即抢单
+            </button>
           </view>
         </view>
       </view>
-      <view class="footer">
-        <view class="price">¥{{ task.price.toFixed(1) }}</view>
-        <view class="actions">
-          <button
-            type="primary"
-            size="mini"
-            class="grab"
-            @click.stop="grab(task)"
-          >
-            ⚡ 立即抢单
-          </button>
-        </view>
-      </view>
-    </view>
+    </template>
   </view>
   <TheTabBar />
 </template>
@@ -61,13 +92,15 @@
 import { computed, ref } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import TheTabBar from '@/components/TheTabBar.vue'
-// 【修改点1】引入正确的 Rider Store
 import { useRiderTaskStore } from '@/store/riderTask'
+import { buildVisualTags } from '@/utils/orderTags'
 
 // 【修改点2】初始化 store
 const store = useRiderTaskStore()
 // 骑手等级与统计信息
 const levelInfo = ref(null)
+const isLoading = ref(true)
+const loadError = ref('')
 let pulling = false
 let pageRefreshing = false
 
@@ -77,7 +110,6 @@ const filterOptions = [
 ]
 const activeFilter = ref('distance')
 
-// 【修改点3】统计逻辑：改为从 store.myTasks (我已接的单) 中统计
 const stats = computed(() => {
   // 只统计已完成的订单
   const completed = store.myTasks.filter((t) => t.status === 'completed')
@@ -88,7 +120,6 @@ const stats = computed(() => {
   }
 })
 
-// 【修改点4】列表逻辑：改为从 store.hallTasks (大厅公共单) 获取
 const filteredTasks = computed(() => {
   // 使用 store 提供的排序 getter
   // 如果你的 store 里实现了 hallTasksSorted getter，直接用它
@@ -113,30 +144,19 @@ const filteredTasks = computed(() => {
       delivery = '送达地址'
     }
 
-    // 处理标签：给“送货上门”拼接寝室号，并展示性别限制
-    const dorm = o.content?.dormNumber
     const requiredGender = o.content?.requiredRiderGender
-    const rawTags = o.tags || []
-    const tags = rawTags.map(tag => {
-      if (tag.includes('送货上门') && dorm) {
-        return `${tag} ${dorm}`
-      }
-      return tag
+    const visualTags = buildVisualTags({
+      rawTags: o.tags,
+      content: o.content,
+      requiredGender
     })
 
-    // 如果有性别限制，额外追加一个标签
-    if (requiredGender === 'male') {
-      tags.push('限男骑手')
-    } else if (requiredGender === 'female') {
-      tags.push('限女骑手')
-    }
-    
     return {
       ...o,
       pickupDistance: o.pickupDistance || 1,
       pickup: o.pickupLocation || o.pickup || '取件点',
       delivery,
-      tags
+      visualTags
     }
   })
 })
@@ -158,10 +178,9 @@ const displayLevel = computed(() => {
   }
 })
 
-const refresh = () => {
-  uni.showToast({ title: '已刷新定位', icon: 'none' })
-  // 这里可以触发 store 重新拉取大厅数据
-  // store.fetchHallTasks()
+// 查看等级表
+const goLevelTable = () => {
+  uni.navigateTo({ url: '/pages/rider/levels' })
 }
 
 // 查看订单详情
@@ -239,23 +258,35 @@ const grab = async (task) => {
   // setTimeout(() => uni.reLaunch({ url: '/pages/rider/tasks/list' }), 500)
 }
 
-const refreshPageData = async (force = false) => {
+const refreshPageData = async (force = false, options = {}) => {
   if (pageRefreshing) return
   pageRefreshing = true
+  if (options.showSkeleton) {
+    isLoading.value = true
+  }
+  loadError.value = ''
   try {
     const shouldForce = force || store.statsRefreshNeeded
     await store.loadFromStorage(shouldForce, { sortBy: activeFilter.value })
     levelInfo.value = store.riderStats || null
     store.setStatsRefreshNeeded(false)
+  } catch (e) {
+    console.error('[rider-hall] refresh failed', e)
+    loadError.value = e?.message || '大厅数据加载失败，请稍后重试'
   } finally {
+    isLoading.value = false
     pageRefreshing = false
   }
+}
+
+const retryHall = () => {
+  refreshPageData(true, { showSkeleton: true })
 }
 
 onShow(async () => {
   uni.hideHomeButton()
   try {
-    await refreshPageData(false)
+    await refreshPageData(false, { showSkeleton: isLoading.value })
   } catch (e) {
     console.error('页面刷新失败:', e)
   }
@@ -293,6 +324,21 @@ onPullDownRefresh(async () => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16rpx;
+  position: relative;
+}
+
+.level-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.level-btn {
+  font-size: 22rpx;
+  padding: 6rpx 14rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.4);
 }
 
 .metric {
@@ -343,19 +389,120 @@ onPullDownRefresh(async () => {
   transform: scale(0.98);
 }
 
+.hall-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.hall-skeleton .skeleton {
+  border-radius: 16rpx;
+  background: #e3e8f0;
+  position: relative;
+  overflow: hidden;
+}
+
+.hall-skeleton .skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  transform: translateX(-100%);
+  animation: hallPulse 1.2s ease-in-out infinite;
+}
+
+.hall-skeleton .skeleton.stats {
+  height: 240rpx;
+}
+
+.hall-skeleton .skeleton.task {
+  height: 180rpx;
+}
+
+.error-card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 60rpx 30rpx;
+  text-align: center;
+  box-shadow: 0 12rpx 30rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 40rpx;
+}
+
+.error-illustration {
+  font-size: 72rpx;
+}
+
+.error-title {
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.error-desc {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+.retry-btn {
+  margin-top: 10rpx;
+  background: #1a73e8;
+  color: #ffffff;
+}
+
+@keyframes hallPulse {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .tags {
   display: flex;
   gap: 8rpx;
   flex-wrap: wrap;
 }
 
-.tag {
-  background: #e8f2ff;
-  color: #1e88e5;
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  background: #eef2ff;
+  color: #1d4ed8;
   border-radius: 999rpx;
-  padding: 8rpx 18rpx;
-  font-size: 24rpx;
+  padding: 6rpx 16rpx;
+  font-size: 22rpx;
   font-weight: 600;
+}
+
+.tag-chip.tag-urgent {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.tag-chip.tag-delivery {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.tag-chip.tag-info {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.tag-chip.tag-neutral {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.chip-icon {
+  font-size: 22rpx;
 }
 
 .route {

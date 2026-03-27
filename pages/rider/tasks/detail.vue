@@ -31,10 +31,20 @@
         </view>
         <view class="desc-box">
           <text class="label">备注内容：</text>
-          <text class="desc-text">{{ task.content?.description || '无备注' }}</text>
+          <view class="desc-text">
+            <text
+              v-if="task.content?.description"
+              class="desc-line"
+            >{{ task.content?.description }}</text>
+            <text
+              v-if="task.content?.remark"
+              class="desc-line"
+            >{{ task.content?.remark }}</text>
+            <text v-if="!task.content?.description && !task.content?.remark">无备注</text>
+          </view>
         </view>
         <view v-if="task.content?.images?.length || task.content?.pickupImages?.length" class="img-section">
-          <text class="label">取件凭证：</text>
+          <text class="label">取件信息：</text>
           <view class="imgs">
             <image 
               v-for="(img, idx) in (task.content.images || task.content.pickupImages || [])" 
@@ -368,6 +378,7 @@ const handleConfirmDelivery = () => {
 .tag { background: #e3f2fd; color: #1976d2; padding: 4rpx 12rpx; border-radius: 8rpx; font-size: 24rpx; }
 .desc-box { background: #f9f9f9; padding: 20rpx; border-radius: 8rpx; margin-top: 10rpx; }
 .desc-text { color: #555; font-size: 28rpx; }
+.desc-line { display: block; margin-bottom: 6rpx; }
 
 .img-section { margin-top: 20rpx; border-top: 1rpx solid #eee; padding-top: 20rpx; }
 .imgs { display: flex; gap: 10rpx; margin-top: 10rpx; }

@@ -99,12 +99,12 @@ module.exports = {
 		}
 	},
 
-	/**
-	 * 充值（模拟）
-	 * @param {number} amount 充值金额
-	 * @returns {object} 充值结果
-	 */
-	async recharge(amount) {
+  /**
+   * 充值
+   * @param {number} amount 充值金额
+   * @returns {object} 充值结果
+   */
+  async recharge(amount) {
 		const authResult = checkAuth(this)
 		if (authResult.code) {
 			return authResult

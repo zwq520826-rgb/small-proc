@@ -150,6 +150,34 @@ function buildOutRefundNo(prefix = 'RF') {
   return `${prefix}${yyyy}${MM}${dd}${HH}${mm}${ss}${rand}`
 }
 
+async function markParentOrderUrgent(parentOrderId, addonOrder = {}) {
+  if (!parentOrderId) return
+  try {
+    const parentRes = await db.collection('orders').doc(parentOrderId).get()
+    if (!parentRes.data.length) return
+    const parent = parentRes.data[0]
+    const now = Date.now()
+    const tags = Array.isArray(parent.tags) ? parent.tags.filter(Boolean) : []
+    if (!tags.includes('加急')) tags.push('加急')
+
+    const updateData = {
+      update_time: now,
+      tags
+    }
+    updateData['content.isUrgent'] = true
+    updateData['content.urgent_fee'] = Number(addonOrder.price || 0)
+    updateData['content.urgent_paid'] = true
+    updateData['content.urgent_paid_time'] = now
+    if (addonOrder._id) {
+      updateData['content.urgent_addon_id'] = addonOrder._id
+    }
+
+    await db.collection('orders').doc(parentOrderId).update(updateData)
+  } catch (e) {
+    console.error('更新主订单加急状态失败:', e)
+  }
+}
+
 async function queryWechatOrderByOutTradeNo(outTradeNo, cfg) {
   const urlPath =
     `/v3/pay/transactions/out-trade-no/${encodeURIComponent(outTradeNo)}` +
@@ -277,6 +305,13 @@ module.exports = {
         return {
           code: 'NO_PERMISSION',
           message: '无权支付此订单'
+        }
+      }
+
+      if (order.pay_status === 'paid') {
+        return {
+          code: 'ORDER_ALREADY_PAID',
+          message: '订单已支付，无需重复支付'
         }
       }
 
@@ -531,21 +566,41 @@ module.exports = {
       return { code: 'PAY_NOT_SUCCESS', message: '微信支付未成功' , data: { trade_state: q.data.trade_state } }
     }
 
+    const orderRes = await db.collection('orders')
+      .where({ out_trade_no: outTradeNo })
+      .limit(1)
+      .get()
+
+    if (!orderRes.data.length) {
+      return { code: 'ORDER_NOT_FOUND', message: '订单不存在或已被删除' }
+    }
+
+    const order = orderRes.data[0]
+    const isAddon = order.order_class === 'urgent_addon'
     const now = Date.now()
+
+    const updateData = {
+      pay_status: 'paid',
+      pay_time: now,
+      update_time: now
+    }
+
+    if (isAddon) {
+      updateData.status = 'completed'
+      updateData.hall_visible = false
+      updateData.complete_time = now
+    } else {
+      updateData.status = 'pending_accept'
+      updateData.hall_visible = true
+    }
 
     // 2) 原子推进订单：只允许从 unpaid -> paid
     const updateRes = await db.collection('orders')
       .where({
-        out_trade_no: outTradeNo,
+        _id: order._id,
         pay_status: 'unpaid'
       })
-      .update({
-        pay_status: 'paid',
-        pay_time: now,
-        status: 'pending_accept',
-        hall_visible: true,
-        update_time: now
-      })
+      .update(updateData)
 
     // 3) 同步交易记录：把 pending 的 pay 交易置为 success（幂等）
     await db.collection('transactions')
@@ -557,6 +612,10 @@ module.exports = {
 
     if (updateRes.updated === 0) {
       return { code: 'ORDER_ALREADY_UPDATED', message: '订单已更新或无需更新' }
+    }
+
+    if (isAddon && order.parent_order_id) {
+      await markParentOrderUrgent(order.parent_order_id, { _id: order._id, price: order.price })
     }
 
     return { code: 0, message: '订单支付状态已确认并更新' }

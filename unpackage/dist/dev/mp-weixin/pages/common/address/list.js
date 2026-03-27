@@ -71,7 +71,7 @@ const _sfc_main = {
             j: common_vendor.o(($event) => handleCardClick(item.id), item.id)
           });
         }),
-        b: common_vendor.o(addNew)
+        b: common_vendor.o(addNew, "39")
       };
     };
   }

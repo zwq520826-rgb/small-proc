@@ -1,6 +1,4 @@
 {
   "navigationBarTitleText": "快递代取",
-  "usingComponents": {
-    "payment-popup": "../../../components/PaymentPopup"
-  }
+  "usingComponents": {}
 }

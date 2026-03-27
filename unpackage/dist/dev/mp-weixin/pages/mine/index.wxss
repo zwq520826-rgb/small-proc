@@ -202,7 +202,13 @@
   font-size: 32rpx;
   font-weight: 600;
   color: #111827;
+  margin-bottom: 12rpx;
+}
+.service-popup-subtitle.data-v-569e925a {
+  font-size: 24rpx;
+  color: #6b7280;
   margin-bottom: 24rpx;
+  display: block;
 }
 .service-popup-phone.data-v-569e925a {
   font-size: 40rpx;

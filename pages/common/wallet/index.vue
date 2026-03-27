@@ -133,8 +133,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { isRiderMode } from '@/store/user'
 import { useWalletStore } from '@/store/wallet'
 
 const walletStore = useWalletStore()
@@ -281,6 +282,14 @@ const formatTime = (timestamp) => {
 
 // 页面显示时加载数据（交易记录强制拉取，避免 8s 缓存导致看不到后台刚更新的打款/驳回状态）
 onShow(async () => {
+  if (!isRiderMode()) {
+    uni.showToast({ title: '仅骑手可用', icon: 'none' })
+    setTimeout(() => {
+      uni.navigateBack({ delta: 1 })
+    }, 300)
+    return
+  }
+
   await walletStore.loadFromCloud()
   await walletStore.getTransactions({ page: 1, pageSize: 20 }, true)
 })
@@ -677,4 +686,3 @@ onShow(async () => {
   background: #ff6b00;
 }
 </style>
-

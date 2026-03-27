@@ -67,6 +67,7 @@ const {
   sendEmailCode
 } = require('./module/verify/index')
 const {
+  checkToken,
   refreshToken,
   setPushCid,
   secureNetworkHandshakeByWeixin
@@ -560,6 +561,12 @@ module.exports = {
    * @returns
    */
   sendEmailCode,
+  /**
+   * 校验token
+   * @tutorial https://uniapp.dcloud.net.cn/uniCloud/uni-id-pages.html#check-token
+   * @returns
+   */
+  checkToken,
   /**
    * 刷新token
    * @tutorial https://uniapp.dcloud.net.cn/uniCloud/uni-id-pages.html#refresh-token

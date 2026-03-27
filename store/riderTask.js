@@ -15,8 +15,8 @@ let inited = false
 let initPromise = null
 let refreshPromise = null
 let lastLoadAt = 0
-const CACHE_TTL_MS = 15000
-const MIN_REQ_INTERVAL_MS = 800
+const CACHE_TTL_MS = 20000
+const MIN_REQ_INTERVAL_MS = 3000
 
 /**
  * 将数据库格式转换为前端格式

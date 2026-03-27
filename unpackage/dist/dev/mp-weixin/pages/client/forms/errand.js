@@ -3,7 +3,6 @@ const common_vendor = require("../../../common/vendor.js");
 const common_assets = require("../../../common/assets.js");
 const store_address = require("../../../store/address.js");
 const store_clientOrder = require("../../../store/clientOrder.js");
-const store_wallet = require("../../../store/wallet.js");
 const store_pay = require("../../../store/pay.js");
 const _sfc_main = {
   __name: "errand",
@@ -14,9 +13,8 @@ const _sfc_main = {
     const isUrgent = common_vendor.ref(false);
     const isDelivery = common_vendor.ref(false);
     const dormNumber = common_vendor.ref("");
+    const extraRemark = common_vendor.ref("");
     const deliveryDormType = common_vendor.ref("");
-    const walletStore = store_wallet.useWalletStore();
-    common_vendor.computed(() => walletStore.balance);
     const addressStore = store_address.useAddressStore();
     const store = store_clientOrder.useClientOrderStore();
     const currentAddress = common_vendor.computed(() => {
@@ -41,7 +39,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:175", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:183", "选择图片失败:", err);
         }
       });
     };
@@ -96,18 +94,7 @@ const _sfc_main = {
           return;
         }
       }
-      const amount = Number(totalPrice.value).toFixed(2);
-      common_vendor.index.showActionSheet({
-        itemList: [`余额支付 ¥${amount}`, "微信支付"],
-        success: (res) => {
-          const index = res.tapIndex;
-          if (index === 0) {
-            onPayConfirm("balance");
-          } else if (index === 1) {
-            onPayConfirm("wechat");
-          }
-        }
-      });
+      onPayConfirm("wechat");
     };
     const uploadImages = async (list = []) => {
       const uploaded = [];
@@ -118,7 +105,7 @@ const _sfc_main = {
           uploaded.push(path);
           continue;
         }
-        const res = await common_vendor.tr.uploadFile({
+        const res = await common_vendor._r.uploadFile({
           filePath: path,
           cloudPath: `orders/errand/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
         });
@@ -128,13 +115,14 @@ const _sfc_main = {
       }
       return uploaded;
     };
-    const onPayConfirm = async (method = "balance") => {
+    const onPayConfirm = async (method = "wechat") => {
       common_vendor.index.showLoading({ title: "处理中..." });
       try {
         const uploadedImages = await uploadImages(images.value || []);
         const amount = Number(totalPrice.value);
         const addr = currentAddress.value || {};
         const deliveryLocation = addr.schoolArea ? `${addr.schoolArea}・${addr.detail}` : addr.detail;
+        const remarkText = extraRemark.value.trim();
         const payload = {
           type: "errand",
           typeLabel: "跑腿代购",
@@ -164,6 +152,9 @@ ${deliveryLocation}`,
           ].filter(Boolean),
           createTime: (/* @__PURE__ */ new Date()).toLocaleString()
         };
+        if (remarkText) {
+          payload.content.remark = remarkText;
+        }
         const order = await store.addOrder(payload);
         if (!order) {
           common_vendor.index.hideLoading();
@@ -192,7 +183,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:360", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:362", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -209,9 +200,9 @@ ${deliveryLocation}`,
         d: common_vendor.t(currentAddress.value.name),
         e: common_vendor.t(formatPhone(currentAddress.value.phone))
       } : {}, {
-        f: common_vendor.o(goSelectAddress),
+        f: common_vendor.o(goSelectAddress, "f8"),
         g: description.value,
-        h: common_vendor.o(($event) => description.value = $event.detail.value),
+        h: common_vendor.o(($event) => description.value = $event.detail.value, "55"),
         i: common_vendor.f(images.value, (img, idx, i0) => {
           return {
             a: img,
@@ -221,32 +212,34 @@ ${deliveryLocation}`,
         }),
         j: images.value.length < 9
       }, images.value.length < 9 ? {
-        k: common_vendor.o(chooseImage)
+        k: common_vendor.o(chooseImage, "e9")
       } : {}, {
-        l: common_vendor.o(decreaseFee),
-        m: common_vendor.o(normalizeRunnerFee),
+        l: common_vendor.o(decreaseFee, "f4"),
+        m: common_vendor.o(normalizeRunnerFee, "fb"),
         n: runnerFee.value,
         o: common_vendor.o(common_vendor.m(($event) => runnerFee.value = $event.detail.value, {
           number: true
-        })),
-        p: common_vendor.o(increaseFee),
+        }), "e5"),
+        p: common_vendor.o(increaseFee, "1b"),
         q: common_assets._imports_0$1,
         r: isUrgent.value,
-        s: common_vendor.o((e) => isUrgent.value = e.detail.value),
+        s: common_vendor.o((e) => isUrgent.value = e.detail.value, "c7"),
         t: common_assets._imports_1,
         v: isDelivery.value,
-        w: common_vendor.o(onDeliveryToggle),
+        w: common_vendor.o(onDeliveryToggle, "ce"),
         x: isDelivery.value
       }, isDelivery.value ? {
         y: deliveryDormType.value === "male" ? 1 : "",
-        z: common_vendor.o(($event) => deliveryDormType.value = "male"),
+        z: common_vendor.o(($event) => deliveryDormType.value = "male", "0d"),
         A: deliveryDormType.value === "female" ? 1 : "",
-        B: common_vendor.o(($event) => deliveryDormType.value = "female"),
+        B: common_vendor.o(($event) => deliveryDormType.value = "female", "77"),
         C: dormNumber.value,
-        D: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
+        D: common_vendor.o(($event) => dormNumber.value = $event.detail.value, "d4")
       } : {}, {
-        E: common_vendor.t(totalPrice.value),
-        F: common_vendor.o(handlePayClick)
+        E: extraRemark.value,
+        F: common_vendor.o(($event) => extraRemark.value = $event.detail.value, "4a"),
+        G: common_vendor.t(totalPrice.value),
+        H: common_vendor.o(handlePayClick, "bd")
       });
     };
   }

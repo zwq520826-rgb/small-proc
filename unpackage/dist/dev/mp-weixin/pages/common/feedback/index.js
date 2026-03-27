@@ -51,11 +51,11 @@ const _sfc_main = {
           const p = localImages.value[i];
           const ext = p.match(/\.(\w+)$/) ? RegExp.$1 : "jpg";
           const cloudPath = `complaints/${uid}/${Date.now()}_${i}.${ext}`;
-          const up = await common_vendor.tr.uploadFile({ filePath: p, cloudPath });
+          const up = await common_vendor._r.uploadFile({ filePath: p, cloudPath });
           if (up.fileID)
             fileIds.push(up.fileID);
         }
-        const db = common_vendor.tr.database();
+        const db = common_vendor._r.database();
         await db.collection("complaints").add({
           user_id: uid,
           type: feedbackKind.value === "complaint" ? "service" : "other",
@@ -78,12 +78,12 @@ const _sfc_main = {
     return (_ctx, _cache) => {
       return common_vendor.e({
         a: feedbackKind.value === "complaint" ? 1 : "",
-        b: common_vendor.o(($event) => feedbackKind.value = "complaint"),
+        b: common_vendor.o(($event) => feedbackKind.value = "complaint", "2d"),
         c: feedbackKind.value === "suggestion" ? 1 : "",
-        d: common_vendor.o(($event) => feedbackKind.value = "suggestion"),
+        d: common_vendor.o(($event) => feedbackKind.value = "suggestion", "b0"),
         e: feedbackKind.value === "complaint" ? "请描述您遇到的问题…" : "请写下您的建议…",
         f: content.value,
-        g: common_vendor.o(($event) => content.value = $event.detail.value),
+        g: common_vendor.o(($event) => content.value = $event.detail.value, "dc"),
         h: common_vendor.t(content.value.length),
         i: common_vendor.f(localImages.value, (img, idx, i0) => {
           return {
@@ -95,10 +95,10 @@ const _sfc_main = {
         }),
         j: localImages.value.length < 6
       }, localImages.value.length < 6 ? {
-        k: common_vendor.o(chooseImages)
+        k: common_vendor.o(chooseImages, "f0")
       } : {}, {
         l: submitting.value,
-        m: common_vendor.o(submit)
+        m: common_vendor.o(submit, "7f")
       });
     };
   }

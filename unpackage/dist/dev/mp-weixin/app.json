@@ -16,6 +16,7 @@
     "pages/rider/tasks/list",
     "pages/rider/tasks/detail",
     "pages/rider/verify",
+    "pages/rider/levels",
     "uni_modules/uni-id-pages/pages/userinfo/deactivate/deactivate",
     "uni_modules/uni-id-pages/pages/userinfo/userinfo",
     "uni_modules/uni-id-pages/pages/userinfo/bind-mobile/bind-mobile",

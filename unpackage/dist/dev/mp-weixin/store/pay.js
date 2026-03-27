@@ -1,7 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-const store_wallet = require("./wallet.js");
-const paymentService = common_vendor.tr.importObject("payment-service");
+const paymentService = common_vendor._r.importObject("payment-service");
 async function payForOrder({ method, orderId, amount }) {
   if (!method || !orderId) {
     return {
@@ -10,19 +9,7 @@ async function payForOrder({ method, orderId, amount }) {
     };
   }
   try {
-    if (method === "balance") {
-      const walletStore = store_wallet.useWalletStore();
-      const payRes = await walletStore.pay(amount || 0, orderId);
-      if (!(payRes == null ? void 0 : payRes.success)) {
-        return {
-          success: false,
-          reason: (payRes == null ? void 0 : payRes.reason) || "余额不足"
-        };
-      }
-      return {
-        success: true
-      };
-    } else if (method === "wechat") {
+    if (method === "wechat") {
       common_vendor.index.showLoading({ title: "正在调起支付..." });
       try {
         const res = await paymentService.createJsapiOrder({ orderId });
@@ -43,8 +30,7 @@ async function payForOrder({ method, orderId, amount }) {
             package: packageValue,
             signType,
             paySign,
-            success: async (payRes) => {
-              common_vendor.index.__f__("log", "at store/pay.js:74", "微信支付成功:", payRes);
+            success: async () => {
               common_vendor.index.hideLoading();
               common_vendor.index.showToast({
                 title: "支付处理中...",
@@ -54,7 +40,7 @@ async function payForOrder({ method, orderId, amount }) {
               try {
                 await paymentService.confirmPaid({ outTradeNo: res.data.outTradeNo });
               } catch (e) {
-                common_vendor.index.__f__("warn", "at store/pay.js:90", "confirmPaid 失败（可忽略，等待回调）:", e);
+                common_vendor.index.__f__("warn", "at store/pay.js:65", "confirmPaid 失败（可忽略，等待回调）:", e);
               }
               resolve({
                 success: true,
@@ -62,7 +48,7 @@ async function payForOrder({ method, orderId, amount }) {
               });
             },
             fail: (err) => {
-              common_vendor.index.__f__("error", "at store/pay.js:98", "微信支付失败:", err);
+              common_vendor.index.__f__("error", "at store/pay.js:73", "微信支付失败:", err);
               common_vendor.index.hideLoading();
               if (err.errMsg && err.errMsg.includes("cancel")) {
                 resolve({
@@ -80,20 +66,19 @@ async function payForOrder({ method, orderId, amount }) {
         });
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at store/pay.js:118", "微信支付异常:", error);
+        common_vendor.index.__f__("error", "at store/pay.js:93", "微信支付异常:", error);
         return {
           success: false,
           reason: error.message || "支付失败，请重试"
         };
       }
-    } else {
-      return {
-        success: false,
-        reason: `不支持的支付方式: ${method}`
-      };
     }
+    return {
+      success: false,
+      reason: `不支持的支付方式: ${method}`
+    };
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/pay.js:131", "payForOrder 异常:", error);
+    common_vendor.index.__f__("error", "at store/pay.js:105", "payForOrder 异常:", error);
     return {
       success: false,
       reason: error.message || "支付失败，请重试"

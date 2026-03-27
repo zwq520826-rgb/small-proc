@@ -5,7 +5,7 @@ const _sfc_main = {
   __name: "edit",
   setup(__props) {
     const addressStore = store_address.useAddressStore();
-    common_vendor.tr.importObject("address-service");
+    common_vendor._r.importObject("order-service");
     const id = common_vendor.ref("");
     const name = common_vendor.ref("");
     const phone = common_vendor.ref("");
@@ -67,14 +67,14 @@ const _sfc_main = {
     return (_ctx, _cache) => {
       return {
         a: name.value,
-        b: common_vendor.o(($event) => name.value = $event.detail.value),
+        b: common_vendor.o(($event) => name.value = $event.detail.value, "f1"),
         c: phone.value,
-        d: common_vendor.o(($event) => phone.value = $event.detail.value),
+        d: common_vendor.o(($event) => phone.value = $event.detail.value, "73"),
         e: detail.value,
-        f: common_vendor.o(($event) => detail.value = $event.detail.value),
+        f: common_vendor.o(($event) => detail.value = $event.detail.value, "da"),
         g: isDefault.value,
-        h: common_vendor.o(onDefaultChange),
-        i: common_vendor.o(saveAddress)
+        h: common_vendor.o(onDefaultChange, "54"),
+        i: common_vendor.o(saveAddress, "ff")
       };
     };
   }

@@ -4,14 +4,17 @@ if (!Math) {
   TheTabBar();
 }
 const TheTabBar = () => "../../components/TheTabBar.js";
+const HOME_CACHE_KEY = "home_content_cache_v1";
+const HOME_CACHE_TTL = 5 * 60 * 1e3;
 const contactPhone = "18608945191";
 const _sfc_main = {
   __name: "home",
   setup(__props) {
-    const configService = common_vendor.tr.importObject("config-service");
+    const configService = common_vendor._r.importObject("order-service");
     const isLoading = common_vendor.ref(true);
     const heroes = common_vendor.ref([]);
     const announcements = common_vendor.ref([]);
+    const loadError = common_vendor.ref("");
     const features = [
       { icon: "/static/tabbar/kuaididaiqu.png", text: "快递代取", path: "/pages/client/forms/pickup" },
       { icon: "/static/tabbar/paotuifuwu.png", text: "跑腿服务", path: "/pages/client/forms/errand" }
@@ -47,23 +50,80 @@ const _sfc_main = {
         handleHeroLink(hero);
       }
     };
-    const loadHomeContent = async () => {
+    const formatErrorMessage = (err, fallback) => {
+      if (!err)
+        return fallback;
+      if (typeof err === "string")
+        return err;
+      if (typeof err.message === "string" && err.message.trim())
+        return err.message;
+      return fallback;
+    };
+    const loadHomeContent = async ({ showSkeleton = true } = {}) => {
+      const readCache = () => {
+        try {
+          const raw = common_vendor.index.getStorageSync(HOME_CACHE_KEY);
+          if (!raw)
+            return null;
+          const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+          if (!parsed || !parsed.ts || !parsed.data)
+            return null;
+          return parsed;
+        } catch (e) {
+          return null;
+        }
+      };
+      const writeCache = (data) => {
+        try {
+          common_vendor.index.setStorageSync(HOME_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+        } catch (e) {
+        }
+      };
+      const now = Date.now();
+      const cache = readCache();
+      if (cache && now - cache.ts < HOME_CACHE_TTL && cache.data) {
+        heroes.value = cache.data.heroes || [];
+        announcements.value = cache.data.announcements || [];
+        isLoading.value = false;
+        loadHomeContentFromCloud(false, writeCache);
+        return;
+      }
+      await loadHomeContentFromCloud(showSkeleton, writeCache);
+    };
+    const loadHomeContentFromCloud = async (showSkeleton = true, saveFn = () => {
+    }) => {
+      if (showSkeleton)
+        isLoading.value = true;
+      loadError.value = "";
       try {
         const res = await configService.getHomeContent();
-        if (res.code === 0 && res.data) {
-          heroes.value = (res.data.heroes || []).map((h) => ({
-            _id: h._id || "",
-            title: h.title || "品牌赞助位",
-            desc: h.desc || "",
-            cta_text: h.cta_text || "联系运营",
-            image_file_id: h.image_file_id || "",
-            link_url: h.link_url || ""
-          }));
-          announcements.value = res.data.announcements || [];
+        if (!res || res.code !== 0 || !res.data) {
+          throw new Error((res == null ? void 0 : res.message) || "未获取到首页内容");
         }
+        const nextHeroes = (res.data.heroes || []).map((h) => ({
+          _id: h._id || "",
+          title: h.title || "品牌赞助位",
+          desc: h.desc || "",
+          cta_text: h.cta_text || "联系运营",
+          image_file_id: h.image_file_id || "",
+          link_url: h.link_url || ""
+        }));
+        const nextAnnouncements = res.data.announcements || [];
+        heroes.value = nextHeroes;
+        announcements.value = nextAnnouncements;
+        saveFn({ heroes: nextHeroes, announcements: nextAnnouncements });
       } catch (e) {
-        common_vendor.index.__f__("warn", "at pages/client/home.vue:193", "loadHomeContent", e);
+        common_vendor.index.__f__("error", "at pages/client/home.vue:250", "[home] loadHomeContent failed", e);
+        loadError.value = formatErrorMessage(e, "首页内容加载失败，请稍后重试");
+        if (!showSkeleton) {
+          common_vendor.index.showToast({ title: loadError.value, icon: "none" });
+        }
+      } finally {
+        isLoading.value = false;
       }
+    };
+    const retryHome = () => {
+      loadHomeContent({ showSkeleton: true });
     };
     const closeContactModal = () => {
       showContactModal.value = false;
@@ -84,20 +144,27 @@ const _sfc_main = {
       common_vendor.index.navigateTo({ url: item.path });
     };
     common_vendor.onLoad(async () => {
-      isLoading.value = true;
-      await loadHomeContent();
-      isLoading.value = false;
+      await loadHomeContent({ showSkeleton: true });
     });
     common_vendor.onShow(() => {
       common_vendor.index.hideHomeButton();
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: !isLoading.value
-      }, !isLoading.value ? common_vendor.e({
-        b: heroes.value.length
+        a: isLoading.value
+      }, isLoading.value ? {
+        b: common_vendor.f(4, (i, k0, i0) => {
+          return {
+            a: i
+          };
+        })
+      } : loadError.value ? {
+        d: common_vendor.t(loadError.value),
+        e: common_vendor.o(retryHome, "8d")
+      } : common_vendor.e({
+        f: heroes.value.length
       }, heroes.value.length ? {
-        c: common_vendor.f(heroes.value, (hero, k0, i0) => {
+        g: common_vendor.f(heroes.value, (hero, k0, i0) => {
           return common_vendor.e({
             a: hero.image_file_id
           }, hero.image_file_id ? {
@@ -112,13 +179,13 @@ const _sfc_main = {
             i: hero._id || hero.title
           });
         }),
-        d: heroes.value.length > 1,
-        e: heroes.value.length > 1,
-        f: heroes.value.length > 1
+        h: heroes.value.length > 1,
+        i: heroes.value.length > 1,
+        j: heroes.value.length > 1
       } : {
-        g: common_vendor.o(($event) => onHeroCta(null))
+        k: common_vendor.o(($event) => onHeroCta(null), "59")
       }, {
-        h: common_vendor.f(features, (item, k0, i0) => {
+        l: common_vendor.f(features, (item, k0, i0) => {
           return {
             a: item.icon,
             b: common_vendor.t(item.text),
@@ -126,9 +193,9 @@ const _sfc_main = {
             d: common_vendor.o(($event) => goFeature(item), item.text)
           };
         }),
-        i: announcements.value.length
+        m: announcements.value.length
       }, announcements.value.length ? {
-        j: common_vendor.f(announcements.value, (a, k0, i0) => {
+        n: common_vendor.f(announcements.value, (a, k0, i0) => {
           return common_vendor.e({
             a: a.image_file_id
           }, a.image_file_id ? {
@@ -139,25 +206,20 @@ const _sfc_main = {
             e: a._id
           });
         }),
-        k: announcements.value.length > 1,
-        l: announcements.value.length > 1,
-        m: announcements.value.length > 1
-      } : {}) : {
-        n: common_vendor.f(4, (i, k0, i0) => {
-          return {
-            a: i
-          };
-        })
-      }, {
-        o: showContactModal.value
+        o: announcements.value.length > 1,
+        p: announcements.value.length > 1,
+        q: announcements.value.length > 1
+      } : {}), {
+        c: loadError.value,
+        r: showContactModal.value
       }, showContactModal.value ? {
-        p: common_vendor.o(closeContactModal),
-        q: common_vendor.t(contactPhone),
-        r: common_vendor.o(copyPhone),
-        s: common_vendor.o(closeContactModal),
-        t: common_vendor.o(() => {
-        }),
-        v: common_vendor.o(closeContactModal)
+        s: common_vendor.o(closeContactModal, "35"),
+        t: common_vendor.t(contactPhone),
+        v: common_vendor.o(copyPhone, "00"),
+        w: common_vendor.o(closeContactModal, "f9"),
+        x: common_vendor.o(() => {
+        }, "27"),
+        y: common_vendor.o(closeContactModal, "ad")
       } : {});
     };
   }

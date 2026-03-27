@@ -1,5 +1,6 @@
 "use strict";
 const common_vendor = require("../../../common/vendor.js");
+const store_user = require("../../../store/user.js");
 const store_wallet = require("../../../store/wallet.js");
 if (!Array) {
   const _easycom_uni_popup2 = common_vendor.resolveComponent("uni-popup");
@@ -130,17 +131,24 @@ const _sfc_main = {
       return `${month}-${day} ${hour}:${minute}`;
     };
     common_vendor.onShow(async () => {
+      if (!store_user.isRiderMode()) {
+        common_vendor.index.showToast({ title: "仅骑手可用", icon: "none" });
+        setTimeout(() => {
+          common_vendor.index.navigateBack({ delta: 1 });
+        }, 300);
+        return;
+      }
       await walletStore.loadFromCloud();
       await walletStore.getTransactions({ page: 1, pageSize: 20 }, true);
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: common_vendor.o(refreshBalance),
+        a: common_vendor.o(refreshBalance, "f8"),
         b: common_vendor.t(balance.value.toFixed(2)),
         c: common_vendor.t(totalIncome.value.toFixed(2)),
         d: common_vendor.t(totalExpense.value.toFixed(2)),
-        e: common_vendor.o(showWithdrawPopup),
-        f: common_vendor.o(loadMoreTransactions),
+        e: common_vendor.o(showWithdrawPopup, "10"),
+        f: common_vendor.o(loadMoreTransactions, "e9"),
         g: transactions.value.length === 0
       }, transactions.value.length === 0 ? {} : {
         h: common_vendor.f(transactions.value, (item, k0, i0) => {
@@ -173,7 +181,7 @@ const _sfc_main = {
           });
         })
       }, {
-        i: common_vendor.o(closeWithdrawPopup),
+        i: common_vendor.o(closeWithdrawPopup, "51"),
         j: common_vendor.t(balance.value.toFixed(2)),
         k: common_vendor.f(withdrawAmounts, (amt, k0, i0) => {
           return {
@@ -184,10 +192,10 @@ const _sfc_main = {
             e: common_vendor.o(($event) => selectWithdrawAmount(amt), amt)
           };
         }),
-        l: common_vendor.o([($event) => customWithdrawAmount.value = $event.detail.value, ($event) => onCustomAmountInput("withdraw")]),
+        l: common_vendor.o([($event) => customWithdrawAmount.value = $event.detail.value, ($event) => onCustomAmountInput("withdraw")], "6a"),
         m: customWithdrawAmount.value,
         n: common_vendor.t(withdrawAmount.value || customWithdrawAmount.value || 0),
-        o: common_vendor.o(handleWithdraw),
+        o: common_vendor.o(handleWithdraw, "6f"),
         p: common_vendor.sr(withdrawPopup, "2e9d1a34-0", {
           "k": "withdrawPopup"
         }),

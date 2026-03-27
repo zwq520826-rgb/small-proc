@@ -1,7 +1,7 @@
 "use strict";
 const common_vendor = require("../../../../common/vendor.js");
 const uni_modules_uniIdPages_common_store = require("../../common/store.js");
-const uniIdCo = common_vendor.tr.importObject("uni-id-co");
+const uniIdCo = common_vendor._r.importObject("uni-id-co");
 const _sfc_main = {
   computed: {
     userInfo() {
@@ -113,7 +113,7 @@ const _sfc_main = {
       });
     },
     async bindThirdAccount(provider) {
-      const uniIdCo2 = common_vendor.tr.importObject("uni-id-co");
+      const uniIdCo2 = common_vendor._r.importObject("uni-id-co");
       const bindField = {
         weixin: "wx_openid",
         alipay: "ali_openid",
@@ -177,13 +177,13 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       width: "260rpx",
       height: "260rpx"
     }),
-    b: common_vendor.o(($event) => $options.setNickname("")),
+    b: common_vendor.o(($event) => $options.setNickname(""), "46"),
     c: common_vendor.p({
       title: "昵称",
       rightText: $options.userInfo.nickname || "未设置",
       link: true
     }),
-    d: common_vendor.o($options.bindMobile),
+    d: common_vendor.o($options.bindMobile, "8f"),
     e: common_vendor.p({
       title: "手机号",
       rightText: $options.userInfo.mobile || "未绑定",
@@ -198,13 +198,13 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   } : {}, {
     h: $data.hasPwd
   }, $data.hasPwd ? {
-    i: common_vendor.o($options.changePassword),
+    i: common_vendor.o($options.changePassword, "49"),
     j: common_vendor.p({
       title: "修改密码",
       link: true
     })
   } : {}, {
-    k: common_vendor.o($options.setNickname),
+    k: common_vendor.o($options.setNickname, "b6"),
     l: common_vendor.p({
       mode: "input",
       value: $options.userInfo.nickname,
@@ -217,14 +217,14 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       type: "dialog"
     }),
     o: common_vendor.sr("bind-mobile-by-sms", "0be2f605-8"),
-    p: common_vendor.o($options.bindMobileSuccess),
+    p: common_vendor.o($options.bindMobileSuccess, "37"),
     q: $data.showLoginManage
   }, $data.showLoginManage ? common_vendor.e({
     r: $options.userInfo._id
   }, $options.userInfo._id ? {
-    s: common_vendor.o((...args) => $options.logout && $options.logout(...args))
+    s: common_vendor.o((...args) => $options.logout && $options.logout(...args), "36")
   } : {
-    t: common_vendor.o((...args) => $options.login && $options.login(...args))
+    t: common_vendor.o((...args) => $options.login && $options.login(...args), "87")
   }) : {});
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-0be2f605"]]);

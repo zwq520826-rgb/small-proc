@@ -56,7 +56,7 @@ const _sfc_main = {
         this.val = "";
         this.focusCaptchaInput = true;
       }
-      const uniIdCo = common_vendor.tr.importObject("uni-captcha-co", {
+      const uniIdCo = common_vendor._r.importObject("uni-captcha-co", {
         customUI: true
       });
       uniIdCo.getImageCaptcha({
@@ -93,12 +93,12 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     })
   } : {}, {
     c: $data.loging ? 1 : "",
-    d: common_vendor.o((...args) => $options.getImageCaptcha && $options.getImageCaptcha(...args)),
+    d: common_vendor.o((...args) => $options.getImageCaptcha && $options.getImageCaptcha(...args), "c3"),
     e: $data.captchaBase64,
-    f: common_vendor.o(($event) => $data.focusCaptchaInput = false),
+    f: common_vendor.o(($event) => $data.focusCaptchaInput = false, "8d"),
     g: $data.focusCaptchaInput,
     h: $options.val,
-    i: common_vendor.o(($event) => $options.val = $event.detail.value)
+    i: common_vendor.o(($event) => $options.val = $event.detail.value, "96")
   });
 }
 const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-a00179ae"]]);

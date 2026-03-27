@@ -26,7 +26,8 @@
 .page.data-v-0e9c11e7 {
   min-height: 100vh;
   background: #f7f9fb;
-  padding: 24rpx 24rpx 140rpx;
+  padding: 24rpx 24rpx 200rpx;
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 .card.data-v-0e9c11e7 {
@@ -225,6 +226,16 @@
   font-size: 28rpx;
   color: #1f2f4a;
 }
+.textarea.data-v-0e9c11e7 {
+  width: 100%;
+  min-height: 120rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid #e5e7eb;
+  padding: 16rpx;
+  font-size: 28rpx;
+  color: #1f2f4a;
+  background: #f9fafb;
+}
 .bottom-bar.data-v-0e9c11e7 {
   position: fixed;
   left: 0;
@@ -237,6 +248,8 @@
   background: #ffffff;
   box-shadow: 0 -6rpx 16rpx rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
+  z-index: 9;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 }
 .total.data-v-0e9c11e7 {
   display: flex;

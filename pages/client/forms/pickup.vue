@@ -110,6 +110,17 @@
       </view>
     </view>
 
+    <!-- 4. 备注（选填） -->
+    <view class="card">
+      <view class="section-title">4. 备注（选填）</view>
+      <textarea
+        class="textarea"
+        v-model="remark"
+        placeholder="想对骑手说的话，例如到达前联系我等"
+        auto-height
+      ></textarea>
+    </view>
+
     <!-- 底部栏 -->
     <view class="bottom-bar">
       <view class="total">
@@ -119,12 +130,6 @@
       <button class="pay-btn" @click="handlePayClick">立即支付</button>
     </view>
 
-    <PaymentPopup
-      v-model:show="showPayPopup"
-      :amount="Number(totalPrice)"
-      :balance="balance"
-      @confirm="onPayConfirm"
-    />
   </view>
 </template>
 
@@ -133,8 +138,6 @@ import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useAddressStore } from '@/store/address'
 import { useClientOrderStore  } from '@/store/clientOrder'
-import PaymentPopup from '@/components/PaymentPopup.vue'
-import { useWalletStore } from '@/store/wallet'
 import { payForOrder } from '@/store/pay'
 
 const images = ref([])
@@ -142,22 +145,22 @@ const quantities = ref({ small: 0, medium: 0, large: 0 })
 // 从后端配置读取的小/中/大件价格（单位：元）
 const rates = ref({ small: 1.5, medium: 2, large: 3 })
 
-// 价格配置缓存：避免用户频繁进入/返回时重复触发 config-service 配置拉取
+// 价格配置缓存：避免用户频繁进入/返回时重复触发云对象
 let pickupRatesCache = null
 let lastPickupRatesLoadedAt = 0
 let pickupRatesPromise = null
-const PICKUP_RATES_MIN_INTERVAL_MS = 60 * 60 * 1000 // 1 小时冷却
+const PICKUP_RATES_MIN_INTERVAL_MS = 60 * 60 * 1000 // 会话内最小拉取间隔 1h
+const PICKUP_RATES_TTL_MS = 6 * 60 * 60 * 1000 // 本地缓存 6h
+const PICKUP_RATES_CACHE_KEY = 'pickup_rates_cache_v1'
 
 const isUrgent = ref(false)
 const isDelivery = ref(false)
 const dormNumber = ref('')
+const remark = ref('')
 // 男生宿舍 / 女生宿舍，对应 male / female
 const deliveryDormType = ref('') // 'male' | 'female'
 const addressStore = useAddressStore()
 const store = useClientOrderStore()
-const walletStore = useWalletStore()
-const showPayPopup = ref(false)
-const balance = computed(() => walletStore.balance)
 
 // 金额工具：统一在“分”上运算，避免浮点精度问题
 const toFen = (yuan) => Math.round(Number(yuan || 0) * 100)
@@ -271,18 +274,7 @@ const handlePayClick = () => {
     }
   }
 
-  const amount = Number(totalPrice.value).toFixed(2)
-  uni.showActionSheet({
-    itemList: [`余额支付 ¥${amount}`, '微信支付'],
-    success: (res) => {
-      const index = res.tapIndex
-      if (index === 0) {
-        onPayConfirm('balance')
-      } else if (index === 1) {
-        onPayConfirm('wechat')
-      }
-    }
-  })
+  onPayConfirm('wechat')
 }
 
 // 上传取件凭证到云存储，返回可跨设备访问的 fileID
@@ -305,8 +297,7 @@ const uploadImages = async (list = []) => {
   return uploaded
 }
 
-const onPayConfirm = async (method = 'balance') => {
-  showPayPopup.value = false
+const onPayConfirm = async (method = 'wechat') => {
   uni.showLoading({ title: '处理中...' })
 
   try {
@@ -323,24 +314,29 @@ const onPayConfirm = async (method = 'balance') => {
     const deliveryLocation = addr.schoolArea ? `${addr.schoolArea}・${addr.detail}` : addr.detail
     
     // 1. 先创建订单（后端会统一创建为待支付，支付成功后才会放到大厅）
+    const remarkText = remark.value.trim()
+    const content = {
+      phone: addr.phone || '',
+      name: addr.name || '',
+      images: uploadedImages,
+      quantities: quantities.value,
+      isUrgent: isUrgent.value,
+      isDelivery: isDelivery.value,
+      dormNumber: dormNumber.value,
+      requiredRiderGender: isDelivery.value ? (deliveryDormType.value || '') : ''
+    }
+    if (remarkText) {
+      content.remark = remarkText
+    }
+
     const payload = {
       type: 'pickup',
       typeLabel: '快递代取',
       price: amount,
-      pickupLocation: '', // 不再使用“待指定”，改为通过取件凭证照片识别取件点
+      pickupLocation: '',
       deliveryLocation: deliveryLocation,
       address: `${addr.name || ''} ${addr.phone || ''}\n${deliveryLocation}`,
-      content: {
-        phone: addr.phone || '', // 单独存储用户电话，方便骑手拨打
-        name: addr.name || '', // 单独存储用户姓名
-        images: uploadedImages,
-        quantities: quantities.value,
-        isUrgent: isUrgent.value,
-        isDelivery: isDelivery.value,
-        dormNumber: dormNumber.value,
-        // 送货上门时要求的骑手性别（male/female）
-        requiredRiderGender: isDelivery.value ? (deliveryDormType.value || '') : ''
-      },
+      content,
       tags: [
         isUrgent.value ? '加急' : '',
         isDelivery.value
@@ -411,31 +407,58 @@ async function loadPickupRatesIfNeeded() {
     return
   }
 
+  // 尝试从本地缓存恢复（跨会话）
+  if (!pickupRatesCache) {
+    try {
+      const raw = uni.getStorageSync(PICKUP_RATES_CACHE_KEY)
+      if (raw) {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+        if (parsed?.ts && now - parsed.ts < PICKUP_RATES_TTL_MS && parsed.data) {
+          pickupRatesCache = parsed.data
+          lastPickupRatesLoadedAt = parsed.ts
+          rates.value = { ...pickupRatesCache }
+          // 后台刷新一次，不阻塞界面
+          refreshPickupRates()
+          return
+        }
+      }
+    } catch (e) {
+      // ignore storage errors
+    }
+  }
+
   // 并发复用：同一时刻只发起一次拉取
   if (pickupRatesPromise) return pickupRatesPromise
 
-  pickupRatesPromise = (async () => {
-    try {
-      const configService = uniCloud.importObject('config-service')
-      const res = await configService.getPickupRates()
-      if (res && res.code === 0 && res.data) {
-        const nextRates = {
-          small: Number(res.data.small) || rates.value.small,
-          medium: Number(res.data.medium) || rates.value.medium,
-          large: Number(res.data.large) || rates.value.large
-        }
-        pickupRatesCache = nextRates
-        lastPickupRatesLoadedAt = Date.now()
-        rates.value = { ...nextRates }
-      }
-    } catch (e) {
-      console.error('加载快递代取价格失败，将使用默认价格:', e)
-    } finally {
-      pickupRatesPromise = null
-    }
-  })()
+  pickupRatesPromise = refreshPickupRates()
 
   return pickupRatesPromise
+}
+
+async function refreshPickupRates() {
+  try {
+    const configService = uniCloud.importObject('order-service')
+    const res = await configService.getPickupRates()
+    if (res && res.code === 0 && res.data) {
+      const nextRates = {
+        small: Number(res.data.small) || rates.value.small,
+        medium: Number(res.data.medium) || rates.value.medium,
+        large: Number(res.data.large) || rates.value.large
+      }
+      pickupRatesCache = nextRates
+      lastPickupRatesLoadedAt = Date.now()
+      rates.value = { ...nextRates }
+      try {
+        uni.setStorageSync(PICKUP_RATES_CACHE_KEY, JSON.stringify({ ts: lastPickupRatesLoadedAt, data: nextRates }))
+      } catch (e) {
+        // ignore
+      }
+    }
+  } catch (e) {
+    console.error('加载快递代取价格失败，将使用默认价格:', e)
+  } finally {
+    pickupRatesPromise = null
+  }
 }
 
 onLoad(async () => {
@@ -448,7 +471,8 @@ onLoad(async () => {
 .page {
   min-height: 100vh;
   background: #f7f9fb;
-  padding: 24rpx 24rpx 140rpx;
+  padding: 24rpx 24rpx 200rpx;
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
@@ -681,6 +705,17 @@ onLoad(async () => {
   color: #1f2f4a;
 }
 
+.textarea {
+  width: 100%;
+  min-height: 120rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid #e5e7eb;
+  padding: 16rpx;
+  font-size: 28rpx;
+  color: #1f2f4a;
+  background: #f9fafb;
+}
+
 .bottom-bar {
   position: fixed;
   left: 0;
@@ -693,6 +728,8 @@ onLoad(async () => {
   background: #ffffff;
   box-shadow: 0 -6rpx 16rpx rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
+  z-index: 9;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
 }
 
 .total {
@@ -719,4 +756,3 @@ onLoad(async () => {
   border-radius: 12rpx;
 }
 </style>
-

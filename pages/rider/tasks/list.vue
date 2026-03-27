@@ -14,7 +14,7 @@
 
     <!-- 待取货 -->
     <view v-if="currentTab === 0" class="task-list">
-      <view v-for="task in taskList" :key="task.id" class="card">
+      <view v-for="task in taskList" :key="task.id" class="card" @click="goTaskDetail(task)">
         <view class="card-header">
           <view class="route">
             <text class="delivery">{{ task.delivery }}</text>
@@ -27,34 +27,32 @@
           <text class="status">{{ statusMap[task.status] }}</text>
         </view>
 
-        <view v-if="task.tags && task.tags.length" class="tag-row">
-          <text
-            v-for="tag in task.tags"
-            :key="tag"
-            class="tag"
-            :class="{
-              'tag-urgent': tag.includes('加急'),
-              'tag-delivery': tag.includes('送货上门')
-            }"
+        <view v-if="task.visualTags && task.visualTags.length" class="tag-row">
+          <view
+            v-for="tag in task.visualTags"
+            :key="tag.key"
+            class="tag-chip"
+            :class="`tag-${tag.type}`"
           >
-            {{ tag }}
-          </text>
+            <text v-if="tag.icon" class="chip-icon">{{ tag.icon }}</text>
+            <text>{{ tag.text }}</text>
+          </view>
         </view>
 
-        <view class="contact-info" v-if="task.phone" @click="copyPhone(task.phone)">
+        <view class="contact-info" v-if="task.phone" @click.stop="callCustomer(task)">
           <text class="phone-label">客户电话：</text>
           <text class="phone">{{ task.phone }}</text>
-          <text class="copy-hint">点击复制</text>
+          <text class="copy-hint">点击拨打</text>
         </view>
 
         <view class="actions">
-          <button class="view-btn" @click="viewPickupImages(task)">
-            查看取件信息
+          <button class="view-btn" @click.stop="viewPickupImages(task)">
+            取件信息
           </button>
-          <button class="confirm-btn" type="primary" @click="confirmPickup(task)">
+          <button class="confirm-btn" type="primary" @click.stop="confirmPickup(task)">
              已取货
           </button>
-          <button class="cancel-btn" @click="goDetailAndOpenCancel(task)">
+          <button class="cancel-btn" @click.stop="goDetailAndOpenCancel(task)">
             取消订单
           </button>
         </view>
@@ -63,7 +61,7 @@
 
     <!-- 配送中 -->
     <view v-if="currentTab === 1" class="task-list">
-      <view v-for="task in taskList" :key="task.id" class="card">
+      <view v-for="task in taskList" :key="task.id" class="card" @click="goTaskDetail(task)">
         <view class="card-header">
           <view class="route">
             <text class="delivery">{{ task.delivery }}</text>
@@ -76,31 +74,29 @@
           <text class="status delivering-status">配送中</text>
         </view>
 
-        <view v-if="task.tags && task.tags.length" class="tag-row">
-          <text
-            v-for="tag in task.tags"
-            :key="tag"
-            class="tag"
-            :class="{
-              'tag-urgent': tag.includes('加急'),
-              'tag-delivery': tag.includes('送货上门')
-            }"
+        <view v-if="task.visualTags && task.visualTags.length" class="tag-row">
+          <view
+            v-for="tag in task.visualTags"
+            :key="tag.key"
+            class="tag-chip"
+            :class="`tag-${tag.type}`"
           >
-            {{ tag }}
-          </text>
+            <text v-if="tag.icon" class="chip-icon">{{ tag.icon }}</text>
+            <text>{{ tag.text }}</text>
+          </view>
         </view>
 
-        <view class="contact-info" v-if="task.phone" @click="copyPhone(task.phone)">
+        <view class="contact-info" v-if="task.phone" @click.stop="callCustomer(task)">
           <text class="phone-label">客户电话：</text>
           <text class="phone">{{ task.phone }}</text>
-          <text class="copy-hint">点击复制</text>
+          <text class="copy-hint">点击拨打</text>
         </view>
 
         <view class="actions">
-          <button class="deliver-btn" @click="confirmDelivery(task)">
+          <button class="deliver-btn" @click.stop="confirmDelivery(task)">
             拍照送达
           </button>
-          <button class="cancel-btn" @click="goDetailAndOpenCancel(task)">
+          <button class="cancel-btn" @click.stop="goDetailAndOpenCancel(task)">
             取消订单
           </button>
         </view>
@@ -109,7 +105,7 @@
 
     <!-- 已送达 -->
     <view v-if="currentTab === 2" class="task-list">
-      <view v-for="task in taskList" :key="task.id" class="card completed-card">
+      <view v-for="task in taskList" :key="task.id" class="card completed-card" @click="goTaskDetail(task)">
         <view class="card-header">
           <view class="route">
             <text class="delivery">{{ task.delivery }}</text>
@@ -124,27 +120,25 @@
           <text class="completed-time">{{ formatTime(task.completedAt) }}</text>
         </view>
 
-        <view v-if="task.tags && task.tags.length" class="tag-row">
-          <text
-            v-for="tag in task.tags"
-            :key="tag"
-            class="tag"
-            :class="{
-              'tag-urgent': tag.includes('加急'),
-              'tag-delivery': tag.includes('送货上门')
-            }"
+        <view v-if="task.visualTags && task.visualTags.length" class="tag-row">
+          <view
+            v-for="tag in task.visualTags"
+            :key="tag.key"
+            class="tag-chip"
+            :class="`tag-${tag.type}`"
           >
-            {{ tag }}
-          </text>
+            <text v-if="tag.icon" class="chip-icon">{{ tag.icon }}</text>
+            <text>{{ tag.text }}</text>
+          </view>
         </view>
 
-        <view v-if="task.deliveryImage" class="delivery-proof">
+        <view v-if="task.deliveryImage" class="delivery-proof" @click.stop>
           <text class="proof-label">送达凭证：</text>
           <image
             class="proof-img"
             :src="task.deliveryImage"
             mode="aspectFill"
-            @click="previewDeliveryImage(task)"
+            @click.stop="previewDeliveryImage(task)"
           />
         </view>
       </view>
@@ -157,8 +151,8 @@
 import { ref, computed } from 'vue'
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app'
 import TheTabBar from '@/components/TheTabBar.vue'
-// 【修改点1】引入正确的 Rider Store
 import { useRiderTaskStore } from '@/store/riderTask'
+import { buildVisualTags } from '@/utils/orderTags'
 
 // 【修改点2】初始化 store
 const store = useRiderTaskStore()
@@ -235,20 +229,10 @@ const taskList = computed(() => {
     // 寝室号（客户端“送货上门”填写的 dormNumber）
     const dorm = t.content?.dormNumber
 
-    // 处理标签：原始标签或根据内容生成，再把寝室号拼在“送货上门”后面
-    const rawTags =
-      (t.tags && t.tags.length
-        ? t.tags
-        : [
-            t.content?.isUrgent ? '加急' : '',
-            t.content?.isDelivery ? '送货上门' : ''
-          ].filter(Boolean)) || []
-
-    const tags = rawTags.map((tag) => {
-      if (tag.includes('送货上门') && dorm) {
-        return `${tag} ${dorm}`
-      }
-      return tag
+    const visualTags = buildVisualTags({
+      rawTags: t.tags,
+      content: t.content,
+      requiredGender: t.content?.requiredRiderGender
     })
 
     return {
@@ -260,7 +244,7 @@ const taskList = computed(() => {
       deliveryImage: t.content?.deliveryImages?.[0] || t.content?.delivery_images?.[0] || '',
       // 客户电话：优先从 content.phone 获取，如果没有则尝试从 address 字段解析
       phone: t.content?.phone || t.phone || extractPhoneFromAddress(t.address) || '',
-      tags
+      visualTags
     }
   })
 })
@@ -328,26 +312,7 @@ const viewPickupImages = async (task) => {
   await previewCloudImages(images)
 }
 
-// 复制客户电话
-const copyPhone = (phone) => {
-  if (!phone) {
-    uni.showToast({ title: '暂无客户电话', icon: 'none' })
-    return
-  }
-  // 移除可能的星号（脱敏字符）
-  const cleanPhone = phone.replace(/\*/g, '')
-  uni.setClipboardData({
-    data: cleanPhone,
-    success: () => {
-      uni.showToast({ title: '电话已复制', icon: 'success' })
-    },
-    fail: () => {
-      uni.showToast({ title: '复制失败', icon: 'none' })
-    }
-  })
-}
-
-// 拨打客户电话（保留，可能其他地方需要）
+// 拨打客户电话
 const callCustomer = (task) => {
   // 优先取 content 里的 phone，其次取外层的 phone
   const phone = task.content?.phone || task.phone || ''
@@ -442,6 +407,13 @@ const goDetailAndOpenCancel = (task) => {
   if (!task || !task.id) return
   uni.navigateTo({
     url: '/pages/rider/tasks/detail?id=' + encodeURIComponent(String(task.id)) + '&openCancel=1'
+  })
+}
+
+const goTaskDetail = (task) => {
+  if (!task || !task.id) return
+  uni.navigateTo({
+    url: '/pages/rider/tasks/detail?id=' + encodeURIComponent(String(task.id))
   })
 }
 
@@ -576,25 +548,40 @@ const formatTime = (timestamp) => {
   margin-bottom: 10rpx;
 }
 
-.tag {
-  font-size: 24rpx;
-  padding: 8rpx 18rpx;
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 16rpx;
   border-radius: 999rpx;
   background: #f4f5f7;
-  color: #555555;
+  color: #374151;
+  font-size: 24rpx;
   font-weight: 600;
 }
 
-.tag-urgent {
-  background: #ffe8e6;
-  color: #e53935;
-  font-weight: 700;
+.tag-chip.tag-urgent {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
-.tag-delivery {
-  background: #e6f6ff;
-  color: #0288d1;
-  font-weight: 700;
+.tag-chip.tag-delivery {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.tag-chip.tag-info {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.tag-chip.tag-neutral {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.chip-icon {
+  font-size: 22rpx;
 }
 
 .type {

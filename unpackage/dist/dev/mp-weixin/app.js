@@ -2,6 +2,7 @@
 Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 const common_vendor = require("./common/vendor.js");
 const uni_modules_uniIdPages_init = require("./uni_modules/uni-id-pages/init.js");
+const utils_auth = require("./utils/auth.js");
 if (!Math) {
   "./pages/client/home.js";
   "./pages/client/orders/list.js";
@@ -19,6 +20,7 @@ if (!Math) {
   "./pages/rider/tasks/list.js";
   "./pages/rider/tasks/detail.js";
   "./pages/rider/verify.js";
+  "./pages/rider/levels.js";
   "./uni_modules/uni-id-pages/pages/userinfo/deactivate/deactivate.js";
   "./uni_modules/uni-id-pages/pages/userinfo/userinfo.js";
   "./uni_modules/uni-id-pages/pages/userinfo/bind-mobile/bind-mobile.js";
@@ -36,14 +38,13 @@ if (!Math) {
 }
 const _sfc_main = {
   onLaunch: async function() {
-    common_vendor.index.__f__("log", "at App.vue:5", "App Launch");
     await uni_modules_uniIdPages_init.uniIdPageInit();
+    utils_auth.ensureSessionAlive({ silent: true });
   },
   onShow: function() {
-    common_vendor.index.__f__("log", "at App.vue:9", "App Show");
+    utils_auth.ensureSessionAlive();
   },
   onHide: function() {
-    common_vendor.index.__f__("log", "at App.vue:12", "App Hide");
   }
 };
 function createApp() {

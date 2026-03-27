@@ -255,7 +255,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     b: $data.animationData,
     c: common_vendor.n($props.customClass),
     d: common_vendor.s($options.transformStyles),
-    e: common_vendor.o((...args) => $options.onClick && $options.onClick(...args))
+    e: common_vendor.o((...args) => $options.onClick && $options.onClick(...args), "5f")
   } : {});
 }
 const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render]]);

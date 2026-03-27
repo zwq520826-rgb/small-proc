@@ -25,7 +25,7 @@ const _sfc_main = {
   },
   methods: {
     submit() {
-      const uniIdCo = common_vendor.tr.importObject("uni-id-co", {
+      const uniIdCo = common_vendor._r.importObject("uni-id-co", {
         errorOptions: {
           type: "toast"
         }
@@ -72,17 +72,17 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
     a: $data.logo,
     b: common_vendor.sr("smsCode", "661d78f6-1,661d78f6-0"),
-    c: common_vendor.o(($event) => $data.code = $event),
+    c: common_vendor.o(($event) => $data.code = $event, "3f"),
     d: common_vendor.p({
       focusCaptchaInput: true,
       type: "login-by-sms",
       phone: $data.phone,
       modelValue: $data.code
     }),
-    e: common_vendor.o((...args) => $options.submit && $options.submit(...args)),
+    e: common_vendor.o((...args) => $options.submit && $options.submit(...args), "d6"),
     f: common_vendor.sr("popup", "661d78f6-2"),
-    g: common_vendor.o($options.submit),
-    h: common_vendor.o(($event) => $data.captcha = $event),
+    g: common_vendor.o($options.submit, "da"),
+    h: common_vendor.o(($event) => $data.captcha = $event, "c5"),
     i: common_vendor.p({
       scene: "login-by-sms",
       modelValue: $data.captcha

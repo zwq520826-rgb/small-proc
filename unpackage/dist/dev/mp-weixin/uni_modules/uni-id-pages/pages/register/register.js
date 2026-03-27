@@ -3,7 +3,7 @@ const common_vendor = require("../../../../common/vendor.js");
 const uni_modules_uniIdPages_pages_register_validator = require("./validator.js");
 const uni_modules_uniIdPages_common_loginPage_mixin = require("../../common/login-page.mixin.js");
 require("../../common/store.js");
-const uniIdCo = common_vendor.tr.importObject("uni-id-co");
+const uniIdCo = common_vendor._r.importObject("uni-id-co");
 const _sfc_main = {
   mixins: [uni_modules_uniIdPages_common_loginPage_mixin.mixin],
   data() {
@@ -96,8 +96,8 @@ if (!Math) {
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
     a: $data.logo,
-    b: common_vendor.o(($event) => $data.focusUsername = false),
-    c: common_vendor.o(($event) => $data.formData.username = $event),
+    b: common_vendor.o(($event) => $data.focusUsername = false, "e1"),
+    c: common_vendor.o(($event) => $data.formData.username = $event, "95"),
     d: common_vendor.p({
       inputBorder: false,
       focus: $data.focusUsername,
@@ -109,8 +109,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       name: "username",
       required: true
     }),
-    f: common_vendor.o(($event) => $data.focusNickname = false),
-    g: common_vendor.o(($event) => $data.formData.nickname = $event),
+    f: common_vendor.o(($event) => $data.focusNickname = false, "b5"),
+    g: common_vendor.o(($event) => $data.formData.nickname = $event, "47"),
     h: common_vendor.p({
       inputBorder: false,
       focus: $data.focusNickname,
@@ -121,8 +121,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     i: common_vendor.p({
       name: "nickname"
     }),
-    j: common_vendor.o(($event) => $data.focusPassword = false),
-    k: common_vendor.o(($event) => $data.formData.password = $event),
+    j: common_vendor.o(($event) => $data.focusPassword = false, "79"),
+    k: common_vendor.o(($event) => $data.formData.password = $event, "e0"),
     l: common_vendor.p({
       inputBorder: false,
       focus: $data.focusPassword,
@@ -132,14 +132,14 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       trim: "both",
       modelValue: $data.formData.password
     }),
-    m: common_vendor.o(($event) => $data.formData.password = $event),
+    m: common_vendor.o(($event) => $data.formData.password = $event, "a9"),
     n: common_vendor.p({
       name: "password",
       required: true,
       modelValue: $data.formData.password
     }),
-    o: common_vendor.o(($event) => $data.focusPassword2 = false),
-    p: common_vendor.o(($event) => $data.formData.password2 = $event),
+    o: common_vendor.o(($event) => $data.focusPassword2 = false, "5a"),
+    p: common_vendor.o(($event) => $data.formData.password2 = $event, "3b"),
     q: common_vendor.p({
       inputBorder: false,
       focus: $data.focusPassword2,
@@ -149,27 +149,27 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       trim: "both",
       modelValue: $data.formData.password2
     }),
-    r: common_vendor.o(($event) => $data.formData.password2 = $event),
+    r: common_vendor.o(($event) => $data.formData.password2 = $event, "4b"),
     s: common_vendor.p({
       name: "password2",
       required: true,
       modelValue: $data.formData.password2
     }),
-    t: common_vendor.sr("captcha", "4754f99e-10,4754f99e-9"),
-    v: common_vendor.o(($event) => $data.formData.captcha = $event),
+    t: common_vendor.sr("captcha", "0d87faf3-10,0d87faf3-9"),
+    v: common_vendor.o(($event) => $data.formData.captcha = $event, "b0"),
     w: common_vendor.p({
       scene: "register",
       modelValue: $data.formData.captcha
     }),
-    x: common_vendor.sr("agreements", "4754f99e-11,4754f99e-0"),
+    x: common_vendor.sr("agreements", "0d87faf3-11,0d87faf3-0"),
     y: common_vendor.p({
       scope: "register"
     }),
-    z: common_vendor.o((...args) => $options.submit && $options.submit(...args)),
-    A: common_vendor.o((...args) => $options.navigateBack && $options.navigateBack(...args)),
-    B: common_vendor.o((...args) => $options.registerByEmail && $options.registerByEmail(...args)),
-    C: common_vendor.o((...args) => $options.toLogin && $options.toLogin(...args)),
-    D: common_vendor.sr("form", "4754f99e-0"),
+    z: common_vendor.o((...args) => $options.submit && $options.submit(...args), "b6"),
+    A: common_vendor.o((...args) => $options.navigateBack && $options.navigateBack(...args), "94"),
+    B: common_vendor.o((...args) => $options.registerByEmail && $options.registerByEmail(...args), "21"),
+    C: common_vendor.o((...args) => $options.toLogin && $options.toLogin(...args), "21"),
+    D: common_vendor.sr("form", "0d87faf3-0"),
     E: common_vendor.p({
       value: $data.formData,
       rules: $data.rules,

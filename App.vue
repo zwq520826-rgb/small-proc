@@ -1,16 +1,15 @@
 <script>
 	import uniIdPageInit from '@/uni_modules/uni-id-pages/init.js';
+	import { ensureSessionAlive } from '@/utils/auth.js';
 	export default {
 		onLaunch: async function() {
-			console.log('App Launch')
 			await uniIdPageInit()
+			ensureSessionAlive({ silent: true })
 		},
 		onShow: function() {
-			console.log('App Show')
+			ensureSessionAlive()
 		},
-		onHide: function() {
-			console.log('App Hide')
-		}
+		onHide: function() {}
 	}
 </script>
 

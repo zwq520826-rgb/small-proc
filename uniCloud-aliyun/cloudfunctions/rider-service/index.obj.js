@@ -287,10 +287,10 @@ module.exports = {
    * 获取当前骑手的等级与统计信息（给前端展示用）
    * 返回：当前等级、累计订单数、距离下一级还差多少单、当前/下一级抽成
    */
-  async getMyStats() {
-    const auth = checkAuth(this)
-    if (auth.code) return auth
-    const uid = auth.uid
+	async getMyStats() {
+		const auth = checkAuth(this)
+		if (auth.code) return auth
+		const uid = auth.uid
 
     // 1. 读取骑手档案
     const profileRes = await db.collection('rider_profiles')
@@ -338,20 +338,45 @@ module.exports = {
     const nextCommission = nextLevel ? Number(nextLevel.commission_rate || 0) : null
     const needMore = nextLevel ? Math.max(0, (nextLevel.min_orders || 0) - total) : 0
 
-    return {
-      code: 0,
-      data: {
-        level: currentLevel.code,
-        level_name: currentLevel.name,
-        total_completed_orders: total,
-        need_more_orders: needMore,
-        current_commission_rate: currentCommission,   // 平台抽成，例如 0.11
-        next_commission_rate: nextCommission,         // 可能为 null（已是最高级）
-        current_rider_share: 1 - currentCommission,
-        next_rider_share: nextCommission != null ? (1 - nextCommission) : null
-      }
-    }
-  },
+		return {
+			code: 0,
+			data: {
+				level: currentLevel.code,
+				level_name: currentLevel.name,
+				total_completed_orders: total,
+				need_more_orders: needMore,
+				current_commission_rate: currentCommission,   // 平台抽成，例如 0.11
+				next_commission_rate: nextCommission,         // 可能为 null（已是最高级）
+				current_rider_share: 1 - currentCommission,
+				next_rider_share: nextCommission != null ? (1 - nextCommission) : null
+			}
+		}
+	},
+
+	/**
+	 * 获取骑手等级配置列表
+	 */
+	async getLevelList() {
+		const auth = checkAuth(this)
+		if (auth.code) return auth
+
+		try {
+			const res = await db.collection('rider_levels')
+				.orderBy('min_orders', 'asc')
+				.get()
+
+			return {
+				code: 0,
+				data: res.data || []
+			}
+		} catch (error) {
+			console.error('获取骑手等级配置失败:', error)
+			return {
+				code: 'DB_ERROR',
+				message: '获取骑手等级配置失败：' + error.message
+			}
+		}
+	},
 
   /**
    * 订单送达后的骑手统计与抽成结算
@@ -439,5 +464,4 @@ module.exports = {
     }
   }
 }
-
 

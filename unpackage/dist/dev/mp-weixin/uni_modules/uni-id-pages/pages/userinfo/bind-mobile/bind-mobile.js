@@ -43,7 +43,7 @@ const _sfc_main = {
           duration: 3e3
         });
       }
-      const uniIdCo = common_vendor.tr.importObject("uni-id-co");
+      const uniIdCo = common_vendor._r.importObject("uni-id-co");
       uniIdCo.bindMobileBySms(this.formData).then((e) => {
         common_vendor.index.showToast({
           title: e.errMsg,
@@ -79,8 +79,8 @@ if (!Math) {
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
     a: $data.logo,
-    b: common_vendor.o(($event) => $data.focusMobile = false),
-    c: common_vendor.o(($event) => $data.formData.mobile = $event),
+    b: common_vendor.o(($event) => $data.focusMobile = false, "2e"),
+    c: common_vendor.o(($event) => $data.formData.mobile = $event, "d5"),
     d: common_vendor.p({
       clearable: true,
       focus: $data.focusMobile,
@@ -90,17 +90,17 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       placeholder: "请输入手机号",
       modelValue: $data.formData.mobile
     }),
-    e: common_vendor.sr("smsForm", "3bb41600-1"),
-    f: common_vendor.o(($event) => $data.formData.code = $event),
+    e: common_vendor.sr("smsForm", "06df7f0b-1"),
+    f: common_vendor.o(($event) => $data.formData.code = $event, "f3"),
     g: common_vendor.p({
       type: "bind-mobile-by-sms",
       phone: $data.formData.mobile,
       modelValue: $data.formData.code
     }),
-    h: common_vendor.o((...args) => $options.submit && $options.submit(...args)),
-    i: common_vendor.sr("popup", "3bb41600-2"),
-    j: common_vendor.o($options.submit),
-    k: common_vendor.o(($event) => $data.formData.captcha = $event),
+    h: common_vendor.o((...args) => $options.submit && $options.submit(...args), "3c"),
+    i: common_vendor.sr("popup", "06df7f0b-2"),
+    j: common_vendor.o($options.submit, "f7"),
+    k: common_vendor.o(($event) => $data.formData.captcha = $event, "b2"),
     l: common_vendor.p({
       scene: "bind-mobile-by-sms",
       modelValue: $data.formData.captcha

@@ -114,7 +114,7 @@ const _sfc_main = {
           icon: "none",
           duration: 3e3
         });
-      const uniIdCo = common_vendor.tr.importObject("uni-id-co", {
+      const uniIdCo = common_vendor._r.importObject("uni-id-co", {
         customUI: true
       });
       common_vendor.index.__f__("log", "at uni_modules/uni-id-pages/components/uni-id-pages-sms-form/uni-id-pages-sms-form.vue:139", "sendSmsCode", {
@@ -180,14 +180,14 @@ if (!Math) {
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
     a: common_vendor.sr("captcha", "4b649130-0"),
-    b: common_vendor.o(($event) => $data.captcha = $event),
+    b: common_vendor.o(($event) => $data.captcha = $event, "a9"),
     c: common_vendor.p({
       focus: $props.focusCaptchaInput,
       scene: "send-sms-code",
       modelValue: $data.captcha
     }),
-    d: common_vendor.o(($event) => $data.focusSmsCodeInput = false),
-    e: common_vendor.o(($event) => $data.modelValue = $event),
+    d: common_vendor.o(($event) => $data.focusSmsCodeInput = false, "e7"),
+    e: common_vendor.o(($event) => $data.modelValue = $event, "db"),
     f: common_vendor.p({
       focus: $data.focusSmsCodeInput,
       type: "number",
@@ -199,7 +199,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     }),
     g: common_vendor.t($options.innerText),
     h: common_vendor.n($data.reverseNumber == 0 ? "inner-text-active" : ""),
-    i: common_vendor.o((...args) => _ctx.start && _ctx.start(...args))
+    i: common_vendor.o((...args) => _ctx.start && _ctx.start(...args), "3e")
   };
 }
 const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-4b649130"]]);

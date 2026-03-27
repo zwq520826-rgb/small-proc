@@ -1,7 +1,7 @@
 "use strict";
 const common_vendor = require("../../../../common/vendor.js");
 const uni_modules_uniIdPages_common_loginPage_mixin = require("../../common/login-page.mixin.js");
-const uniIdCo = common_vendor.tr.importObject("uni-id-co", {
+const uniIdCo = common_vendor._r.importObject("uni-id-co", {
   errorOptions: {
     type: "toast"
   }
@@ -182,8 +182,8 @@ if (!Math) {
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
     a: $data.logo,
-    b: common_vendor.o(($event) => $data.focusPhone = false),
-    c: common_vendor.o(($event) => $data.formData.phone = $event),
+    b: common_vendor.o(($event) => $data.focusPhone = false, "d7"),
+    c: common_vendor.o(($event) => $data.formData.phone = $event, "3e"),
     d: common_vendor.p({
       focus: $data.focusPhone,
       disabled: $data.lock,
@@ -196,8 +196,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     e: common_vendor.p({
       name: "phone"
     }),
-    f: common_vendor.sr("shortCode", "5561a5be-4,5561a5be-3"),
-    g: common_vendor.o(($event) => $data.formData.code = $event),
+    f: common_vendor.sr("shortCode", "1b94a713-4,1b94a713-3"),
+    g: common_vendor.o(($event) => $data.formData.code = $event, "7c"),
     h: common_vendor.p({
       phone: $data.formData.phone,
       type: "reset-pwd-by-sms",
@@ -206,8 +206,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     i: common_vendor.p({
       name: "code"
     }),
-    j: common_vendor.o(($event) => $data.focusPassword = false),
-    k: common_vendor.o(($event) => $data.formData.password = $event),
+    j: common_vendor.o(($event) => $data.focusPassword = false, "73"),
+    k: common_vendor.o(($event) => $data.formData.password = $event, "81"),
     l: common_vendor.p({
       focus: $data.focusPassword,
       type: "password",
@@ -218,8 +218,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     m: common_vendor.p({
       name: "password"
     }),
-    n: common_vendor.o(($event) => $data.focusPassword2 = false),
-    o: common_vendor.o(($event) => $data.formData.password2 = $event),
+    n: common_vendor.o(($event) => $data.focusPassword2 = false, "6a"),
+    o: common_vendor.o(($event) => $data.formData.password2 = $event, "60"),
     p: common_vendor.p({
       focus: $data.focusPassword2,
       type: "password",
@@ -230,17 +230,17 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     q: common_vendor.p({
       name: "password2"
     }),
-    r: common_vendor.o((...args) => $options.submit && $options.submit(...args)),
-    s: common_vendor.o((...args) => $options.retrieveByEmail && $options.retrieveByEmail(...args)),
-    t: common_vendor.o((...args) => $options.backLogin && $options.backLogin(...args)),
-    v: common_vendor.sr("form", "5561a5be-0"),
+    r: common_vendor.o((...args) => $options.submit && $options.submit(...args), "53"),
+    s: common_vendor.o((...args) => $options.retrieveByEmail && $options.retrieveByEmail(...args), "94"),
+    t: common_vendor.o((...args) => $options.backLogin && $options.backLogin(...args), "2c"),
+    v: common_vendor.sr("form", "1b94a713-0"),
     w: common_vendor.p({
       value: $data.formData,
       ["err-show-type"]: "toast"
     }),
-    x: common_vendor.sr("popup", "5561a5be-9"),
-    y: common_vendor.o($options.submit),
-    z: common_vendor.o(($event) => $data.formData.captcha = $event),
+    x: common_vendor.sr("popup", "1b94a713-9"),
+    y: common_vendor.o($options.submit, "79"),
+    z: common_vendor.o(($event) => $data.formData.captcha = $event, "29"),
     A: common_vendor.p({
       scene: "reset-pwd-by-sms",
       modelValue: $data.formData.captcha

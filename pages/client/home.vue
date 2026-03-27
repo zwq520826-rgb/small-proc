@@ -1,7 +1,19 @@
 <template>
   <view class="home-root">
   <view class="page">
-    <view v-if="!isLoading">
+    <view v-if="isLoading" class="skeleton-container">
+      <view class="skeleton banner pulse"></view>
+      <view class="skeleton grid">
+        <view class="skeleton grid-item pulse" v-for="i in 4" :key="i"></view>
+      </view>
+    </view>
+    <view v-else-if="loadError" class="error-card">
+      <view class="error-illustration">🙈</view>
+      <text class="error-title">加载失败</text>
+      <text class="error-desc">{{ loadError }}</text>
+      <button class="retry-btn" @click="retryHome">重新加载</button>
+    </view>
+    <template v-else>
       <view class="top">
         <view class="location">
           <text class="pos">长江师范学院</text>
@@ -91,15 +103,7 @@
           </swiper-item>
         </swiper>
       </view>
-    </view>
-
-    <view v-else class="skeleton-container">
-      <view class="skeleton banner pulse"></view>
-      <view class="skeleton grid">
-        <view class="skeleton grid-item pulse" v-for="i in 4" :key="i"></view>
-      </view>
-    </view>
-
+    </template>
   </view>
   <TheTabBar />
   <!-- 必须放在 TabBar 之后，否则自定义底栏会盖住遮罩，导致无法关闭 -->
@@ -127,11 +131,15 @@ import TheTabBar from '@/components/TheTabBar.vue'
 import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 
-const configService = uniCloud.importObject('config-service')
+const configService = uniCloud.importObject('order-service')
+
+const HOME_CACHE_KEY = 'home_content_cache_v1'
+const HOME_CACHE_TTL = 5 * 60 * 1000 // 5 分钟
 
 const isLoading = ref(true)
 const heroes = ref([])
 const announcements = ref([])
+const loadError = ref('')
 
 const features = [
   { icon: '/static/tabbar/kuaididaiqu.png', text: '快递代取', path: '/pages/client/forms/pickup' },
@@ -175,23 +183,82 @@ const onHeroBannerTap = (hero) => {
   }
 }
 
-const loadHomeContent = async () => {
+const formatErrorMessage = (err, fallback) => {
+  if (!err) return fallback
+  if (typeof err === 'string') return err
+  if (typeof err.message === 'string' && err.message.trim()) return err.message
+  return fallback
+}
+
+const loadHomeContent = async ({ showSkeleton = true } = {}) => {
+  const readCache = () => {
+    try {
+      const raw = uni.getStorageSync(HOME_CACHE_KEY)
+      if (!raw) return null
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      if (!parsed || !parsed.ts || !parsed.data) return null
+      return parsed
+    } catch (e) {
+      return null
+    }
+  }
+
+  const writeCache = (data) => {
+    try {
+      uni.setStorageSync(HOME_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }))
+    } catch (e) {
+      // ignore storage errors
+    }
+  }
+
+  const now = Date.now()
+  const cache = readCache()
+
+  if (cache && now - cache.ts < HOME_CACHE_TTL && cache.data) {
+    heroes.value = cache.data.heroes || []
+    announcements.value = cache.data.announcements || []
+    isLoading.value = false
+    // 后台刷新一次，不阻塞界面
+    loadHomeContentFromCloud(false, writeCache)
+    return
+  }
+
+  await loadHomeContentFromCloud(showSkeleton, writeCache)
+}
+
+const loadHomeContentFromCloud = async (showSkeleton = true, saveFn = () => {}) => {
+  if (showSkeleton) isLoading.value = true
+  loadError.value = ''
   try {
     const res = await configService.getHomeContent()
-    if (res.code === 0 && res.data) {
-      heroes.value = (res.data.heroes || []).map((h) => ({
-        _id: h._id || '',
-        title: h.title || '品牌赞助位',
-        desc: h.desc || '',
-        cta_text: h.cta_text || '联系运营',
-        image_file_id: h.image_file_id || '',
-        link_url: h.link_url || ''
-      }))
-      announcements.value = res.data.announcements || []
+    if (!res || res.code !== 0 || !res.data) {
+      throw new Error(res?.message || '未获取到首页内容')
     }
+    const nextHeroes = (res.data.heroes || []).map((h) => ({
+      _id: h._id || '',
+      title: h.title || '品牌赞助位',
+      desc: h.desc || '',
+      cta_text: h.cta_text || '联系运营',
+      image_file_id: h.image_file_id || '',
+      link_url: h.link_url || ''
+    }))
+    const nextAnnouncements = res.data.announcements || []
+    heroes.value = nextHeroes
+    announcements.value = nextAnnouncements
+    saveFn({ heroes: nextHeroes, announcements: nextAnnouncements })
   } catch (e) {
-    console.warn('loadHomeContent', e)
+    console.error('[home] loadHomeContent failed', e)
+    loadError.value = formatErrorMessage(e, '首页内容加载失败，请稍后重试')
+    if (!showSkeleton) {
+      uni.showToast({ title: loadError.value, icon: 'none' })
+    }
+  } finally {
+    isLoading.value = false
   }
+}
+
+const retryHome = () => {
+  loadHomeContent({ showSkeleton: true })
 }
 
 const closeContactModal = () => {
@@ -216,9 +283,7 @@ const goFeature = (item) => {
 }
 
 onLoad(async () => {
-  isLoading.value = true
-  await loadHomeContent()
-  isLoading.value = false
+  await loadHomeContent({ showSkeleton: true })
 })
 
 onShow(() => {
@@ -548,10 +613,45 @@ onShow(() => {
   animation: pulse 1.4s ease-in-out infinite;
 }
 
+.error-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 40rpx;
+  text-align: center;
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.05);
+  margin-top: 80rpx;
+  gap: 16rpx;
+}
+
+.error-illustration {
+  font-size: 80rpx;
+}
+
+.error-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1f2f4a;
+}
+
+.error-desc {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+.retry-btn {
+  margin-top: 8rpx;
+  width: 240rpx;
+  background: #1a73e8;
+  color: #ffffff;
+}
+
 @keyframes pulse {
   0% { left: -100%; }
   50% { left: 100%; }
   100% { left: 100%; }
 }
 </style>
-

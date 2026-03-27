@@ -9,6 +9,11 @@ const uniIdCommon = require('uni-id-common')
 const db = uniCloud.database()
 const dbCmd = db.command
 
+const SETTINGS_COLLECTION = 'maintenance_settings'
+const ORDER_ARCHIVE_COLLECTION = 'orders_archive'
+const ORDER_CLEANUP_SETTING_ID = 'order_cleanup'
+const DEFAULT_ORDER_TTL_DAYS = 7
+
 /** 拥有该 role_id 的账号可调用 admin-service（与 uni-id-roles 表一致） */
 const ADMIN_ROLE_IDS = ['admin']
 
@@ -23,7 +28,7 @@ function getDayRange(dateStr) {
 	const d = dateStr ? new Date(dateStr + 'T00:00:00') : new Date()
 	const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
 	const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
-	return { start, end }
+	return { start, end, startMs: start.getTime(), endMs: end.getTime() }
 }
 
 function formatYMD(d) {
@@ -98,6 +103,69 @@ async function initAuth(ctx) {
 	return uid
 }
 
+function normalizeCleanupConfig(doc) {
+	const ttlDays = Number(doc?.ttl_days)
+	return {
+		ttl_days: Number.isFinite(ttlDays) && ttlDays > 0 ? ttlDays : DEFAULT_ORDER_TTL_DAYS,
+		updated_at: doc?.updated_at || null
+	}
+}
+
+async function readCleanupSettings() {
+	const res = await db.collection(SETTINGS_COLLECTION).doc(ORDER_CLEANUP_SETTING_ID).get()
+	const row = Array.isArray(res.data) ? res.data[0] : res.data
+	return normalizeCleanupConfig(row || {})
+}
+
+async function writeCleanupSettings(ttlDays) {
+	const now = Date.now()
+	await db
+		.collection(SETTINGS_COLLECTION)
+		.doc(ORDER_CLEANUP_SETTING_ID)
+		.set({ ttl_days: ttlDays, updated_at: now })
+	return { ttl_days: ttlDays, updated_at: now }
+}
+
+function extractFileIds(order) {
+	const ids = new Set()
+	const paths = [
+		['content', 'images'],
+		['content', 'pickupImages'],
+		['content', 'deliveryImages'],
+		['content', 'delivery_images'],
+		['delivery_images'],
+		['proof_images']
+	]
+	for (const path of paths) {
+		let ref = order
+		for (const key of path) {
+			if (!ref) break
+			ref = ref[key]
+		}
+		if (Array.isArray(ref)) {
+			ref.forEach((fileId) => {
+				if (typeof fileId === 'string' && fileId.startsWith('cloud://')) {
+					ids.add(fileId)
+				}
+			})
+		}
+	}
+	return Array.from(ids)
+}
+
+async function deleteFiles(fileIds = []) {
+	const valid = Array.from(new Set(fileIds.filter((id) => typeof id === 'string' && id.startsWith('cloud://'))))
+	if (!valid.length) return 0
+	const chunkSize = 20
+	let deleted = 0
+	for (let i = 0; i < valid.length; i += chunkSize) {
+		const chunk = valid.slice(i, i + chunkSize)
+		await uniCloud.deleteFile({ fileList: chunk })
+		deleted += chunk.length
+	}
+	return deleted
+}
+
 module.exports = {
 	_before: async function () {
 		this.uid = await initAuth(this)
@@ -120,218 +188,117 @@ module.exports = {
 		const auth = await assertAdmin(this.uid)
 		if (auth.code !== 0) return auth
 
-		const { start, end } = date ? getDayRange(date) : getDayRange()
+		const { start, end, startMs, endMs } = date ? getDayRange(date) : getDayRange()
 		const ymd = formatYMD(start)
 
-		// 今日订单（全部）
-		const todayOrdersRes = await db.collection('orders')
-			.where({
-				create_time: dbCmd.gte(start).and(dbCmd.lte(end))
-			})
-			.field({ status: true, type: true, price: true, pay_status: true, create_time: true, rider_id: true })
-			.limit(5000)
-			.get()
-
-		const todayOrders = todayOrdersRes.data || []
-		const todayOrderCount = todayOrders.length
-
-		let todayGmv = 0
-		let todayPaidCount = 0
-		const statusMap = {}
-		const typeMap = {}
-		const hourly = Array(24).fill(0).map(() => 0)
-
-		for (const row of todayOrders) {
-			const st = row.status || 'unknown'
-			statusMap[st] = (statusMap[st] || 0) + 1
-			const ty = row.type || 'unknown'
-			typeMap[ty] = (typeMap[ty] || 0) + 1
-			if (row.pay_status === 'paid') {
-				todayGmv += Number(row.price || 0)
-				todayPaidCount += 1
-			}
-			const ct = row.create_time
-			const t = ct instanceof Date ? ct : new Date(ct)
-			if (!isNaN(t.getTime())) {
-				const h = t.getHours()
-				if (h >= 0 && h < 24) hourly[h] += 1
+		// 低成本路径：优先读取 daily_stats，如果命中直接返回
+		const cacheRes = await db.collection('daily_stats').where({ stat_date: ymd }).limit(1).get()
+		const cached = cacheRes.data && cacheRes.data[0]
+		if (cached) {
+			return {
+				code: 0,
+				data: {
+					date: ymd,
+					order_count: cached.order_count || 0,
+					paid_order_count: cached.paid_order_count || 0,
+					gmv: Number((cached.gmv || 0).toFixed(2)),
+					status_distribution: cached.status_list || [],
+					type_distribution: cached.type_list || [],
+					income_trend_7d: cached.income_trend_7d || [],
+					order_trend_7d: cached.order_trend_7d || [],
+					rider_rank_7d: cached.rider_rank_7d || [],
+					hourly: cached.hourly || []
+				}
 			}
 		}
 
-		// 订单状态分布（用于饼图）
-		const statusDistribution = Object.keys(statusMap).map((k) => ({
-			status: k,
-			count: statusMap[k]
-		}))
+		// 未命中缓存时，用聚合降本统计当日核心指标（不再返回 7 日趋势，交由离线任务）
+		const matchCond = { create_time: dbCmd.gte(startMs).and(dbCmd.lte(endMs)) }
 
-		// 订单类型分布（今日）
-		const typeDistribution = Object.keys(typeMap).map((k) => ({
-			type: k,
-			count: typeMap[k]
-		}))
-
-		// 近 7 日 GMV（已支付订单按 create_time）
-		const sevenStart = new Date(start)
-		sevenStart.setDate(sevenStart.getDate() - 6)
-		sevenStart.setHours(0, 0, 0, 0)
-		const paidRangeRes = await db.collection('orders')
-			.where({
-				pay_status: 'paid',
-				create_time: dbCmd.gte(sevenStart).and(dbCmd.lte(end))
+		const summaryAgg = await db.collection('orders').aggregate()
+			.match(matchCond)
+			.group({
+				_id: null,
+				order_count: dbCmd.aggregate.sum(1),
+				paid_order_count: dbCmd.aggregate.sum(
+					dbCmd.aggregate.cond([
+						{ $eq: ['$pay_status', 'paid'] },
+						1,
+						0
+					])
+				),
+				gmv: dbCmd.aggregate.sum(
+					dbCmd.aggregate.cond([
+						{ $eq: ['$pay_status', 'paid'] },
+						'$price',
+						0
+					])
+				)
 			})
-			.field({ price: true, create_time: true })
-			.limit(8000)
-			.get()
+			.end()
 
-		const dayGmv = {}
-		for (const row of paidRangeRes.data || []) {
-			const ct = row.create_time
-			const t = ct instanceof Date ? ct : new Date(ct)
-			if (isNaN(t.getTime())) continue
-			const key = formatYMD(t)
-			dayGmv[key] = (dayGmv[key] || 0) + Number(row.price || 0)
-		}
-		const incomeTrend7d = []
-		for (let i = 6; i >= 0; i--) {
-			const d = new Date(start)
-			d.setDate(d.getDate() - i)
-			const k = formatYMD(d)
-			incomeTrend7d.push({ date: k, gmv: Number((dayGmv[k] || 0).toFixed(2)) })
-		}
+		const byStatusAgg = await db.collection('orders').aggregate()
+			.match(matchCond)
+			.group({ _id: '$status', count: dbCmd.aggregate.sum(1) })
+			.end()
 
-		// 近 7 日每日订单量（按 create_time 所在自然日）
-		const orders7dRes = await db.collection('orders')
-			.where({
-				create_time: dbCmd.gte(sevenStart).and(dbCmd.lte(end))
+		const byTypeAgg = await db.collection('orders').aggregate()
+			.match(matchCond)
+			.group({ _id: '$type', count: dbCmd.aggregate.sum(1) })
+			.end()
+
+		const summary = (summaryAgg.data && summaryAgg.data[0]) || {}
+		const statusDistribution = (byStatusAgg.data || []).map((i) => ({ status: i._id || 'unknown', count: i.count || 0 }))
+		const typeDistribution = (byTypeAgg.data || []).map((i) => ({ type: i._id || 'unknown', count: i.count || 0 }))
+
+		const todayOrderCount = summary.order_count || 0
+		const todayPaidCount = summary.paid_order_count || 0
+		const todayGmv = Number((summary.gmv || 0).toFixed(2))
+
+		// 写入 daily_stats 缓存，后续直接命中
+		try {
+			await db.collection('daily_stats').where({ stat_date: ymd }).update({
+				order_count: todayOrderCount,
+				paid_order_count: todayPaidCount,
+				gmv: todayGmv,
+				status_list: statusDistribution,
+				type_list: typeDistribution,
+				income_trend_7d: [],
+				order_trend_7d: [],
+				rider_rank_7d: [],
+				hourly: [],
+				update_time: Date.now()
 			})
-			.field({ create_time: true })
-			.limit(20000)
-			.get()
-
-		const dayOrderCount = {}
-		for (const row of orders7dRes.data || []) {
-			const ct = row.create_time
-			const t = ct instanceof Date ? ct : new Date(ct)
-			if (isNaN(t.getTime())) continue
-			const key = formatYMD(t)
-			dayOrderCount[key] = (dayOrderCount[key] || 0) + 1
-		}
-		const orderTrend7d = []
-		for (let i = 6; i >= 0; i--) {
-			const d = new Date(start)
-			d.setDate(d.getDate() - i)
-			const k = formatYMD(d)
-			orderTrend7d.push({ date: k, order_count: dayOrderCount[k] || 0 })
-		}
-
-		// 骑手接单排行（近 7 日按 accept_time 统计接单量）
-		const riderRankRes = await db.collection('orders')
-			.where({
-				rider_id: dbCmd.gt(''),
-				accept_time: dbCmd.gte(sevenStart).and(dbCmd.lte(end))
+			await db.collection('daily_stats').add({
+				stat_date: ymd,
+				order_count: todayOrderCount,
+				paid_order_count: todayPaidCount,
+				gmv: todayGmv,
+				status_list: statusDistribution,
+				type_list: typeDistribution,
+				income_trend_7d: [],
+				order_trend_7d: [],
+				rider_rank_7d: [],
+				hourly: [],
+				update_time: Date.now()
 			})
-			.field({ rider_id: true, price: true })
-			.limit(5000)
-			.get()
-
-		const riderMap = {}
-		for (const row of riderRankRes.data || []) {
-			const rid = row.rider_id
-			if (!rid) continue
-			if (!riderMap[rid]) riderMap[rid] = { rider_id: rid, order_count: 0, total_price: 0 }
-			riderMap[rid].order_count += 1
-			riderMap[rid].total_price += Number(row.price || 0)
-		}
-		let riderRanking = Object.values(riderMap)
-			.sort((a, b) => b.order_count - a.order_count)
-			.slice(0, 20)
-			.map((r) => ({
-				...r,
-				total_price: Number(r.total_price.toFixed(2))
-			}))
-
-		// 无 accept_time 的老数据时，用近 7 日「已完成」单量作为排行参考
-		if (riderRanking.length === 0) {
-			const riderFallback = await db.collection('orders')
-				.where({
-					status: 'completed',
-					complete_time: dbCmd.gte(sevenStart).and(dbCmd.lte(end)),
-					rider_id: dbCmd.gt('')
-				})
-				.field({ rider_id: true, price: true })
-				.limit(5000)
-				.get()
-			const fm = {}
-			for (const row of riderFallback.data || []) {
-				const rid = row.rider_id
-				if (!rid) continue
-				if (!fm[rid]) fm[rid] = { rider_id: rid, order_count: 0, total_price: 0 }
-				fm[rid].order_count += 1
-				fm[rid].total_price += Number(row.price || 0)
-			}
-			riderRanking = Object.values(fm)
-				.sort((a, b) => b.order_count - a.order_count)
-				.slice(0, 20)
-				.map((r) => ({
-					...r,
-					total_price: Number(r.total_price.toFixed(2))
-				}))
-		}
-
-		// 待处理提现笔数
-		let pendingWithdrawCount = 0
-		try {
-			const wr = await db.collection('withdraw_requests').where({ status: 'pending' }).count()
-			pendingWithdrawCount = wr.total || 0
 		} catch (e) {
-			console.warn('[admin-service] withdraw_requests count', e.message)
-		}
-
-		// 统计日内的异常单数量 + 最近 20 条
-		let abnormalList = []
-		let illegalOrderCountToday = 0
-		try {
-			const illCount = await db.collection('illegal-order')
-				.where({
-					create_time: dbCmd.gte(start).and(dbCmd.lte(end))
-				})
-				.count()
-			illegalOrderCountToday = illCount.total || 0
-			const ill = await db.collection('illegal-order')
-				.orderBy('create_time', 'desc')
-				.limit(20)
-				.get()
-			abnormalList = ill.data || []
-		} catch (e) {
-			console.warn('[admin-service] illegal-order', e.message)
-		}
-
-		// daily_stats 中是否有今日（可选）
-		let dailyStatRow = null
-		try {
-			const ds = await db.collection('daily_stats').where({ stat_date: ymd }).limit(1).get()
-			dailyStatRow = ds.data && ds.data[0] ? ds.data[0] : null
-		} catch (e) {
-			// 表未建时忽略
+			// 已存在则 add 失败，忽略
 		}
 
 		return {
 			code: 0,
 			data: {
 				date: ymd,
-				todayOrderCount,
-				todayPaidOrderCount: todayPaidCount,
-				todayGmv: Number(todayGmv.toFixed(2)),
-				statusDistribution,
-				typeDistribution,
-				hourlyToday: hourly,
-				incomeTrend7d,
-				orderTrend7d,
-				riderRanking,
-				pendingWithdrawCount,
-				illegalOrderCountToday,
-				abnormalList,
-				dailyStatRow
+				order_count: todayOrderCount,
+				paid_order_count: todayPaidCount,
+				gmv: todayGmv,
+				status_distribution: statusDistribution,
+				type_distribution: typeDistribution,
+				income_trend_7d: [],
+				order_trend_7d: [],
+				rider_rank_7d: [],
+				hourly: []
 			}
 		}
 	},
@@ -707,11 +674,11 @@ module.exports = {
 			return { code: 400, message: 'stat_date 需为 YYYY-MM-DD' }
 		}
 
-		const { start, end } = getDayRange(stat_date)
+		const { startMs, endMs } = getDayRange(stat_date)
 
 		const ordersRes = await db.collection('orders')
 			.where({
-				create_time: dbCmd.gte(start).and(dbCmd.lte(end))
+				create_time: dbCmd.gte(startMs).and(dbCmd.lte(endMs))
 			})
 			.field({ price: true, pay_status: true })
 			.limit(10000)
@@ -863,9 +830,9 @@ module.exports = {
 	 * 骑手认证资料 + 钱包（余额、冻结、累计收支）
 	 * 以 rider_profiles 为列表主体，按 user_id 合并 wallets
 	 */
-	async listRidersWithBalances({ status, page = 1, pageSize = 20, keyword = '' } = {}) {
-		const auth = await assertAdmin(this.uid)
-		if (auth.code !== 0) return auth
+  async listRidersWithBalances({ status, page = 1, pageSize = 20, keyword = '' } = {}) {
+    const auth = await assertAdmin(this.uid)
+    if (auth.code !== 0) return auth
 
 		const p = Math.max(1, parseInt(page, 10) || 1)
 		const ps = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20))
@@ -935,16 +902,131 @@ module.exports = {
 			}
 		})
 
-		return {
-			code: 0,
-			data: {
-				list,
-				total: totalRes.total || 0,
-				page: p,
-				pageSize: ps
-			}
-		}
-	},
+    return {
+      code: 0,
+      data: {
+        list,
+        total: totalRes.total || 0,
+        page: p,
+        pageSize: ps
+      }
+    }
+  },
+
+  /**
+   * 指定用户的钱包交易流水
+   */
+  async listUserTransactions({ userId, type = 'all', page = 1, pageSize = 20 } = {}) {
+    const auth = await assertAdmin(this.uid)
+    if (auth.code !== 0) return auth
+
+    if (!userId) {
+      return { code: 400, message: '缺少 userId' }
+    }
+
+    const p = Math.max(1, parseInt(page, 10) || 1)
+    const ps = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20))
+
+    const where = { user_id: userId }
+    if (type && type !== 'all') {
+      where.type = type
+    }
+
+    const listRes = await db.collection('transactions')
+      .where(where)
+      .orderBy('create_time', 'desc')
+      .skip((p - 1) * ps)
+      .limit(ps)
+      .get()
+
+    const totalRes = await db.collection('transactions').where(where).count()
+
+    return {
+      code: 0,
+      data: {
+        list: listRes.data || [],
+        total: totalRes.total || 0,
+        page: p,
+      pageSize: ps
+      }
+    }
+  },
+
+  /**
+   * 财务对账（按日）：骑手收入/退款/充值 vs 支付/提现
+   * @param {string} date YYYY-MM-DD，默认当天
+   */
+  async getFinanceDaily({ date } = {}) {
+    const auth = await assertAdmin(this.uid)
+    if (auth.code !== 0) return auth
+
+    const { start, end, startMs, endMs } = date ? getDayRange(date) : getDayRange()
+
+    // 1) 交易流水（transactions）
+    const txRes = await db.collection('transactions')
+      .where({ create_time: dbCmd.gte(startMs).and(dbCmd.lte(endMs)) })
+      .field({ type: true, amount: true })
+      .get()
+
+    let income = 0
+    let refund = 0
+    let recharge = 0
+    let pay = 0
+    let withdrawTx = 0
+
+    for (const tx of txRes.data || []) {
+      const amt = Number(tx.amount || 0)
+      switch (tx.type) {
+        case 'income':
+          income += amt; break
+        case 'refund':
+          refund += amt; break
+        case 'recharge':
+          recharge += amt; break
+        case 'pay':
+          pay += amt; break
+        case 'withdraw':
+          withdrawTx += amt; break
+        default:
+          break
+      }
+    }
+
+    // 2) 提现申请（withdraw_requests）- 当日创建
+    const wdRes = await db.collection('withdraw_requests')
+      .where({ create_time: dbCmd.gte(startMs).and(dbCmd.lte(endMs)) })
+      .field({ amount: true, status: true })
+      .get()
+
+    let withdrawPending = 0
+    let withdrawSuccess = 0
+    let withdrawFailed = 0
+    for (const row of wdRes.data || []) {
+      const amt = Number(row.amount || 0)
+      if (row.status === 'pending') withdrawPending += amt
+      else if (row.status === 'success') withdrawSuccess += amt
+      else if (row.status === 'rejected' || row.status === 'failed') withdrawFailed += amt
+    }
+
+    return {
+      code: 0,
+      data: {
+        date: formatYMD(start),
+        transactions: {
+          income: Number(income.toFixed(2)),
+          refund: Number(refund.toFixed(2)),
+          recharge: Number(recharge.toFixed(2)),
+          pay: Number(pay.toFixed(2)),
+          withdraw: Number(withdrawTx.toFixed(2))
+        },
+        withdraw: {
+          pending: Number(withdrawPending.toFixed(2)),
+          success: Number(withdrawSuccess.toFixed(2)),
+          failed: Number(withdrawFailed.toFixed(2))
+        }
+      }
+    }
+  },
 
 	/**
 	 * 物件价格（快递代取小/中/大件）— 列表 + 默认值
@@ -990,7 +1072,7 @@ module.exports = {
 
 		return {
 			code: 0,
-			data: { list, hint: '修改后用户端下单页拉价会走 config-service.getPickupRates' }
+			data: { list, hint: '修改后用户端下单页拉价会走 order-service.getPickupRates' }
 		}
 	},
 
@@ -1486,6 +1568,81 @@ module.exports = {
 		}
 		await db.collection('admin_accounts').doc(id).remove()
 		return { code: 0, message: '已删除' }
+	},
+
+	async getOrderCleanupSettings() {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+		const settings = await readCleanupSettings()
+		return { code: 0, data: settings }
+	},
+
+	async saveOrderCleanupSettings({ ttlDays } = {}) {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+		const parsed = Number(ttlDays)
+		if (!Number.isFinite(parsed) || parsed < 1 || parsed > 365) {
+			return { code: 400, message: 'ttlDays 需在 1~365 之间' }
+		}
+		const rounded = Math.floor(parsed)
+		const saved = await writeCleanupSettings(rounded)
+		return { code: 0, data: normalizeCleanupConfig(saved) }
+	},
+
+	async cleanupExpiredOrders({ days, batchSize = 50, dryRun = false } = {}) {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+		const settings = await readCleanupSettings()
+		const requestedDays = Number(days)
+		const ttlDays = Number.isFinite(requestedDays) && requestedDays > 0 ? Math.floor(requestedDays) : settings.ttl_days
+		const limit = Math.min(Math.max(Number(batchSize) || 50, 1), 200)
+		const cutoff = Date.now() - ttlDays * 24 * 60 * 60 * 1000
+		const orderRes = await db
+			.collection('orders')
+			.where({
+				status: dbCmd.in(['completed', 'cancelled']),
+				update_time: dbCmd.lte(cutoff)
+			})
+			.orderBy('update_time', 'asc')
+			.limit(limit)
+			.get()
+		const orders = orderRes.data || []
+		if (!orders.length) {
+			return {
+				code: 0,
+				message: '暂无符合条件的订单',
+				data: { processed: 0, ttlDays, dryRun: !!dryRun }
+			}
+		}
+		const archiveColl = db.collection(ORDER_ARCHIVE_COLLECTION)
+		const now = Date.now()
+		const fileIds = []
+		if (!dryRun) {
+			for (const order of orders) {
+				const archiveDoc = { ...order, original_order_id: order._id, archived_at: now }
+				delete archiveDoc._id
+				await archiveColl.add(archiveDoc)
+			}
+		}
+		for (const order of orders) {
+			fileIds.push(...extractFileIds(order))
+		}
+		let deletedFiles = 0
+		if (!dryRun) {
+			for (const order of orders) {
+				await db.collection('orders').doc(order._id).remove()
+			}
+			deletedFiles = await deleteFiles(fileIds)
+		}
+		return {
+			code: 0,
+			data: {
+				processed: orders.length,
+				ttlDays,
+				dryRun: !!dryRun,
+				deletedFiles: dryRun ? 0 : deletedFiles
+			}
+		}
 	},
 
 	/**

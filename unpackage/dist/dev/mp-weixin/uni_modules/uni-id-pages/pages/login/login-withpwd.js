@@ -1,7 +1,7 @@
 "use strict";
 const common_vendor = require("../../../../common/vendor.js");
 const uni_modules_uniIdPages_common_loginPage_mixin = require("../../common/login-page.mixin.js");
-const uniIdCo = common_vendor.tr.importObject("uni-id-co", {
+const uniIdCo = common_vendor._r.importObject("uni-id-co", {
   errorOptions: {
     type: "toast"
   }
@@ -116,8 +116,8 @@ if (!Math) {
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return common_vendor.e({
     a: $data.logo,
-    b: common_vendor.o(($event) => $data.focusUsername = false),
-    c: common_vendor.o(($event) => $data.username = $event),
+    b: common_vendor.o(($event) => $data.focusUsername = false, "ff"),
+    c: common_vendor.o(($event) => $data.username = $event, "c9"),
     d: common_vendor.p({
       focus: $data.focusUsername,
       inputBorder: false,
@@ -127,8 +127,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     e: common_vendor.p({
       name: "username"
     }),
-    f: common_vendor.o(($event) => $data.focusPassword = false),
-    g: common_vendor.o(($event) => $data.password = $event),
+    f: common_vendor.o(($event) => $data.focusPassword = false, "a4"),
+    g: common_vendor.o(($event) => $data.password = $event, "cf"),
     h: common_vendor.p({
       focus: $data.focusPassword,
       clearable: true,
@@ -143,7 +143,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     j: $data.needCaptcha
   }, $data.needCaptcha ? {
     k: common_vendor.sr("captcha", "58ed63b0-5"),
-    l: common_vendor.o(($event) => $data.captcha = $event),
+    l: common_vendor.o(($event) => $data.captcha = $event, "88"),
     m: common_vendor.p({
       focus: true,
       scene: "login-by-pwd",
@@ -154,13 +154,13 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     o: common_vendor.p({
       scope: "login"
     }),
-    p: common_vendor.o((...args) => $options.pwdLogin && $options.pwdLogin(...args)),
+    p: common_vendor.o((...args) => $options.pwdLogin && $options.pwdLogin(...args), "8e"),
     q: !_ctx.config.isAdmin
   }, !_ctx.config.isAdmin ? {
-    r: common_vendor.o((...args) => $options.toRetrievePwd && $options.toRetrievePwd(...args))
+    r: common_vendor.o((...args) => $options.toRetrievePwd && $options.toRetrievePwd(...args), "00")
   } : {}, {
     s: common_vendor.t(_ctx.config.isAdmin ? "注册管理员账号" : "注册账号"),
-    t: common_vendor.o((...args) => $options.toRegister && $options.toRegister(...args)),
+    t: common_vendor.o((...args) => $options.toRegister && $options.toRegister(...args), "f8"),
     v: common_vendor.sr("uniFabLogin", "58ed63b0-7")
   });
 }

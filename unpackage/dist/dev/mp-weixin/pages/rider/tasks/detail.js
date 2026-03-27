@@ -177,7 +177,7 @@ const _sfc_main = {
       });
     };
     return (_ctx, _cache) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
       return common_vendor.e({
         a: task.value
       }, task.value ? common_vendor.e({
@@ -188,10 +188,19 @@ const _sfc_main = {
         f: common_vendor.t(task.value.id),
         g: common_vendor.t(task.value.typeLabel || "配送"),
         h: common_vendor.t(Number(task.value.price || 0).toFixed(2)),
-        i: common_vendor.t(((_a = task.value.content) == null ? void 0 : _a.description) || "无备注"),
-        j: ((_c = (_b = task.value.content) == null ? void 0 : _b.images) == null ? void 0 : _c.length) || ((_e = (_d = task.value.content) == null ? void 0 : _d.pickupImages) == null ? void 0 : _e.length)
-      }, ((_g = (_f = task.value.content) == null ? void 0 : _f.images) == null ? void 0 : _g.length) || ((_i = (_h = task.value.content) == null ? void 0 : _h.pickupImages) == null ? void 0 : _i.length) ? {
-        k: common_vendor.f(task.value.content.images || task.value.content.pickupImages || [], (img, idx, i0) => {
+        i: (_a = task.value.content) == null ? void 0 : _a.description
+      }, ((_b = task.value.content) == null ? void 0 : _b.description) ? {
+        j: common_vendor.t((_c = task.value.content) == null ? void 0 : _c.description)
+      } : {}, {
+        k: (_d = task.value.content) == null ? void 0 : _d.remark
+      }, ((_e = task.value.content) == null ? void 0 : _e.remark) ? {
+        l: common_vendor.t((_f = task.value.content) == null ? void 0 : _f.remark)
+      } : {}, {
+        m: !((_g = task.value.content) == null ? void 0 : _g.description) && !((_h = task.value.content) == null ? void 0 : _h.remark)
+      }, !((_i = task.value.content) == null ? void 0 : _i.description) && !((_j = task.value.content) == null ? void 0 : _j.remark) ? {} : {}, {
+        n: ((_l = (_k = task.value.content) == null ? void 0 : _k.images) == null ? void 0 : _l.length) || ((_n = (_m = task.value.content) == null ? void 0 : _m.pickupImages) == null ? void 0 : _n.length)
+      }, ((_p = (_o = task.value.content) == null ? void 0 : _o.images) == null ? void 0 : _p.length) || ((_r = (_q = task.value.content) == null ? void 0 : _q.pickupImages) == null ? void 0 : _r.length) ? {
+        o: common_vendor.f(task.value.content.images || task.value.content.pickupImages || [], (img, idx, i0) => {
           return {
             a: idx,
             b: img,
@@ -199,40 +208,40 @@ const _sfc_main = {
           };
         })
       } : {}, {
-        l: ((_j = task.value.content) == null ? void 0 : _j.phone) || task.value.phone
-      }, ((_k = task.value.content) == null ? void 0 : _k.phone) || task.value.phone ? {
-        m: common_vendor.t(((_l = task.value.content) == null ? void 0 : _l.phone) || task.value.phone || ""),
-        n: common_vendor.o(handleCall)
+        p: ((_s = task.value.content) == null ? void 0 : _s.phone) || task.value.phone
+      }, ((_t = task.value.content) == null ? void 0 : _t.phone) || task.value.phone ? {
+        q: common_vendor.t(((_u = task.value.content) == null ? void 0 : _u.phone) || task.value.phone || ""),
+        r: common_vendor.o(handleCall, "48")
       } : {}) : {
-        o: common_vendor.o(goBack)
+        s: common_vendor.o(goBack, "49")
       }, {
-        p: task.value && task.value.status !== "completed"
+        t: task.value && task.value.status !== "completed"
       }, task.value && task.value.status !== "completed" ? common_vendor.e({
-        q: task.value.status === "pending_accept"
+        v: task.value.status === "pending_accept"
       }, task.value.status === "pending_accept" ? {
-        r: common_vendor.o(handleGrab)
+        w: common_vendor.o(handleGrab, "61")
       } : {}, {
-        s: task.value.status === "pending_pickup"
+        x: task.value.status === "pending_pickup"
       }, task.value.status === "pending_pickup" ? {
-        t: common_vendor.o(handleConfirmPickup),
-        v: common_vendor.o(openCancelPopup)
+        y: common_vendor.o(handleConfirmPickup, "a9"),
+        z: common_vendor.o(openCancelPopup, "60")
       } : {}, {
-        w: task.value.status === "delivering"
+        A: task.value.status === "delivering"
       }, task.value.status === "delivering" ? {
-        x: common_vendor.o(handleConfirmDelivery),
-        y: common_vendor.o(openCancelPopup)
+        B: common_vendor.o(handleConfirmDelivery, "41"),
+        C: common_vendor.o(openCancelPopup, "ea")
       } : {}) : {}, {
-        z: cancelPopupVisible.value
+        D: cancelPopupVisible.value
       }, cancelPopupVisible.value ? {
-        A: common_vendor.o(onChangeReasonMode),
-        B: cancelReasonType.value,
-        C: cancelReasonText.value,
-        D: common_vendor.o(($event) => cancelReasonText.value = $event.detail.value),
-        E: common_vendor.o(closeCancelPopup),
-        F: common_vendor.o(confirmCancel),
-        G: common_vendor.o(() => {
-        }),
-        H: common_vendor.o(closeCancelPopup)
+        E: common_vendor.o(onChangeReasonMode, "28"),
+        F: cancelReasonType.value,
+        G: cancelReasonText.value,
+        H: common_vendor.o(($event) => cancelReasonText.value = $event.detail.value, "bb"),
+        I: common_vendor.o(closeCancelPopup, "ca"),
+        J: common_vendor.o(confirmCancel, "c0"),
+        K: common_vendor.o(() => {
+        }, "e7"),
+        L: common_vendor.o(closeCancelPopup, "e0")
       } : {});
     };
   }

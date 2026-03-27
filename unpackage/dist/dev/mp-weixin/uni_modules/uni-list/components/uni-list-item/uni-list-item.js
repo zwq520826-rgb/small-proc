@@ -291,7 +291,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   }, $props.showSwitch ? {
     t: $props.disabled,
     v: $props.switchChecked,
-    w: common_vendor.o((...args) => $options.onSwitchChange && $options.onSwitchChange(...args))
+    w: common_vendor.o((...args) => $options.onSwitchChange && $options.onSwitchChange(...args), "ee")
   } : {}, {
     x: $props.direction === "column" ? 1 : ""
   }) : {}, {
@@ -312,7 +312,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     G: $props.disabled ? 1 : "",
     H: $props.customStyle.backgroundColor,
     I: !$props.clickable && !$props.link || $props.disabled || $props.showSwitch ? "" : "uni-list-item--hover",
-    J: common_vendor.o((...args) => $options.onClick && $options.onClick(...args))
+    J: common_vendor.o((...args) => $options.onClick && $options.onClick(...args), "7e")
   });
 }
 const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render]]);
