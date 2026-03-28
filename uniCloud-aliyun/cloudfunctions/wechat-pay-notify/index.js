@@ -20,6 +20,68 @@ const createConfig = require('uni-config-center')
 
 let payConfigCache = null
 
+function pad2(n) {
+  return String(n).padStart(2, '0')
+}
+
+function formatYMDByTs(ts = Date.now()) {
+  const d = new Date(ts)
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
+async function incDashboardMetrics({ ts = Date.now(), paidInc = 0, gmvInc = 0 } = {}) {
+  if (!paidInc && !gmvInc) return
+  const now = Date.now()
+  const ymd = formatYMDByTs(ts)
+
+  const dailyIncDoc = { update_time: now }
+  if (paidInc) dailyIncDoc.paid_order_count = dbCmd.inc(paidInc)
+  if (gmvInc) dailyIncDoc.gmv = dbCmd.inc(Number(gmvInc) || 0)
+
+  try {
+    const upRes = await db.collection('daily_stats').where({ stat_date: ymd }).update(dailyIncDoc)
+    if (!upRes || !upRes.updated) {
+      await db.collection('daily_stats').add({
+        stat_date: ymd,
+        order_count: 0,
+        paid_order_count: Math.max(0, Number(paidInc || 0)),
+        completed_order_count: 0,
+        gmv: Number(gmvInc || 0),
+        status_list: [],
+        type_list: [],
+        income_trend_7d: [],
+        order_trend_7d: [],
+        rider_rank_7d: [],
+        hourly: [],
+        update_time: now
+      })
+    }
+  } catch (e) {
+    console.warn('[wechat-pay-notify] daily_stats inc failed:', e.message)
+  }
+
+  const totalIncDoc = { update_time: now }
+  if (paidInc) totalIncDoc.total_paid_order_count = dbCmd.inc(paidInc)
+  if (gmvInc) totalIncDoc.total_gmv = dbCmd.inc(Number(gmvInc) || 0)
+
+  try {
+    await db.collection('dashboard_counters').doc('orders').update(totalIncDoc)
+  } catch (e) {
+    try {
+      await db.collection('dashboard_counters').add({
+        _id: 'orders',
+        total_order_count: 0,
+        total_paid_order_count: Math.max(0, Number(paidInc || 0)),
+        total_completed_order_count: 0,
+        total_gmv: Number(gmvInc || 0),
+        update_time: now
+      })
+    } catch (ee) {
+      console.warn('[wechat-pay-notify] dashboard_counters inc failed:', ee.message)
+    }
+  }
+}
+
 // 使用 uni-config-center 加载配置
 const payConfigCenter = createConfig({
   pluginId: 'pay'
@@ -369,6 +431,10 @@ async function processPaymentNotification(decryptedData) {
       }
 
       await db.collection('orders').doc(transaction.order_id).update(updateData)
+
+      if (!isAddon) {
+        await incDashboardMetrics({ paidInc: 1, gmvInc: Number(order.price || 0) })
+      }
 
       if (isAddon && order.parent_order_id) {
         await markParentOrderUrgent(order.parent_order_id, order)

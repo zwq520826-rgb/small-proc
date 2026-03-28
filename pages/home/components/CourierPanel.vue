@@ -20,7 +20,7 @@
 
     <view class="card-header">
       <text class="title">快递代取</text>
-      <text class="price-tip">小/中/大件：¥1.5 / ¥1.99 / ¥2.99 每件</text>
+      <text class="price-tip">小/中/大/特大件：¥1.5 / ¥1.99 / ¥2.99 / ¥5 每件</text>
     </view>
 
     <view class="rows">
@@ -103,7 +103,8 @@ import { reactive, ref } from 'vue'
 const courierItems = reactive([
   { key: 'small', label: '小件', price: 1.5, qty: 0 },
   { key: 'medium', label: '中件', price: 1.99, qty: 0 },
-  { key: 'large', label: '大件', price: 2.99, qty: 0 }
+  { key: 'large', label: '大件', price: 2.99, qty: 0 },
+  { key: 'extra_large', label: '特大件', price: 5, qty: 0 }
 ])
 
 const urgent = ref(false)

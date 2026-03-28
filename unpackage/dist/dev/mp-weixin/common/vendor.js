@@ -7406,7 +7406,7 @@ function isConsoleWritable() {
 function initRuntimeSocketService() {
   const hosts = "127.0.0.1,100.65.157.193,198.18.0.1";
   const port = "8090";
-  const id = "mp-weixin_74bPKO";
+  const id = "mp-weixin_7ZTR9U";
   const lazy = typeof swan !== "undefined";
   let restoreError = lazy ? () => {
   } : initOnError();
@@ -8592,8 +8592,22 @@ const condition = {
 const uniIdRouter = {
   loginPage: "uni_modules/uni-id-pages/pages/login/login-withoutpwd",
   needLogin: [
-    "pages/client/home",
+    "pages/client/orders/list",
+    "pages/client/orders/detail",
+    "pages/client/forms/pickup",
+    "pages/client/forms/post",
+    "pages/client/forms/errand",
+    "pages/client/forms/print",
+    "pages/common/address/list",
+    "pages/common/address/edit",
+    "pages/common/wallet/index",
+    "pages/common/feedback/index",
     "pages/mine/index",
+    "pages/rider/hall",
+    "pages/rider/tasks/list",
+    "pages/rider/tasks/detail",
+    "pages/rider/verify",
+    "pages/rider/levels",
     "uni_modules/uni-id-pages/pages/userinfo/userinfo"
   ],
   resToLogin: true
@@ -8894,7 +8908,7 @@ class v {
 function I(e2) {
   return e2 && "string" == typeof e2 ? JSON.parse(e2) : e2;
 }
-const S = true, b = "mp-weixin", A = I(define_process_env_UNI_SECURE_NETWORK_CONFIG_default), T = b, C = I('{"address":["127.0.0.1","100.65.157.193","198.18.0.1"],"servePort":7001,"debugPort":9000,"initialLaunchType":"remote","skipFiles":["<node_internals>/**","/Applications/HBuilderX.app/Contents/HBuilderX/plugins/unicloud/**/*.js"]}'), P = I('[{"provider":"aliyun","spaceName":"small-base4","spaceId":"mp-bed4533b-1430-43aa-aab6-532228c5de6f","clientSecret":"muh8i7g3VRfml6lx7+Mn1Q==","endpoint":"https://api.next.bspapp.com","failoverEndpoint":""}]') || [];
+const S = true, b = "mp-weixin", A = I(define_process_env_UNI_SECURE_NETWORK_CONFIG_default), T = b, C = I('{"address":["127.0.0.1","100.65.157.193","198.18.0.1"],"servePort":7001,"debugPort":9000,"initialLaunchType":"remote","skipFiles":["<node_internals>/**","/Applications/HBuilderX.app/Contents/HBuilderX/plugins/unicloud/**/*.js"]}'), P = I('[{"provider":"aliyun","spaceName":"small-true","spaceId":"mp-329da9ff-ffd2-4e01-8444-a46a75a8da1c","clientSecret":"+upndBLbKgc5XDUfMLA6lA==","endpoint":"https://api.next.bspapp.com","failoverEndpoint":""}]') || [];
 let E = "";
 try {
   E = "__UNI__F0BFB47";

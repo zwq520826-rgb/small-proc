@@ -24,6 +24,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { requireLogin } from '@/utils/auth.js'
 
 // 用户端 Tab 列表
 const clientTabs = [
@@ -32,21 +33,24 @@ const clientTabs = [
     text: '首页', 
     icon: '/static/tabbar/home-active-new.png', 
     iconType: 'image',
-    pagePath: '/pages/client/home' 
+    pagePath: '/pages/client/home',
+    requiresLogin: false
   },
   { 
     key: 'orders', 
     text: '订单', 
     icon: '/static/tabbar/dindan.png', 
     iconType: 'image',
-    pagePath: '/pages/client/orders/list' 
+    pagePath: '/pages/client/orders/list',
+    requiresLogin: true
   },
   { 
     key: 'mine', 
     text: '我的', 
     icon: '/static/tabbar/wode.png', 
     iconType: 'image',
-    pagePath: '/pages/mine/index' 
+    pagePath: '/pages/mine/index',
+    requiresLogin: true
   }
 ]
 
@@ -57,21 +61,24 @@ const riderTabs = [
     text: '大厅', 
     icon: '/static/tabbar/home-active-new.png', 
     iconType: 'image',
-    pagePath: '/pages/rider/hall' 
+    pagePath: '/pages/rider/hall',
+    requiresLogin: true
   },
   { 
     key: 'tasks', 
     text: '任务', 
     icon: '/static/tabbar/renwu.png', 
     iconType: 'image',
-    pagePath: '/pages/rider/tasks/list' 
+    pagePath: '/pages/rider/tasks/list',
+    requiresLogin: true
   },
   { 
     key: 'mine', 
     text: '我的', 
     icon: '/static/tabbar/wode.png', 
     iconType: 'image',
-    pagePath: '/pages/mine/index' 
+    pagePath: '/pages/mine/index',
+    requiresLogin: true
   }
 ]
 
@@ -107,6 +114,10 @@ function isActive(tab) {
 // 处理 Tab 点击
 function handleClick(tab) {
   if (!tab || !tab.pagePath) return
+
+  if (tab.requiresLogin && !requireLogin({ toast: '请先登录后使用该功能' })) {
+    return
+  }
   
   const cleanPath = tab.pagePath.replace(/^\//, '')
   

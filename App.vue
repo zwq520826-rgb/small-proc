@@ -7,7 +7,7 @@
 			ensureSessionAlive({ silent: true })
 		},
 		onShow: function() {
-			ensureSessionAlive()
+			ensureSessionAlive({ silent: true })
 		},
 		onHide: function() {}
 	}

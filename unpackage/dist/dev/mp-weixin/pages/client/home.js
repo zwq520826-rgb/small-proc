@@ -1,5 +1,6 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
+const utils_auth = require("../../utils/auth.js");
 if (!Math) {
   TheTabBar();
 }
@@ -105,6 +106,7 @@ const _sfc_main = {
           title: h.title || "品牌赞助位",
           desc: h.desc || "",
           cta_text: h.cta_text || "联系运营",
+          show_cta: h.show_cta !== false,
           image_file_id: h.image_file_id || "",
           link_url: h.link_url || ""
         }));
@@ -113,7 +115,7 @@ const _sfc_main = {
         announcements.value = nextAnnouncements;
         saveFn({ heroes: nextHeroes, announcements: nextAnnouncements });
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/home.vue:250", "[home] loadHomeContent failed", e);
+        common_vendor.index.__f__("error", "at pages/client/home.vue:252", "[home] loadHomeContent failed", e);
         loadError.value = formatErrorMessage(e, "首页内容加载失败，请稍后重试");
         if (!showSkeleton) {
           common_vendor.index.showToast({ title: loadError.value, icon: "none" });
@@ -139,6 +141,9 @@ const _sfc_main = {
     const goFeature = (item) => {
       if (!(item == null ? void 0 : item.path)) {
         common_vendor.index.showToast({ title: "暂未开放", icon: "none" });
+        return;
+      }
+      if (!utils_auth.requireLogin({ toast: "请先登录后使用该功能" })) {
         return;
       }
       common_vendor.index.navigateTo({ url: item.path });
@@ -173,17 +178,20 @@ const _sfc_main = {
           } : {}, {
             d: common_vendor.t(hero.title),
             e: common_vendor.t(hero.desc),
-            f: common_vendor.t(hero.cta_text || "联系运营"),
-            g: common_vendor.o(($event) => onHeroCta(hero), hero._id || hero.title),
-            h: hero.image_file_id ? 1 : "",
-            i: hero._id || hero.title
+            f: hero.show_cta !== false
+          }, hero.show_cta !== false ? {
+            g: common_vendor.t(hero.cta_text || "联系运营"),
+            h: common_vendor.o(($event) => onHeroCta(hero), hero._id || hero.title)
+          } : {}, {
+            i: hero.image_file_id ? 1 : "",
+            j: hero._id || hero.title
           });
         }),
         h: heroes.value.length > 1,
         i: heroes.value.length > 1,
         j: heroes.value.length > 1
       } : {
-        k: common_vendor.o(($event) => onHeroCta(null), "59")
+        k: common_vendor.o(($event) => onHeroCta(null), "67")
       }, {
         l: common_vendor.f(features, (item, k0, i0) => {
           return {
@@ -215,11 +223,11 @@ const _sfc_main = {
       }, showContactModal.value ? {
         s: common_vendor.o(closeContactModal, "35"),
         t: common_vendor.t(contactPhone),
-        v: common_vendor.o(copyPhone, "00"),
-        w: common_vendor.o(closeContactModal, "f9"),
+        v: common_vendor.o(copyPhone, "c4"),
+        w: common_vendor.o(closeContactModal, "21"),
         x: common_vendor.o(() => {
-        }, "27"),
-        y: common_vendor.o(closeContactModal, "ad")
+        }, "ab"),
+        y: common_vendor.o(closeContactModal, "3f")
       } : {});
     };
   }

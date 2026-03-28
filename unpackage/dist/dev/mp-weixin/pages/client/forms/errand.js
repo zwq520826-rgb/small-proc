@@ -234,12 +234,12 @@ ${deliveryLocation}`,
         A: deliveryDormType.value === "female" ? 1 : "",
         B: common_vendor.o(($event) => deliveryDormType.value = "female", "77"),
         C: dormNumber.value,
-        D: common_vendor.o(($event) => dormNumber.value = $event.detail.value, "d4")
+        D: common_vendor.o(($event) => dormNumber.value = $event.detail.value, "43")
       } : {}, {
         E: extraRemark.value,
-        F: common_vendor.o(($event) => extraRemark.value = $event.detail.value, "4a"),
+        F: common_vendor.o(($event) => extraRemark.value = $event.detail.value, "15"),
         G: common_vendor.t(totalPrice.value),
-        H: common_vendor.o(handlePayClick, "bd")
+        H: common_vendor.o(handlePayClick, "ac")
       });
     };
   }

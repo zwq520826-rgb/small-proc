@@ -75,6 +75,78 @@ function generateOrderNo(now = new Date()) {
 	return `${yyyy}${MM}${dd}${HH}${mm}${ss}${rand}`
 }
 
+function formatYMDByTs(ts = Date.now()) {
+	const d = new Date(ts)
+	return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
+async function incDashboardMetrics({
+	ts = Date.now(),
+	orderInc = 0,
+	paidInc = 0,
+	completedInc = 0,
+	gmvInc = 0
+} = {}) {
+	if (!orderInc && !paidInc && !completedInc && !gmvInc) return
+
+	const now = Date.now()
+	const ymd = formatYMDByTs(ts)
+	const dailyIncDoc = {
+		update_time: now
+	}
+	if (orderInc) dailyIncDoc.order_count = dbCmd.inc(orderInc)
+	if (paidInc) dailyIncDoc.paid_order_count = dbCmd.inc(paidInc)
+	if (completedInc) dailyIncDoc.completed_order_count = dbCmd.inc(completedInc)
+	if (gmvInc) dailyIncDoc.gmv = dbCmd.inc(Number(gmvInc) || 0)
+
+	try {
+		const upRes = await db.collection('daily_stats').where({ stat_date: ymd }).update(dailyIncDoc)
+		if (!upRes || !upRes.updated) {
+			await db.collection('daily_stats').add({
+				stat_date: ymd,
+				order_count: Math.max(0, Number(orderInc || 0)),
+				paid_order_count: Math.max(0, Number(paidInc || 0)),
+				completed_order_count: Math.max(0, Number(completedInc || 0)),
+				gmv: Number(gmvInc || 0),
+				status_list: [],
+				type_list: [],
+				income_trend_7d: [],
+				order_trend_7d: [],
+				rider_rank_7d: [],
+				hourly: [],
+				update_time: now
+			})
+		}
+	} catch (e) {
+		console.warn('[order-service] daily_stats inc failed:', e.message)
+	}
+
+	const totalIncDoc = {
+		update_time: now
+	}
+	if (orderInc) totalIncDoc.total_order_count = dbCmd.inc(orderInc)
+	if (paidInc) totalIncDoc.total_paid_order_count = dbCmd.inc(paidInc)
+	if (completedInc) totalIncDoc.total_completed_order_count = dbCmd.inc(completedInc)
+	if (gmvInc) totalIncDoc.total_gmv = dbCmd.inc(Number(gmvInc) || 0)
+
+	try {
+		await db.collection('dashboard_counters').doc('orders').update(totalIncDoc)
+	} catch (e) {
+		try {
+			await db.collection('dashboard_counters').add({
+				_id: 'orders',
+				total_order_count: Math.max(0, Number(orderInc || 0)),
+				total_paid_order_count: Math.max(0, Number(paidInc || 0)),
+				total_completed_order_count: Math.max(0, Number(completedInc || 0)),
+				total_gmv: Number(gmvInc || 0),
+				update_time: now
+			})
+		} catch (ee) {
+			console.warn('[order-service] dashboard_counters inc failed:', ee.message)
+		}
+	}
+}
+
 // 独立的登录检查函数，避免对 this 上方法的依赖
 function checkAuth(ctx) {
 	if (!ctx || !ctx.uid) {
@@ -393,6 +465,7 @@ module.exports = {
 
 		try {
 			const result = await db.collection('orders').add(order)
+			await incDashboardMetrics({ orderInc: 1 })
 			return {
 				code: 0,
 				message: '创建成功',
@@ -1470,6 +1543,8 @@ module.exports = {
 					'content.delivery_images': images
 				})
 
+			await incDashboardMetrics({ completedInc: 1 })
+
 			// 调用骑手服务，更新累计单数和等级抽成，并给骑手入账
 			try {
 				const riderService = uniCloud.importObject('rider-service')
@@ -1683,31 +1758,40 @@ module.exports = {
     }
   },
 
-  /**
-   * 获取快递代取价格配置
-   */
-  async getPickupRates () {
-    try {
-      const res = await db.collection('item_price_config')
-        .where({ type: dbCmd.in(['pickup_small', 'pickup_medium', 'pickup_large']) })
-        .get()
+	/**
+	 * 获取快递代取价格配置
+	 */
+	async getPickupRates () {
+		try {
+			const res = await db.collection('item_price_config')
+				.where(dbCmd.or([
+					{ type: dbCmd.in(['pickup_small', 'pickup_medium', 'pickup_large', 'pickup_extra_large']) },
+					{ scene: 'pickup', size: dbCmd.in(['small', 'medium', 'large', 'extra_large']) }
+				]))
+				.get()
 
-      const list = res.data || []
-      const rates = { small: 1.5, medium: 2, large: 3 }
+			const list = res.data || []
+			const rates = { small: 1.5, medium: 2, large: 3, extra_large: 5 }
+			const typeToSize = {
+				pickup_small: 'small',
+				pickup_medium: 'medium',
+				pickup_large: 'large',
+				pickup_extra_large: 'extra_large'
+			}
 
-      list.forEach((item) => {
-        if (item.type === 'pickup_small' && typeof item.price === 'number') {
-          rates.small = item.price
-        } else if (item.type === 'pickup_medium' && typeof item.price === 'number') {
-          rates.medium = item.price
-        } else if (item.type === 'pickup_large' && typeof item.price === 'number') {
-          rates.large = item.price
-        }
-      })
+			list.forEach((item) => {
+				if (typeof item.price !== 'number') return
+				const size = (item.scene === 'pickup' && item.size)
+					? String(item.size)
+					: typeToSize[item.type]
+				if (size && rates[size] != null) {
+					rates[size] = item.price
+				}
+			})
 
-      return { code: 0, data: rates }
-    } catch (error) {
-      console.error('获取快递代取价格失败:', error)
+	      return { code: 0, data: rates }
+	    } catch (error) {
+	      console.error('获取快递代取价格失败:', error)
       return { code: 'DB_ERROR', message: '获取价格配置失败：' + error.message }
     }
   },
@@ -1730,6 +1814,7 @@ module.exports = {
           title: row.title != null ? String(row.title) : '',
           desc: row.desc != null ? String(row.desc) : '',
           cta_text: row.cta_text != null ? String(row.cta_text) : '联系运营',
+          show_cta: row.show_cta !== false,
           image_file_id: row.image_file_id ? String(row.image_file_id) : '',
           link_url: row.link_url ? String(row.link_url) : '',
           sort: row.sort != null ? row.sort : 0

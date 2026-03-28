@@ -141,9 +141,9 @@ import { useClientOrderStore  } from '@/store/clientOrder'
 import { payForOrder } from '@/store/pay'
 
 const images = ref([])
-const quantities = ref({ small: 0, medium: 0, large: 0 })
-// 从后端配置读取的小/中/大件价格（单位：元）
-const rates = ref({ small: 1.5, medium: 2, large: 3 })
+const quantities = ref({ small: 0, medium: 0, large: 0, extra_large: 0 })
+// 从后端配置读取的小/中/大/特大件价格（单位：元）
+const rates = ref({ small: 1.5, medium: 2, large: 3, extra_large: 5 })
 
 // 价格配置缓存：避免用户频繁进入/返回时重复触发云对象
 let pickupRatesCache = null
@@ -169,7 +169,8 @@ const fromFen = (fen) => Number(fen || 0) / 100
 const sizeOptions = computed(() => ([
   { key: 'small', label: '小件（手机壳、饰品等）', price: fromFen(toFen(rates.value.small)).toFixed(2) },
   { key: 'medium', label: '中件（衣服、鞋子等）', price: fromFen(toFen(rates.value.medium)).toFixed(2) },
-  { key: 'large', label: '大件（床上用品、架子等）', price: fromFen(toFen(rates.value.large)).toFixed(2) }
+  { key: 'large', label: '大件（床上用品、架子等）', price: fromFen(toFen(rates.value.large)).toFixed(2) },
+  { key: 'extra_large', label: '特大件（行李箱、折叠床等）', price: fromFen(toFen(rates.value.extra_large)).toFixed(2) }
 ]))
 
 const currentAddress = computed(() => {
@@ -183,7 +184,8 @@ const goodsPriceFen = computed(() => {
   const smallFen = q.small * toFen(rates.value.small)
   const mediumFen = q.medium * toFen(rates.value.medium)
   const largeFen = q.large * toFen(rates.value.large)
-  return smallFen + mediumFen + largeFen
+  const extraLargeFen = q.extra_large * toFen(rates.value.extra_large)
+  return smallFen + mediumFen + largeFen + extraLargeFen
 })
 
 // 总金额（单位：分）
@@ -443,7 +445,8 @@ async function refreshPickupRates() {
       const nextRates = {
         small: Number(res.data.small) || rates.value.small,
         medium: Number(res.data.medium) || rates.value.medium,
-        large: Number(res.data.large) || rates.value.large
+        large: Number(res.data.large) || rates.value.large,
+        extra_large: Number(res.data.extra_large) || rates.value.extra_large
       }
       pickupRatesCache = nextRates
       lastPickupRatesLoadedAt = Date.now()

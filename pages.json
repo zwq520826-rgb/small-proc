@@ -254,8 +254,22 @@
 	"uniIdRouter": {
 		"loginPage": "uni_modules/uni-id-pages/pages/login/login-withoutpwd",
 		"needLogin": [
-			"pages/client/home",
+			"pages/client/orders/list",
+			"pages/client/orders/detail",
+			"pages/client/forms/pickup",
+			"pages/client/forms/post",
+			"pages/client/forms/errand",
+			"pages/client/forms/print",
+			"pages/common/address/list",
+			"pages/common/address/edit",
+			"pages/common/wallet/index",
+			"pages/common/feedback/index",
 			"pages/mine/index",
+			"pages/rider/hall",
+			"pages/rider/tasks/list",
+			"pages/rider/tasks/detail",
+			"pages/rider/verify",
+			"pages/rider/levels",
 			"uni_modules/uni-id-pages/pages/userinfo/userinfo"
 		],
 		"resToLogin": true

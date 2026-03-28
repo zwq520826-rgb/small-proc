@@ -1,5 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
+const utils_auth = require("../utils/auth.js");
 const _sfc_main = {
   __name: "TheTabBar",
   setup(__props) {
@@ -9,21 +10,24 @@ const _sfc_main = {
         text: "首页",
         icon: "/static/tabbar/home-active-new.png",
         iconType: "image",
-        pagePath: "/pages/client/home"
+        pagePath: "/pages/client/home",
+        requiresLogin: false
       },
       {
         key: "orders",
         text: "订单",
         icon: "/static/tabbar/dindan.png",
         iconType: "image",
-        pagePath: "/pages/client/orders/list"
+        pagePath: "/pages/client/orders/list",
+        requiresLogin: true
       },
       {
         key: "mine",
         text: "我的",
         icon: "/static/tabbar/wode.png",
         iconType: "image",
-        pagePath: "/pages/mine/index"
+        pagePath: "/pages/mine/index",
+        requiresLogin: true
       }
     ];
     const riderTabs = [
@@ -32,21 +36,24 @@ const _sfc_main = {
         text: "大厅",
         icon: "/static/tabbar/home-active-new.png",
         iconType: "image",
-        pagePath: "/pages/rider/hall"
+        pagePath: "/pages/rider/hall",
+        requiresLogin: true
       },
       {
         key: "tasks",
         text: "任务",
         icon: "/static/tabbar/renwu.png",
         iconType: "image",
-        pagePath: "/pages/rider/tasks/list"
+        pagePath: "/pages/rider/tasks/list",
+        requiresLogin: true
       },
       {
         key: "mine",
         text: "我的",
         icon: "/static/tabbar/wode.png",
         iconType: "image",
-        pagePath: "/pages/mine/index"
+        pagePath: "/pages/mine/index",
+        requiresLogin: true
       }
     ];
     const currentRoute = common_vendor.ref("");
@@ -73,13 +80,16 @@ const _sfc_main = {
     function handleClick(tab) {
       if (!tab || !tab.pagePath)
         return;
+      if (tab.requiresLogin && !utils_auth.requireLogin({ toast: "请先登录后使用该功能" })) {
+        return;
+      }
       const cleanPath = tab.pagePath.replace(/^\//, "");
       if (cleanPath === currentRoute.value)
         return;
       common_vendor.index.switchTab({
         url: tab.pagePath,
         fail: (err) => {
-          common_vendor.index.__f__("warn", "at components/TheTabBar.vue:121", "switchTab failed, use reLaunch:", err);
+          common_vendor.index.__f__("warn", "at components/TheTabBar.vue:132", "switchTab failed, use reLaunch:", err);
           common_vendor.index.reLaunch({ url: tab.pagePath });
         }
       });

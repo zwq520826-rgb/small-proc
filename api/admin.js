@@ -105,3 +105,13 @@ export async function getFinanceDaily(params = {}) {
   const res = await adminService.getFinanceDaily(params)
   return assertAdminResponse(res, { dataOnly: true })
 }
+
+export async function getAdminRegisterStatus() {
+	const res = await adminService.getAdminRegisterStatus()
+	return assertAdminResponse(res, { dataOnly: true })
+}
+
+export async function adminRegisterByPassword(params = {}) {
+	const res = await adminService.adminRegisterByPassword(params)
+	return assertAdminResponse(res, { dataOnly: true })
+}

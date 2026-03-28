@@ -42,7 +42,7 @@ const _sfc_main = {
     utils_auth.ensureSessionAlive({ silent: true });
   },
   onShow: function() {
-    utils_auth.ensureSessionAlive();
+    utils_auth.ensureSessionAlive({ silent: true });
   },
   onHide: function() {
   }

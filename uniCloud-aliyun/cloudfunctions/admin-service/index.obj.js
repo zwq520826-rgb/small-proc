@@ -2,10 +2,10 @@
 
 /**
  * 管理端云对象：仅管理员可调用
- * 需在 uni-id-roles 中配置 role_id 为 admin 的角色，并赋予运营账号
+ * 管理员账号由 admin_accounts 表维护（账号 + 密码）
  */
-const crypto = require('crypto')
 const uniIdCommon = require('uni-id-common')
+const crypto = require('crypto')
 const db = uniCloud.database()
 const dbCmd = db.command
 
@@ -13,9 +13,10 @@ const SETTINGS_COLLECTION = 'maintenance_settings'
 const ORDER_ARCHIVE_COLLECTION = 'orders_archive'
 const ORDER_CLEANUP_SETTING_ID = 'order_cleanup'
 const DEFAULT_ORDER_TTL_DAYS = 7
+const DASHBOARD_COUNTERS_COLLECTION = 'dashboard_counters'
 
-/** 拥有该 role_id 的账号可调用 admin-service（与 uni-id-roles 表一致） */
-const ADMIN_ROLE_IDS = ['admin']
+const ADMIN_LOCAL_UID = 'admin-local-account'
+const ADMIN_REGISTER_LIMIT = 2
 
 function pad2(n) {
 	return String(n).padStart(2, '0')
@@ -35,6 +36,12 @@ function formatYMD(d) {
 	return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 }
 
+function shiftYMD(ymd, days) {
+	const d = new Date(`${ymd}T00:00:00`)
+	d.setDate(d.getDate() + days)
+	return formatYMD(d)
+}
+
 function normalizeAmount(num) {
 	const n = Number(num || 0)
 	if (!n || isNaN(n)) return 0
@@ -43,32 +50,108 @@ function normalizeAmount(num) {
 
 /**
  * 是否允许访问管理端：
- * - admin_accounts 中存在任意记录时：仅 uni_id_uid 命中且 enabled 的账号可访问
- * - admin_accounts 为空时：沿用 uni-id role 含 admin（便于首次部署与录入账号）
+ * - 仅允许通过 admin_accounts 账号密码登录后签发的本地管理员 token
  */
 async function isUserAllowlisted(uid) {
 	if (!uid) return false
-	const ures = await db.collection('uni-id-users').doc(uid).field({ role: true }).get()
-	const row = ures.data && ures.data[0]
-	if (!row) return false
-
 	const accCount = await db.collection('admin_accounts').count()
 	const total = accCount.total || 0
-	if (total === 0) {
-		const roles = row.role || []
-		return roles.some((r) => ADMIN_ROLE_IDS.includes(r))
-	}
-
-	const accRes = await db.collection('admin_accounts').where({ uni_id_uid: uid, enabled: true }).limit(1).get()
-	return !!(accRes.data && accRes.data.length > 0)
+	if (total === 0) return false
+	return uid === ADMIN_LOCAL_UID
 }
 
-function hashAdminPassword(password, salt) {
-	return crypto.createHmac('sha256', salt).update(String(password)).digest('hex')
+async function getAdminAccountCount() {
+	const accCount = await db.collection('admin_accounts').count()
+	return accCount.total || 0
+}
+
+async function ensureLocalAdminUser(clientInfo = {}) {
+	const users = db.collection('uni-id-users')
+	const now = Date.now()
+	const existRes = await users.doc(ADMIN_LOCAL_UID).get()
+	const row = Array.isArray(existRes.data) ? existRes.data[0] : existRes.data
+	if (row) {
+		const roles = Array.isArray(row.role) ? row.role : []
+		if (!roles.includes('admin')) {
+			await users.doc(ADMIN_LOCAL_UID).update({
+				role: roles.concat('admin'),
+				update_date: now
+			})
+		}
+		return
+	}
+
+	await users.add({
+		_id: ADMIN_LOCAL_UID,
+		username: 'admin-local',
+		nickname: 'Admin Local',
+		role: ['admin'],
+		status: 0,
+		dcloud_appid: clientInfo.appId || '',
+		register_date: now,
+		register_ip: clientInfo.clientIP || '',
+		last_login_date: now,
+		last_login_ip: clientInfo.clientIP || ''
+	})
+}
+
+async function createSuperAdminAccount({ username, password, remark = 'super-admin' } = {}) {
+	const uname = String(username || '').trim().toLowerCase()
+	const pwd = String(password || '')
+	if (!uname || !pwd) {
+		return { code: 400, message: '请输入用户名和密码' }
+	}
+
+	const total = await getAdminAccountCount()
+	if (total >= ADMIN_REGISTER_LIMIT) {
+		return { code: 403, message: `管理员注册名额已满（最多 ${ADMIN_REGISTER_LIMIT} 个）` }
+	}
+
+	const dup = await db.collection('admin_accounts').where({ username: uname }).limit(1).get()
+	if (dup.data && dup.data.length) {
+		return { code: 400, message: '用户名已存在' }
+	}
+
+	const now = Date.now()
+	const digest = buildPasswordDigest(pwd)
+	await db.collection('admin_accounts').add({
+		username: uname,
+		password_salt: digest.salt,
+		password_hash: digest.hash,
+		password: '',
+		enabled: true,
+		is_super_admin: true,
+		remark: String(remark || 'super-admin'),
+		last_login_date: 0,
+		last_login_ip: '',
+		create_time: now,
+		update_time: now
+	})
+
+	const after = await getAdminAccountCount()
+	return {
+		code: 0,
+		message: '注册成功，请使用账号密码登录',
+		data: {
+			registered: after,
+			limit: ADMIN_REGISTER_LIMIT,
+			remaining: Math.max(0, ADMIN_REGISTER_LIMIT - after)
+		}
+	}
+}
+
+function hashLegacyPassword(password, salt) {
+	return crypto.createHmac('sha256', String(salt || '')).update(String(password || '')).digest('hex')
+}
+
+function buildPasswordDigest(password) {
+	const salt = crypto.randomBytes(16).toString('hex')
+	const hash = hashLegacyPassword(password, salt)
+	return { salt, hash }
 }
 
 /**
- * 校验管理员（白名单 + 兼容空表时的 admin 角色）
+ * 校验管理员（仅 admin_accounts 登录签发的 token）
  */
 async function assertAdmin(uid) {
 	if (!uid) {
@@ -78,8 +161,7 @@ async function assertAdmin(uid) {
 	if (!ok) {
 		return {
 			code: 403,
-			message:
-				'无权限：若已配置 admin_accounts，请使用表内绑定的 uni-id 账号登录；表为空时需 uni-id 中分配 admin 角色'
+			message: '无权限：请使用 admin_accounts 表内账号密码登录'
 		}
 	}
 	return { code: 0, uid }
@@ -166,6 +248,41 @@ async function deleteFiles(fileIds = []) {
 	return deleted
 }
 
+async function readOrderCounters() {
+	try {
+		const res = await db.collection(DASHBOARD_COUNTERS_COLLECTION).doc('orders').get()
+		const row = Array.isArray(res.data) ? res.data[0] : res.data
+		return row || {}
+	} catch (e) {
+		return {}
+	}
+}
+
+async function getRecentDailyStats(ymd, days = 7) {
+	const startDate = shiftYMD(ymd, -(days - 1))
+	const res = await db.collection('daily_stats')
+		.where({ stat_date: dbCmd.gte(startDate).and(dbCmd.lte(ymd)) })
+		.orderBy('stat_date', 'asc')
+		.limit(days + 2)
+		.get()
+	const map = {}
+	for (const row of res.data || []) {
+		map[row.stat_date] = row
+	}
+	const list = []
+	for (let i = days - 1; i >= 0; i--) {
+		const d = shiftYMD(ymd, -i)
+		const row = map[d] || {}
+		list.push({
+			stat_date: d,
+			order_count: Number(row.order_count || 0),
+			paid_order_count: Number(row.paid_order_count || 0),
+			gmv: Number(row.gmv || 0)
+		})
+	}
+	return list
+}
+
 module.exports = {
 	_before: async function () {
 		this.uid = await initAuth(this)
@@ -190,6 +307,11 @@ module.exports = {
 
 		const { start, end, startMs, endMs } = date ? getDayRange(date) : getDayRange()
 		const ymd = formatYMD(start)
+		const recentDaily = await getRecentDailyStats(ymd, 7)
+		const counters = await readOrderCounters()
+		const trendOrder7d = recentDaily.map((x) => ({ date: x.stat_date, order_count: x.order_count }))
+		const trendPaidOrder7d = recentDaily.map((x) => ({ date: x.stat_date, paid_order_count: x.paid_order_count }))
+		const trendIncome7d = recentDaily.map((x) => ({ date: x.stat_date, gmv: Number(x.gmv.toFixed(2)) }))
 
 		// 低成本路径：优先读取 daily_stats，如果命中直接返回
 		const cacheRes = await db.collection('daily_stats').where({ stat_date: ymd }).limit(1).get()
@@ -202,10 +324,14 @@ module.exports = {
 					order_count: cached.order_count || 0,
 					paid_order_count: cached.paid_order_count || 0,
 					gmv: Number((cached.gmv || 0).toFixed(2)),
+					total_order_all_time: Number(counters.total_order_count || 0),
+					total_paid_order_all_time: Number(counters.total_paid_order_count || 0),
+					total_completed_order_all_time: Number(counters.total_completed_order_count || 0),
 					status_distribution: cached.status_list || [],
 					type_distribution: cached.type_list || [],
-					income_trend_7d: cached.income_trend_7d || [],
-					order_trend_7d: cached.order_trend_7d || [],
+					income_trend_7d: (cached.income_trend_7d && cached.income_trend_7d.length) ? cached.income_trend_7d : trendIncome7d,
+					order_trend_7d: (cached.order_trend_7d && cached.order_trend_7d.length) ? cached.order_trend_7d : trendOrder7d,
+					paid_order_trend_7d: trendPaidOrder7d,
 					rider_rank_7d: cached.rider_rank_7d || [],
 					hourly: cached.hourly || []
 				}
@@ -293,10 +419,14 @@ module.exports = {
 				order_count: todayOrderCount,
 				paid_order_count: todayPaidCount,
 				gmv: todayGmv,
+				total_order_all_time: Number(counters.total_order_count || 0),
+				total_paid_order_all_time: Number(counters.total_paid_order_count || 0),
+				total_completed_order_all_time: Number(counters.total_completed_order_count || 0),
 				status_distribution: statusDistribution,
 				type_distribution: typeDistribution,
-				income_trend_7d: [],
-				order_trend_7d: [],
+				income_trend_7d: trendIncome7d,
+				order_trend_7d: trendOrder7d,
+				paid_order_trend_7d: trendPaidOrder7d,
 				rider_rank_7d: [],
 				hourly: []
 			}
@@ -1029,31 +1159,48 @@ module.exports = {
   },
 
 	/**
-	 * 物件价格（快递代取小/中/大件）— 列表 + 默认值
+	 * 物件价格（快递代取小/中/大/特大件）— 列表 + 默认值
 	 */
 	async listItemPriceConfig() {
 		const auth = await assertAdmin(this.uid)
 		if (auth.code !== 0) return auth
 
-		const PICKUP_TYPES = ['pickup_small', 'pickup_medium', 'pickup_large']
+		const PICKUP_TYPES = ['pickup_small', 'pickup_medium', 'pickup_large', 'pickup_extra_large']
+		const SIZE_BY_TYPE = {
+			pickup_small: 'small',
+			pickup_medium: 'medium',
+			pickup_large: 'large',
+			pickup_extra_large: 'extra_large'
+		}
 		const LABELS = {
 			pickup_small: '快递代取 · 小件',
 			pickup_medium: '快递代取 · 中件',
-			pickup_large: '快递代取 · 大件'
+			pickup_large: '快递代取 · 大件',
+			pickup_extra_large: '快递代取 · 特大件'
 		}
 		const DEFAULTS = {
 			pickup_small: 1.5,
 			pickup_medium: 2,
-			pickup_large: 3
+			pickup_large: 3,
+			pickup_extra_large: 5
 		}
 
 		const res = await db.collection('item_price_config')
-			.where({ type: dbCmd.in(PICKUP_TYPES) })
+			.where(dbCmd.or([
+				{ type: dbCmd.in(PICKUP_TYPES) },
+				{ scene: 'pickup', size: dbCmd.in(['small', 'medium', 'large', 'extra_large']) }
+			]))
 			.get()
 
 		const map = {}
 		for (const row of res.data || []) {
-			map[row.type] = row
+			const bySize = row.scene === 'pickup' && row.size
+				? `pickup_${String(row.size)}`
+				: ''
+			const key = PICKUP_TYPES.includes(row.type) ? row.type : bySize
+			if (key && PICKUP_TYPES.includes(key)) {
+				map[key] = row
+			}
 		}
 
 		const list = PICKUP_TYPES.map((t) => {
@@ -1064,6 +1211,8 @@ module.exports = {
 					: DEFAULTS[t]
 			return {
 				type: t,
+				scene: 'pickup',
+				size: SIZE_BY_TYPE[t],
 				label: LABELS[t],
 				price: Math.round(Number(price) * 100) / 100,
 				_id: row ? row._id : null
@@ -1083,10 +1232,16 @@ module.exports = {
 		const auth = await assertAdmin(this.uid)
 		if (auth.code !== 0) return auth
 
-		const PICKUP_TYPES = ['pickup_small', 'pickup_medium', 'pickup_large']
+		const PICKUP_TYPES = ['pickup_small', 'pickup_medium', 'pickup_large', 'pickup_extra_large']
+		const META_BY_TYPE = {
+			pickup_small: { scene: 'pickup', size: 'small', label: '小件（快递代取）' },
+			pickup_medium: { scene: 'pickup', size: 'medium', label: '中件（快递代取）' },
+			pickup_large: { scene: 'pickup', size: 'large', label: '大件（快递代取）' },
+			pickup_extra_large: { scene: 'pickup', size: 'extra_large', label: '特大件（快递代取）' }
+		}
 		const t = String(type || '').trim()
 		if (!PICKUP_TYPES.includes(t)) {
-			return { code: 400, message: 'type 必须为 pickup_small / pickup_medium / pickup_large' }
+			return { code: 400, message: 'type 必须为 pickup_small / pickup_medium / pickup_large / pickup_extra_large' }
 		}
 
 		const p = Number(price)
@@ -1095,16 +1250,27 @@ module.exports = {
 		}
 		const rounded = Math.round(p * 100) / 100
 		const now = Date.now()
+		const meta = META_BY_TYPE[t]
 
-		const existed = await db.collection('item_price_config').where({ type: t }).limit(1).get()
+		const existed = await db.collection('item_price_config').where(dbCmd.or([
+			{ type: t },
+			{ scene: meta.scene, size: meta.size }
+		])).limit(1).get()
 		if (existed.data && existed.data.length) {
 			await db.collection('item_price_config').doc(existed.data[0]._id).update({
+				type: t,
+				scene: meta.scene,
+				size: meta.size,
+				label: meta.label,
 				price: rounded,
 				update_time: now
 			})
 		} else {
 			await db.collection('item_price_config').add({
 				type: t,
+				scene: meta.scene,
+				size: meta.size,
+				label: meta.label,
 				price: rounded,
 				create_time: now,
 				update_time: now
@@ -1215,6 +1381,7 @@ module.exports = {
 		title,
 		desc,
 		cta_text,
+		show_cta = true,
 		image_file_id,
 		link_url,
 		sort = 0,
@@ -1228,6 +1395,7 @@ module.exports = {
 			title: title != null ? String(title) : '',
 			desc: desc != null ? String(desc) : '',
 			cta_text: cta_text != null ? String(cta_text) : '联系运营',
+			show_cta: show_cta !== false,
 			image_file_id: image_file_id ? String(image_file_id).trim() : '',
 			link_url: link_url ? String(link_url).trim() : '',
 			sort: Math.max(0, parseInt(sort, 10) || 0),
@@ -1340,58 +1508,61 @@ module.exports = {
 	},
 
 	/**
-	 * 登录页：是否可执行「首次绑定」admin_accounts（表为空且已有 uni-id admin）
+	 * 登录页：是否可执行「首次创建」admin_accounts
 	 */
 	async getAdminLoginBootstrap() {
-		const accCount = await db.collection('admin_accounts').count()
-		const total = accCount.total || 0
-		if (total > 0) {
-			return { code: 0, data: { canSeed: false } }
+		const total = await getAdminAccountCount()
+		return {
+			code: 0,
+			data: {
+				canSeed: total < ADMIN_REGISTER_LIMIT,
+				canRegister: total < ADMIN_REGISTER_LIMIT,
+				registered: total,
+				limit: ADMIN_REGISTER_LIMIT,
+				remaining: Math.max(0, ADMIN_REGISTER_LIMIT - total)
+			}
 		}
-		const admins = await db.collection('uni-id-users').where({ role: 'admin' }).count()
-		const n = admins.total || 0
-		return { code: 0, data: { canSeed: n > 0 } }
 	},
 
 	/**
-	 * 首次部署：admin_accounts 为空时，将 uni-id 中已有 admin 用户绑定为可账号密码登录（仅可调用一次）
+	 * 注册页：查询注册额度（最多 2 个）
+	 */
+	async getAdminRegisterStatus() {
+		const total = await getAdminAccountCount()
+		return {
+			code: 0,
+			data: {
+				canRegister: total < ADMIN_REGISTER_LIMIT,
+				registered: total,
+				limit: ADMIN_REGISTER_LIMIT,
+				remaining: Math.max(0, ADMIN_REGISTER_LIMIT - total)
+			}
+		}
+	},
+
+	/**
+	 * 管理员注册（仅允许注册 2 次，注册账号均为超级管理员）
+	 */
+	async adminRegisterByPassword({ username, password, confirmPassword } = {}) {
+		const pwd = String(password || '')
+		if (!pwd) {
+			return { code: 400, message: '请输入密码' }
+		}
+		if (confirmPassword !== undefined && String(confirmPassword) !== pwd) {
+			return { code: 400, message: '两次密码输入不一致' }
+		}
+		return createSuperAdminAccount({ username, password: pwd, remark: 'self-register' })
+	},
+
+	/**
+	 * 兼容旧接口：调用即注册超级管理员（总名额 2）
 	 */
 	async seedAdminAccount({ username, password } = {}) {
-		const accCount = await db.collection('admin_accounts').count()
-		if ((accCount.total || 0) > 0) {
-			return { code: 403, message: '已存在管理员账号配置' }
-		}
-		const admins = await db.collection('uni-id-users').where({ role: 'admin' }).field({ _id: true }).limit(1).get()
-		const uid = admins.data && admins.data[0] && admins.data[0]._id
-		if (!uid) {
-			return { code: 400, message: '请先在 uni-id 中注册管理员（register-admin）' }
-		}
-		const uname = String(username || '').trim().toLowerCase()
-		if (!uname || !password) {
-			return { code: 400, message: '请输入用户名和密码' }
-		}
-		const dup = await db.collection('admin_accounts').where({ username: uname }).limit(1).get()
-		if (dup.data && dup.data.length) {
-			return { code: 400, message: '用户名已存在' }
-		}
-		const salt = crypto.randomBytes(16).toString('hex')
-		const hash = hashAdminPassword(password, salt)
-		const now = Date.now()
-		await db.collection('admin_accounts').add({
-			username: uname,
-			password_salt: salt,
-			password_hash: hash,
-			uni_id_uid: uid,
-			enabled: true,
-			remark: 'seed',
-			create_time: now,
-			update_time: now
-		})
-		return { code: 0, message: '已保存，请使用账号密码登录' }
+		return createSuperAdminAccount({ username, password, remark: 'seed' })
 	},
 
 	/**
-	 * 管理端账号密码登录（校验 admin_accounts，签发 uni-id token）
+	 * 管理端账号密码登录（校验 admin_accounts，签发本地管理员 token）
 	 */
 	async adminLoginByPassword({ username, password } = {}) {
 		const uname = String(username || '').trim().toLowerCase()
@@ -1403,28 +1574,45 @@ module.exports = {
 		if (!row) {
 			return { code: 401, message: '账号或密码错误' }
 		}
-		const hash = hashAdminPassword(password, row.password_salt)
-		if (hash !== row.password_hash) {
+		let passOk = false
+		if (row.password_salt && row.password_hash) {
+			const oldHash = hashLegacyPassword(password, row.password_salt)
+			passOk = oldHash === row.password_hash
+		}
+		if (!passOk && String(row.password || '')) {
+			passOk = String(row.password) === String(password)
+		}
+		if (!passOk) {
 			return { code: 401, message: '账号或密码错误' }
 		}
 		const clientInfo = this.getClientInfo()
 		const uniIdIns = uniIdCommon.createInstance({ clientInfo })
 		let tokenRes
 		try {
-			tokenRes = await uniIdIns.createToken({ uid: row.uni_id_uid })
+			await ensureLocalAdminUser(clientInfo)
+			tokenRes = await uniIdIns.createToken({ uid: ADMIN_LOCAL_UID })
 		} catch (e) {
 			console.error('[admin-service] createToken', e)
-			return { code: 500, message: e.message || '签发登录失败，请检查 uni-id 用户状态' }
+			return { code: 500, message: e.message || '签发登录失败，请稍后重试' }
 		}
 		if (tokenRes.errCode !== 0) {
-			return { code: 500, message: '签发登录失败，请检查 uni-id 用户状态' }
+			return { code: 500, message: '签发登录失败，请稍后重试' }
 		}
 		const now = Date.now()
 		try {
-			await db.collection('uni-id-users').doc(row.uni_id_uid).update({
+			const updateDoc = {
 				last_login_date: now,
 				last_login_ip: clientInfo.clientIP || ''
-			})
+			}
+			if (!row.password_hash || !row.password_salt) {
+				const digest = buildPasswordDigest(password)
+				updateDoc.password_salt = digest.salt
+				updateDoc.password_hash = digest.hash
+			}
+			if (row.password) {
+				updateDoc.password = ''
+			}
+			await db.collection('admin_accounts').doc(row._id).update(updateDoc)
 		} catch (e) {
 			console.warn('[admin-service] last_login update', e)
 		}
@@ -1435,7 +1623,7 @@ module.exports = {
 				token: tokenRes.token,
 				tokenExpired: tokenRes.tokenExpired
 			},
-			uid: row.uni_id_uid,
+			uid: ADMIN_LOCAL_UID,
 			passwordConfirmed: true
 		}
 	},
@@ -1451,8 +1639,7 @@ module.exports = {
 		if (!ok) {
 			return {
 				code: 403,
-				message:
-					'当前账号无权访问管理后台。若已启用 admin_accounts，请使用表内绑定的账号登录'
+				message: '当前账号无权访问管理后台，请使用 admin_accounts 表内账号登录'
 			}
 		}
 		return { code: 0, message: 'ok' }
@@ -1468,9 +1655,13 @@ module.exports = {
 		const list = (res.data || []).map((r) => ({
 			_id: r._id,
 			username: r.username,
-			uni_id_uid: r.uni_id_uid,
+			uni_id_uid: '',
+			password: '',
+			is_super_admin: r.is_super_admin === true,
 			remark: r.remark,
 			enabled: r.enabled,
+			last_login_date: r.last_login_date || 0,
+			last_login_ip: r.last_login_ip || '',
 			create_time: r.create_time,
 			update_time: r.update_time
 		}))
@@ -1478,19 +1669,15 @@ module.exports = {
 	},
 
 	/**
-	 * 新增或更新管理员账号（密码仅新增或修改时传入）
+	 * 新增或更新管理员账号（仅账号密码）
 	 */
-	async saveAdminAccount({ id, username, password, uni_id_uid, remark, enabled = true } = {}) {
+	async saveAdminAccount({ id, username, password, remark, enabled = true } = {}) {
 		const auth = await assertAdmin(this.uid)
 		if (auth.code !== 0) return auth
 
 		const uname = String(username || '').trim().toLowerCase()
 		if (!uname) {
 			return { code: 400, message: '用户名必填' }
-		}
-		const uidStr = uni_id_uid != null ? String(uni_id_uid).trim() : ''
-		if (!id && !uidStr) {
-			return { code: 400, message: '请填写 uni_id_uid（关联 uni-id-users._id）' }
 		}
 
 		const dup = await db.collection('admin_accounts').where({ username: uname }).limit(1).get()
@@ -1511,45 +1698,32 @@ module.exports = {
 				enabled: enabled !== false,
 				update_time: now
 			}
-			if (uidStr) {
-				const ucheck = await db.collection('uni-id-users').doc(uidStr).get()
-				const urow = Array.isArray(ucheck.data) ? ucheck.data[0] : ucheck.data
-				if (!urow) {
-					return { code: 400, message: 'uni_id_uid 在 uni-id-users 中不存在' }
-				}
-				const roles = urow.role || []
-				if (!roles.includes('admin')) {
-					return { code: 400, message: '该 uni-id 用户需具备 admin 角色' }
-				}
-				doc.uni_id_uid = uidStr
-			}
 			if (password) {
-				const salt = crypto.randomBytes(16).toString('hex')
-				doc.password_salt = salt
-				doc.password_hash = hashAdminPassword(password, salt)
+				const digest = buildPasswordDigest(password)
+				doc.password_salt = digest.salt
+				doc.password_hash = digest.hash
+				doc.password = ''
 			}
 			await db.collection('admin_accounts').doc(id).update(doc)
 		} else {
-			const ucheck = await db.collection('uni-id-users').doc(uidStr).get()
-			const urow = Array.isArray(ucheck.data) ? ucheck.data[0] : ucheck.data
-			if (!urow) {
-				return { code: 400, message: 'uni_id_uid 在 uni-id-users 中不存在' }
-			}
-			const roles = urow.role || []
-			if (!roles.includes('admin')) {
-				return { code: 400, message: '该 uni-id 用户需具备 admin 角色' }
+			const total = await getAdminAccountCount()
+			if (total >= ADMIN_REGISTER_LIMIT) {
+				return { code: 403, message: `管理员账号已满（最多 ${ADMIN_REGISTER_LIMIT} 个）` }
 			}
 			if (!password) {
 				return { code: 400, message: '新增账号请设置密码' }
 			}
-			const salt = crypto.randomBytes(16).toString('hex')
+			const digest = buildPasswordDigest(password)
 			await db.collection('admin_accounts').add({
 				username: uname,
-				password_salt: salt,
-				password_hash: hashAdminPassword(password, salt),
-				uni_id_uid: uidStr,
+				password_salt: digest.salt,
+				password_hash: digest.hash,
+				password: '',
+				is_super_admin: true,
 				remark: remark != null ? String(remark) : '',
 				enabled: enabled !== false,
+				last_login_date: 0,
+				last_login_ip: '',
 				create_time: now,
 				update_time: now
 			})
@@ -1558,7 +1732,7 @@ module.exports = {
 	},
 
 	/**
-	 * 删除管理员账号行（不删除 uni-id 用户）
+	 * 删除管理员账号行
 	 */
 	async deleteAdminAccount({ id } = {}) {
 		const auth = await assertAdmin(this.uid)

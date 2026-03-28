@@ -46,7 +46,7 @@
                 <text class="title">{{ hero.title }}</text>
                 <text class="desc">{{ hero.desc }}</text>
               </view>
-              <view class="side" @tap.stop="onHeroCta(hero)">{{ hero.cta_text || '联系运营' }}</view>
+              <view v-if="hero.show_cta !== false" class="side" @tap.stop="onHeroCta(hero)">{{ hero.cta_text || '联系运营' }}</view>
             </view>
           </view>
         </swiper-item>
@@ -130,6 +130,7 @@
 import TheTabBar from '@/components/TheTabBar.vue'
 import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
+import { requireLogin } from '@/utils/auth.js'
 
 const configService = uniCloud.importObject('order-service')
 
@@ -239,6 +240,7 @@ const loadHomeContentFromCloud = async (showSkeleton = true, saveFn = () => {}) 
       title: h.title || '品牌赞助位',
       desc: h.desc || '',
       cta_text: h.cta_text || '联系运营',
+      show_cta: h.show_cta !== false,
       image_file_id: h.image_file_id || '',
       link_url: h.link_url || ''
     }))
@@ -277,6 +279,9 @@ const copyPhone = () => {
 const goFeature = (item) => {
   if (!item?.path) {
     uni.showToast({ title: '暂未开放', icon: 'none' })
+    return
+  }
+  if (!requireLogin({ toast: '请先登录后使用该功能' })) {
     return
   }
   uni.navigateTo({ url: item.path })
@@ -356,27 +361,59 @@ onShow(() => {
   width: 100%;
 }
 
+.hero-text-row .main {
+  flex: 1;
+  min-width: 0;
+  padding-right: 16rpx;
+}
+
 .hero-with-banner .hero-text-row {
   padding: 24rpx;
 }
 
 .hero-card .title {
+  display: block;
   font-size: 32rpx;
-  font-weight: 700;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: 0.6rpx;
+  color: #111827;
+  text-shadow: 0 1rpx 0 rgba(255, 255, 255, 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hero-card .desc {
   display: block;
-  margin-top: 8rpx;
-  opacity: 0.8;
+  margin-top: 10rpx;
+  font-size: 30rpx;
+  line-height: 1.42;
+  font-weight: 500;
+  color: #4b5563;
+  opacity: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .hero-text-row .side {
-  background: #f2f2f7;
-  border-radius: 999rpx;
-  padding: 12rpx 16rpx;
+  width: 132rpx;
+  min-width: 132rpx;
+  height: 92rpx;
+  background: #eef2ff;
+  border: 1rpx solid #dbe4ff;
+  border-radius: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.2;
+  color: #1f2f4a;
   font-weight: 600;
-  height: fit-content;
+  box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .hero-card.ad {

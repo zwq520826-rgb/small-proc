@@ -11,8 +11,8 @@ const _sfc_main = {
   __name: "pickup",
   setup(__props) {
     const images = common_vendor.ref([]);
-    const quantities = common_vendor.ref({ small: 0, medium: 0, large: 0 });
-    const rates = common_vendor.ref({ small: 1.5, medium: 2, large: 3 });
+    const quantities = common_vendor.ref({ small: 0, medium: 0, large: 0, extra_large: 0 });
+    const rates = common_vendor.ref({ small: 1.5, medium: 2, large: 3, extra_large: 5 });
     let pickupRatesCache = null;
     let lastPickupRatesLoadedAt = 0;
     let pickupRatesPromise = null;
@@ -28,7 +28,8 @@ const _sfc_main = {
     const sizeOptions = common_vendor.computed(() => [
       { key: "small", label: "小件（手机壳、饰品等）", price: fromFen(toFen(rates.value.small)).toFixed(2) },
       { key: "medium", label: "中件（衣服、鞋子等）", price: fromFen(toFen(rates.value.medium)).toFixed(2) },
-      { key: "large", label: "大件（床上用品、架子等）", price: fromFen(toFen(rates.value.large)).toFixed(2) }
+      { key: "large", label: "大件（床上用品、架子等）", price: fromFen(toFen(rates.value.large)).toFixed(2) },
+      { key: "extra_large", label: "特大件（行李箱、折叠床等）", price: fromFen(toFen(rates.value.extra_large)).toFixed(2) }
     ]);
     const currentAddress = common_vendor.computed(() => {
       return addressStore.selectedAddress || null;
@@ -38,7 +39,8 @@ const _sfc_main = {
       const smallFen = q.small * toFen(rates.value.small);
       const mediumFen = q.medium * toFen(rates.value.medium);
       const largeFen = q.large * toFen(rates.value.large);
-      return smallFen + mediumFen + largeFen;
+      const extraLargeFen = q.extra_large * toFen(rates.value.extra_large);
+      return smallFen + mediumFen + largeFen + extraLargeFen;
     });
     const totalPriceFen = common_vendor.computed(() => {
       let fen = goodsPriceFen.value;
@@ -62,7 +64,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:215", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:217", "选择图片失败:", err);
         }
       });
     };
@@ -197,7 +199,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:387", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:389", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -244,7 +246,8 @@ ${deliveryLocation}`,
           const nextRates = {
             small: Number(res.data.small) || rates.value.small,
             medium: Number(res.data.medium) || rates.value.medium,
-            large: Number(res.data.large) || rates.value.large
+            large: Number(res.data.large) || rates.value.large,
+            extra_large: Number(res.data.extra_large) || rates.value.extra_large
           };
           pickupRatesCache = nextRates;
           lastPickupRatesLoadedAt = Date.now();
@@ -255,7 +258,7 @@ ${deliveryLocation}`,
           }
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:458", "加载快递代取价格失败，将使用默认价格:", e);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:461", "加载快递代取价格失败，将使用默认价格:", e);
       } finally {
         pickupRatesPromise = null;
       }

@@ -104,7 +104,7 @@
           </view>
         </view>
         <input
-          class="input"
+          class="dorm-input"
           v-model="dormNumber"
           placeholder="请输入详细寝室号 (如: 紫荆5号楼302) - 必填"
         />
@@ -496,11 +496,14 @@ onShow(() => {
   color: #a0aec0;
 }
 
-.input {
+.dorm-input {
+  display: block;
   width: 100%;
+  height: 84rpx;
+  line-height: 84rpx;
+  padding: 0 16rpx;
   font-size: 28rpx;
   color: #1f2f4a;
-  padding: 16rpx;
   border: 1rpx solid #e5e7eb;
   border-radius: 12rpx;
   background: #fafbfc;

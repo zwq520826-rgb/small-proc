@@ -1,9 +1,33 @@
 const uniIdCo = uniCloud.importObject('uni-id-co', { customUI: true })
 
 let checkingPromise = null
-let showingExpiryModal = false
 
 const LOGIN_PAGE = '/uni_modules/uni-id-pages/pages/login/login-withoutpwd'
+
+export function hasLoginToken() {
+  return !!uni.getStorageSync('uni_id_token')
+}
+
+export function clearLoginToken() {
+  uni.removeStorageSync('uni_id_token')
+  uni.removeStorageSync('uni_id_token_expired')
+}
+
+export function goLogin(options = {}) {
+  const { toast = '请先登录' } = options
+  if (toast) {
+    uni.showToast({ title: toast, icon: 'none' })
+  }
+  setTimeout(() => {
+    uni.navigateTo({ url: LOGIN_PAGE })
+  }, 120)
+}
+
+export function requireLogin(options = {}) {
+  if (hasLoginToken()) return true
+  goLogin(options)
+  return false
+}
 
 export async function ensureSessionAlive(options = {}) {
   if (checkingPromise) return checkingPromise
@@ -14,7 +38,10 @@ export async function ensureSessionAlive(options = {}) {
       if (!token) return false
       const res = await uniIdCo.checkToken()
       if (!res || res.code !== 0) {
-        await handleTokenExpired(res?.message || '登录状态已过期，请重新登录')
+        handleTokenExpired()
+        if (!silent) {
+          uni.showToast({ title: res?.message || '登录状态已过期，请先登录', icon: 'none' })
+        }
         return false
       }
       return true
@@ -31,25 +58,6 @@ export async function ensureSessionAlive(options = {}) {
   return checkingPromise
 }
 
-async function handleTokenExpired(message) {
-  if (showingExpiryModal) return
-  showingExpiryModal = true
-  try {
-    uni.removeStorageSync('uni_id_token')
-    uni.removeStorageSync('uni_id_token_expired')
-    await new Promise((resolve) => {
-      uni.showModal({
-        title: '登录状态失效',
-        content: message || '请重新登录后继续使用',
-        showCancel: false,
-        success: () => {
-          uni.reLaunch({ url: LOGIN_PAGE })
-          resolve()
-        },
-        fail: resolve
-      })
-    })
-  } finally {
-    showingExpiryModal = false
-  }
+function handleTokenExpired() {
+  clearLoginToken()
 }

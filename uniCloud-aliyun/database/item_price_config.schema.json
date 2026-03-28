@@ -11,8 +11,23 @@
 		"_id": { "description": "文档 ID" },
 		"type": {
 			"bsonType": "string",
-			"description": "价格项类型，如 pickup_small / pickup_medium / pickup_large",
+			"description": "价格项类型，如 pickup_small / pickup_medium / pickup_large / pickup_extra_large",
 			"title": "类型"
+		},
+		"scene": {
+			"bsonType": "string",
+			"description": "业务场景，如 pickup",
+			"title": "场景"
+		},
+		"size": {
+			"bsonType": "string",
+			"description": "规格，如 small / medium / large / extra_large",
+			"title": "规格"
+		},
+		"label": {
+			"bsonType": "string",
+			"description": "展示文案，如 特大件（快递代取）",
+			"title": "文案"
 		},
 		"price": {
 			"bsonType": "double",
