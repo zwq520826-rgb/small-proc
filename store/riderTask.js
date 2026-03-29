@@ -40,7 +40,11 @@ function formatTaskFromDB(task) {
     accept_time: task.accept_time,
     pickup_time: task.pickup_time,
     complete_time: task.complete_time,
-    completedAt: task.complete_time
+    completedAt: task.complete_time,
+    photo_feedback_count: Number(task.photo_feedback_count || 0),
+    need_customer_service: !!task.need_customer_service,
+    abnormal_reason: task.abnormal_reason || '',
+    abnormal_remark: task.abnormal_remark || ''
   }
 }
 

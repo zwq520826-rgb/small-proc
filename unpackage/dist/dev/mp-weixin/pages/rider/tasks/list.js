@@ -14,8 +14,10 @@ const _sfc_main = {
     const tabs = [
       { label: "待取货", value: "pending_pickup" },
       { label: "配送中", value: "delivering" },
-      { label: "已送达", value: "completed" }
+      { label: "已送达", value: "completed" },
+      { label: "异常单", value: "abnormal" }
     ];
+    const abnormalCount = common_vendor.computed(() => store.tasksByStatus("abnormal").length);
     let pulling = false;
     let pageRefreshing = false;
     const refreshPageData = async (force = false) => {
@@ -33,7 +35,7 @@ const _sfc_main = {
       try {
         await refreshPageData(false);
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:185", "任务列表刷新失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:214", "任务列表刷新失败:", e);
       }
     });
     common_vendor.onPullDownRefresh(async () => {
@@ -43,14 +45,14 @@ const _sfc_main = {
       try {
         await refreshPageData(true);
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:196", "下拉刷新失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:225", "下拉刷新失败:", e);
       } finally {
         pulling = false;
         common_vendor.index.stopPullDownRefresh();
       }
     });
     const taskList = common_vendor.computed(() => {
-      const statusKeys = ["pending_pickup", "delivering", "completed"];
+      const statusKeys = ["pending_pickup", "delivering", "completed", "abnormal"];
       const currentStatus = statusKeys[currentTab.value];
       let list = store.tasksByStatus(currentStatus);
       if (currentStatus === "completed") {
@@ -88,7 +90,8 @@ const _sfc_main = {
     const statusMap = {
       pending_pickup: "待取货",
       delivering: "配送中",
-      completed: "已送达"
+      completed: "已送达",
+      abnormal: "异常单"
     };
     function extractPhoneFromAddress(address) {
       if (!address)
@@ -117,7 +120,7 @@ const _sfc_main = {
           });
           urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
         } catch (e) {
-          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:296", "获取临时文件 URL 失败:", e);
+          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:326", "获取临时文件 URL 失败:", e);
           common_vendor.index.showToast({ title: "图片加载失败，请稍后重试", icon: "none" });
           return;
         }
@@ -184,7 +187,7 @@ const _sfc_main = {
             common_vendor.index.hideLoading();
             if (success) {
               common_vendor.index.showToast({ title: "送达确认成功", icon: "success" });
-              if (currentTab.value === 1) {
+              if (currentTab.value === 1 || currentTab.value === 3) {
                 setTimeout(() => {
                   currentTab.value = 2;
                 }, 500);
@@ -192,7 +195,7 @@ const _sfc_main = {
             } else {
             }
           } catch (e) {
-            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:394", "上传/送达确认失败:", e);
+            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:424", "上传/送达确认失败:", e);
             common_vendor.index.hideLoading();
             common_vendor.index.showToast({ title: e.message || "上传失败，请重试", icon: "none" });
           }
@@ -239,12 +242,17 @@ const _sfc_main = {
     return (_ctx, _cache) => {
       return common_vendor.e({
         a: common_vendor.f(tabs, (item, index, i0) => {
-          return {
+          return common_vendor.e({
             a: common_vendor.t(item.label),
-            b: item.value,
-            c: index === currentTab.value ? 1 : "",
-            d: common_vendor.o(($event) => currentTab.value = index, item.value)
-          };
+            b: item.value === "abnormal" && abnormalCount.value > 0
+          }, item.value === "abnormal" && abnormalCount.value > 0 ? {
+            c: common_vendor.t(abnormalCount.value)
+          } : {}, {
+            d: item.value,
+            e: index === currentTab.value ? 1 : "",
+            f: item.value === "abnormal" ? 1 : "",
+            g: common_vendor.o(($event) => currentTab.value = index, item.value)
+          });
         }),
         b: currentTab.value === 0
       }, currentTab.value === 0 ? {
@@ -346,6 +354,20 @@ const _sfc_main = {
             k: task.id,
             l: common_vendor.o(($event) => goTaskDetail(task), task.id)
           });
+        })
+      } : {}, {
+        h: currentTab.value === 3
+      }, currentTab.value === 3 ? {
+        i: common_vendor.f(taskList.value, (task, k0, i0) => {
+          return {
+            a: common_vendor.t(task.delivery),
+            b: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
+            c: common_vendor.t(Number(task.photo_feedback_count || 0)),
+            d: common_vendor.t(task.abnormal_remark ? `用户反馈：${task.abnormal_remark}` : "用户提交了异常反馈，请处理并重新上传送达凭证。"),
+            e: common_vendor.o(($event) => confirmDelivery(task), task.id),
+            f: task.id,
+            g: common_vendor.o(($event) => goTaskDetail(task), task.id)
+          };
         })
       } : {});
     };

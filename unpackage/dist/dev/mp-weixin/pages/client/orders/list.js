@@ -15,30 +15,53 @@ const _sfc_main = {
       { label: "全部", status: "all" },
       { label: "待接单", status: "pending_accept" },
       { label: "进行中", status: "delivering" },
-      { label: "已完成", status: "completed" }
+      { label: "已完成", status: "completed" },
+      { label: "异常单", status: "abnormal" }
     ];
     const statusMap = {
       pending_accept: "待接单",
       pending_pickup: "待取货",
       delivering: "配送中",
       completed: "已完成",
-      cancelled: "已取消"
+      cancelled: "已取消",
+      abnormal: "异常单"
     };
     const currentTab = common_vendor.ref(0);
     const pageSize = common_vendor.ref(20);
     const loadStatus = common_vendor.ref("more");
+    const PRIMARY_TAG_TYPES = /* @__PURE__ */ new Set(["urgent", "delivery"]);
+    const splitTags = (tags = []) => {
+      const primary = [];
+      const secondary = [];
+      tags.forEach((tag) => {
+        if (PRIMARY_TAG_TYPES.has(tag == null ? void 0 : tag.type)) {
+          primary.push(tag);
+        } else {
+          secondary.push(tag);
+        }
+      });
+      return { primary, secondary };
+    };
+    const resolveRemark = (order) => {
+      var _a, _b;
+      return String(((_a = order == null ? void 0 : order.content) == null ? void 0 : _a.remark) || ((_b = order == null ? void 0 : order.content) == null ? void 0 : _b.description) || "").trim();
+    };
     const displayList = common_vendor.computed(() => {
       const status = tabs[currentTab.value].status;
       const list = store.ordersByStatus(status);
       return list.map((o) => {
         var _a;
+        const visualTags = utils_orderTags.buildVisualTags({
+          rawTags: o.tags,
+          content: o.content,
+          requiredGender: (_a = o.content) == null ? void 0 : _a.requiredRiderGender
+        });
+        const { primary, secondary } = splitTags(visualTags);
         return {
           ...o,
-          visualTags: utils_orderTags.buildVisualTags({
-            rawTags: o.tags,
-            content: o.content,
-            requiredGender: (_a = o.content) == null ? void 0 : _a.requiredRiderGender
-          })
+          primaryTags: primary,
+          secondaryTags: secondary,
+          remarkText: resolveRemark(o)
         };
       });
     });
@@ -140,17 +163,12 @@ const _sfc_main = {
         c: common_assets._imports_0
       } : {}, {
         d: common_vendor.f(displayList.value, (order, k0, i0) => {
-          var _a, _b;
           return common_vendor.e({
             a: common_vendor.t(order.typeLabel),
             b: common_vendor.n(order.type),
-            c: common_vendor.t(statusMap[order.status]),
-            d: common_vendor.n(order.status),
-            e: common_vendor.t(order.pickupLocation),
-            f: common_vendor.t(order.deliveryLocation || order.address),
-            g: order.visualTags && order.visualTags.length
-          }, order.visualTags && order.visualTags.length ? {
-            h: common_vendor.f(order.visualTags, (tag, k1, i1) => {
+            c: order.primaryTags && order.primaryTags.length
+          }, order.primaryTags && order.primaryTags.length ? {
+            d: common_vendor.f(order.primaryTags, (tag, k1, i1) => {
               return common_vendor.e({
                 a: tag.icon
               }, tag.icon ? {
@@ -162,23 +180,44 @@ const _sfc_main = {
               });
             })
           } : {}, {
-            i: common_vendor.t(((_a = order.content) == null ? void 0 : _a.description) || ((_b = order.content) == null ? void 0 : _b.remark) || "订单详情"),
-            j: common_vendor.t(Number(order.price || 0).toFixed(2)),
-            k: common_vendor.t(order.publishedAt || order.createTime),
-            l: order.status === "completed"
-          }, order.status === "completed" ? {
-            m: common_vendor.o(($event) => handleViewPhotos(order), order.id)
+            e: common_vendor.t(statusMap[order.status]),
+            f: common_vendor.n(order.status),
+            g: common_vendor.t(order.pickupLocation),
+            h: common_vendor.t(order.deliveryLocation || order.address),
+            i: order.secondaryTags && order.secondaryTags.length
+          }, order.secondaryTags && order.secondaryTags.length ? {
+            j: common_vendor.f(order.secondaryTags, (tag, k1, i1) => {
+              return common_vendor.e({
+                a: tag.icon
+              }, tag.icon ? {
+                b: common_vendor.t(tag.icon)
+              } : {}, {
+                c: common_vendor.t(tag.text),
+                d: tag.key,
+                e: common_vendor.n(`tag-${tag.type}`)
+              });
+            })
           } : {}, {
-            n: order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering"
+            k: order.remarkText
+          }, order.remarkText ? {
+            l: common_vendor.t(order.remarkText)
+          } : {}, {
+            m: common_vendor.t(Number(order.price || 0).toFixed(2)),
+            n: common_vendor.t(order.publishedAt || order.createTime),
+            o: order.status === "completed"
+          }, order.status === "completed" ? {
+            p: common_vendor.o(($event) => handleViewPhotos(order), order.id)
+          } : {}, {
+            q: order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering"
           }, order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering" ? {
-            o: common_vendor.o(($event) => handleCancel(order.id), order.id)
+            r: common_vendor.o(($event) => handleCancel(order.id), order.id)
           } : {}, {
-            p: order.status === "completed"
+            s: order.status === "completed"
           }, order.status === "completed" ? {
-            q: common_vendor.o(($event) => handleDelete(order.id), order.id)
+            t: common_vendor.o(($event) => handleDelete(order.id), order.id)
           } : {}, {
-            r: order.id,
-            s: common_vendor.o(($event) => goDetail(order.id), order.id)
+            v: order.id,
+            w: common_vendor.o(($event) => goDetail(order.id), order.id)
           });
         }),
         e: loadStatus.value === "loading"

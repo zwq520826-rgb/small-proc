@@ -21,6 +21,7 @@ const _sfc_main = {
       { icon: "/static/tabbar/paotuifuwu.png", text: "跑腿服务", path: "/pages/client/forms/errand" }
     ];
     const showContactModal = common_vendor.ref(false);
+    const showManualModal = common_vendor.ref(false);
     const heroSwiperCompact = common_vendor.computed(() => {
       if (!heroes.value.length)
         return false;
@@ -28,6 +29,9 @@ const _sfc_main = {
     });
     const openContactModal = () => {
       showContactModal.value = true;
+    };
+    const openManualModal = () => {
+      showManualModal.value = true;
     };
     const handleHeroLink = (hero) => {
       const u = String(hero && hero.link_url || "").trim();
@@ -120,7 +124,7 @@ const _sfc_main = {
         announcements.value = nextAnnouncements;
         saveFn({ heroes: nextHeroes, announcements: nextAnnouncements });
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/home.vue:258", "[home] loadHomeContent failed", e);
+        common_vendor.index.__f__("error", "at pages/client/home.vue:284", "[home] loadHomeContent failed", e);
         loadError.value = formatErrorMessage(e, "首页内容加载失败，请稍后重试");
         if (!showSkeleton) {
           common_vendor.index.showToast({ title: loadError.value, icon: "none" });
@@ -134,6 +138,9 @@ const _sfc_main = {
     };
     const closeContactModal = () => {
       showContactModal.value = false;
+    };
+    const closeManualModal = () => {
+      showManualModal.value = false;
     };
     const copyPhone = () => {
       common_vendor.index.setClipboardData({
@@ -172,9 +179,10 @@ const _sfc_main = {
         d: common_vendor.t(loadError.value),
         e: common_vendor.o(retryHome, "8d")
       } : common_vendor.e({
-        f: heroes.value.length
+        f: common_vendor.o(openManualModal, "48"),
+        g: heroes.value.length
       }, heroes.value.length ? {
-        g: common_vendor.f(heroes.value, (hero, k0, i0) => {
+        h: common_vendor.f(heroes.value, (hero, k0, i0) => {
           return common_vendor.e({
             a: hero.image_file_id
           }, hero.image_file_id ? {
@@ -192,14 +200,14 @@ const _sfc_main = {
             j: hero._id || hero.title
           });
         }),
-        h: heroSwiperCompact.value ? 1 : "",
-        i: heroes.value.length > 1,
+        i: heroSwiperCompact.value ? 1 : "",
         j: heroes.value.length > 1,
-        k: heroes.value.length > 1
+        k: heroes.value.length > 1,
+        l: heroes.value.length > 1
       } : {
-        l: common_vendor.o(($event) => onHeroCta(null), "36")
+        m: common_vendor.o(($event) => onHeroCta(null), "91")
       }, {
-        m: common_vendor.f(features, (item, k0, i0) => {
+        n: common_vendor.f(features, (item, k0, i0) => {
           return {
             a: item.icon,
             b: common_vendor.t(item.text),
@@ -207,9 +215,9 @@ const _sfc_main = {
             d: common_vendor.o(($event) => goFeature(item), item.text)
           };
         }),
-        n: announcements.value.length
+        o: announcements.value.length
       }, announcements.value.length ? {
-        o: common_vendor.f(announcements.value, (a, k0, i0) => {
+        p: common_vendor.f(announcements.value, (a, k0, i0) => {
           return common_vendor.e({
             a: a.image_file_id
           }, a.image_file_id ? {
@@ -220,20 +228,28 @@ const _sfc_main = {
             e: a._id
           });
         }),
-        p: announcements.value.length > 1,
         q: announcements.value.length > 1,
-        r: announcements.value.length > 1
+        r: announcements.value.length > 1,
+        s: announcements.value.length > 1
       } : {}), {
         c: loadError.value,
-        s: showContactModal.value
+        t: showContactModal.value
       }, showContactModal.value ? {
-        t: common_vendor.o(closeContactModal, "0a"),
-        v: common_vendor.t(contactPhone),
-        w: common_vendor.o(copyPhone, "b7"),
-        x: common_vendor.o(closeContactModal, "73"),
-        y: common_vendor.o(() => {
-        }, "0b"),
-        z: common_vendor.o(closeContactModal, "50")
+        v: common_vendor.o(closeContactModal, "3f"),
+        w: common_vendor.t(contactPhone),
+        x: common_vendor.o(copyPhone, "95"),
+        y: common_vendor.o(closeContactModal, "95"),
+        z: common_vendor.o(() => {
+        }, "d2"),
+        A: common_vendor.o(closeContactModal, "15")
+      } : {}, {
+        B: showManualModal.value
+      }, showManualModal.value ? {
+        C: common_vendor.o(closeManualModal, "d0"),
+        D: common_vendor.o(closeManualModal, "5b"),
+        E: common_vendor.o(() => {
+        }, "83"),
+        F: common_vendor.o(closeManualModal, "d4")
       } : {});
     };
   }

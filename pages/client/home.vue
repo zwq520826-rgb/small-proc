@@ -17,7 +17,10 @@
       <view class="top">
         <view class="location">
           <text class="pos">长江师范学院</text>
-          <text class="bell">🔔</text>
+          <view class="top-right-actions">
+            <view class="manual-mini-btn" @tap="openManualModal">📘 下单须知</view>
+            <text class="bell">🔔</text>
+          </view>
         </view>
       </view>
 
@@ -124,6 +127,24 @@
       <view class="contact-btn" @tap.stop="closeContactModal">知道了</view>
     </view>
   </view>
+  <view
+    v-if="showManualModal"
+    class="manual-mask"
+    @tap="closeManualModal"
+  >
+    <view class="manual-modal" @tap.stop>
+      <view class="manual-close-x" @tap.stop="closeManualModal">×</view>
+      <text class="manual-modal-title">使用手册（下单须知）</text>
+      <view class="manual-modal-list">
+        <text class="manual-modal-item">1. 下单前先确认地址、宿舍号、联系电话填写正确。</text>
+        <text class="manual-modal-item">2. 代取订单建议上传清晰取件码或快递单照片。</text>
+        <text class="manual-modal-item">3. 如需加急或送货上门，可在订单页勾选对应服务。</text>
+        <text class="manual-modal-item">4. 如遇异常请在订单详情提交反馈并写明备注。</text>
+      </view>
+      <text class="manual-modal-note">注意：请勿在备注中填写银行卡等敏感信息。</text>
+      <view class="manual-modal-btn" @tap.stop="closeManualModal">我知道了</view>
+    </view>
+  </view>
   </view>
 </template>
 
@@ -149,6 +170,7 @@ const features = [
 ]
 
 const showContactModal = ref(false)
+const showManualModal = ref(false)
 const contactPhone = '18608945191'
 
 const heroSwiperCompact = computed(() => {
@@ -158,6 +180,10 @@ const heroSwiperCompact = computed(() => {
 
 const openContactModal = () => {
   showContactModal.value = true
+}
+
+const openManualModal = () => {
+  showManualModal.value = true
 }
 
 const handleHeroLink = (hero) => {
@@ -273,6 +299,10 @@ const closeContactModal = () => {
   showContactModal.value = false
 }
 
+const closeManualModal = () => {
+  showManualModal.value = false
+}
+
 const copyPhone = () => {
   uni.setClipboardData({
     data: contactPhone,
@@ -319,6 +349,22 @@ onShow(() => {
   font-size: 30rpx;
 }
 
+.top-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.manual-mini-btn {
+  font-size: 22rpx;
+  color: #1e3a8a;
+  background: #e8eefc;
+  border: 1rpx solid #c7d2fe;
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  line-height: 1;
+}
+
 .bell {
   font-size: 34rpx;
 }
@@ -326,6 +372,7 @@ onShow(() => {
 .hero-card-only {
   margin-top: 24rpx;
 }
+
 .hero-swiper {
   margin-top: 24rpx;
   height: 340rpx;
@@ -420,6 +467,8 @@ onShow(() => {
   justify-content: center;
   text-align: center;
   line-height: 1.2;
+  white-space: nowrap;
+  word-break: keep-all;
   color: #1f2f4a;
   font-weight: 600;
   box-sizing: border-box;
@@ -606,6 +655,83 @@ onShow(() => {
   text-align: center;
   padding: 22rpx 0;
   font-weight: 500;
+}
+
+.manual-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  box-sizing: border-box;
+}
+
+.manual-modal {
+  position: relative;
+  width: 100%;
+  max-width: 640rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 38rpx 30rpx 30rpx;
+  box-sizing: border-box;
+}
+
+.manual-close-x {
+  position: absolute;
+  top: 14rpx;
+  right: 20rpx;
+  width: 56rpx;
+  height: 56rpx;
+  line-height: 52rpx;
+  text-align: center;
+  font-size: 44rpx;
+  color: #94a3b8;
+  font-weight: 300;
+}
+
+.manual-modal-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 18rpx;
+}
+
+.manual-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.manual-modal-item {
+  font-size: 26rpx;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.manual-modal-note {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #b45309;
+}
+
+.manual-modal-btn {
+  margin-top: 22rpx;
+  width: 100%;
+  background: #1e3a8a;
+  color: #ffffff;
+  border-radius: 999rpx;
+  text-align: center;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  font-weight: 600;
 }
 
 .skeleton-container {

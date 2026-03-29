@@ -31,6 +31,10 @@ function formatOrderFromDB(order) {
     deliveryLocation: order.delivery_location || '',
     address: order.address || order.delivery_location || '',
     status: order.status,
+    abnormal_reason: order.abnormal_reason || '',
+    abnormal_remark: order.abnormal_remark || '',
+    photo_feedback_count: Number(order.photo_feedback_count || 0),
+    need_customer_service: !!order.need_customer_service,
     price: order.price,
     content: order.content || {},
     tags: order.tags || [],
@@ -247,6 +251,43 @@ async function deleteOrder(id) {
   }
 }
 
+async function reportDeliveryIssue(id, reason = '') {
+  try {
+    const callApi = orderService.reportDeliveryIssue || orderService.reportWrongDeliveryPhoto
+    const res = await callApi.call(orderService, { orderId: id, reason })
+    if (res.code === 0) {
+      const idx = state.orders.findIndex((o) => o.id === id || o._id === id)
+      if (idx >= 0) {
+        const old = state.orders[idx]
+        state.orders[idx] = {
+          ...old,
+          status: 'abnormal',
+          abnormal_reason: 'delivery_issue',
+          abnormal_remark: String(reason || '').trim(),
+          photo_feedback_count: Number(res.data?.feedbackCount || old.photo_feedback_count || 0),
+          need_customer_service: !!res.data?.contactRequired,
+          content: {
+            ...(old.content || {}),
+            pending_redelivery_upload: !res.data?.contactRequired
+          }
+        }
+      }
+      return { success: true, data: res.data || {} }
+    }
+
+    uni.showToast({ title: res.message || '反馈失败', icon: 'none' })
+    return { success: false, data: res.data || {} }
+  } catch (error) {
+    console.error('提交异常反馈失败:', error)
+    uni.showToast({ title: '网络错误，请稍后重试', icon: 'none' })
+    return { success: false }
+  }
+}
+
+async function reportWrongDeliveryPhoto(id, reason = '') {
+  return reportDeliveryIssue(id, reason)
+}
+
 /**
  * 根据状态筛选订单
  */
@@ -285,6 +326,8 @@ export function useClientOrderStore() {
     addOrder,
     cancelOrder,
     deleteOrder,
+    reportDeliveryIssue,
+    reportWrongDeliveryPhoto,
     loadFromStorage: (force = true) => loadOrdersFromCloud({ force, page: 1, pageSize: pagingState.pageSize, append: false }),
     reloadOrders,
     loadNextPage,

@@ -1,0 +1,41 @@
+{
+	"bsonType": "object",
+	"required": ["order_id", "user_id", "type", "status", "feedback_count"],
+	"permission": {
+		"read": false,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"indexes": [
+		{
+			"name": "idx_status_update_time",
+			"unique": false,
+			"field": [
+				{ "name": "status", "type": "asc" },
+				{ "name": "update_time", "type": "desc" }
+			]
+		},
+		{
+			"name": "idx_order_id",
+			"unique": true,
+			"field": [
+				{ "name": "order_id", "type": "asc" }
+			]
+		}
+	],
+	"properties": {
+		"_id": { "description": "介入单ID" },
+		"order_id": { "bsonType": "string", "description": "订单ID" },
+		"user_id": { "bsonType": "string", "description": "用户ID" },
+		"rider_id": { "bsonType": "string", "description": "骑手ID" },
+		"type": { "bsonType": "string", "description": "介入类型，如 delivery_issue" },
+		"status": { "bsonType": "string", "description": "open/processing/resolved" },
+		"feedback_count": { "bsonType": "int", "description": "反馈次数" },
+		"latest_reason": { "bsonType": "string", "description": "最近反馈原因" },
+		"latest_feedback_time": { "bsonType": "timestamp", "description": "最近反馈时间" },
+		"admin_remark": { "bsonType": "string", "description": "客服备注" },
+		"create_time": { "bsonType": "timestamp", "description": "创建时间" },
+		"update_time": { "bsonType": "timestamp", "description": "更新时间" }
+	}
+}

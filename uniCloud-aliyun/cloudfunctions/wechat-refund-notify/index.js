@@ -11,6 +11,7 @@
 const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
+const securityKit = require('./security-kit')
 const db = uniCloud.database()
 const createConfig = require('uni-config-center')
 
@@ -206,14 +207,43 @@ async function processRefundNotification(decryptedData) {
   return { message: '退款结果已处理' }
 }
 
-exports.main = async (event) => {
+exports.main = async (event, context) => {
+  const requestId = securityKit.resolveRequestId({
+    headers: event.headers || {},
+    fallback: (context && (context.requestId || context.request_id)) || ''
+  })
+  const ip = (event && event.requestContext && event.requestContext.sourceIp) ||
+    (event && event.headers && (event.headers['x-forwarded-for'] || event.headers['X-Forwarded-For'])) || ''
+  const logger = securityKit.createLogger({
+    service: 'wechat-refund-notify',
+    api: 'notify',
+    ip,
+    requestId
+  })
+  const response = (code, message) => ({
+    statusCode: 200,
+    body: JSON.stringify({ code, message, requestId })
+  })
+
   try {
+    const rate = await securityKit.checkRateLimit({
+      service: 'wechat-refund-notify',
+      api: 'notify',
+      ip,
+      uid: '',
+      ipRule: { limit: 600, windowSec: 60 }
+    })
+    if (!rate.allowed) {
+      logger.warn({ event: 'rate_limited', retryAfter: rate.retryAfterSec || 1 })
+      return response('RATE_LIMITED', '请求过于频繁，请稍后重试')
+    }
+
     let body = event.body
     if (event.isBase64Encoded) {
       body = Buffer.from(body, 'base64').toString('utf8')
     }
     if (!body) {
-      return { statusCode: 200, body: JSON.stringify({ code: 'FAIL', message: '请求体为空' }) }
+      return response('FAIL', '请求体为空')
     }
 
     const headers = event.headers || {}
@@ -223,29 +253,28 @@ exports.main = async (event) => {
     const serialNo = headers['wechatpay-serial'] || headers['Wechatpay-Serial']
 
     if (!signature || !timestamp || !nonce || !serialNo) {
-      return { statusCode: 200, body: JSON.stringify({ code: 'FAIL', message: '缺少签名头' }) }
+      return response('FAIL', '缺少签名头')
     }
 
     const ok = await verifySignature({ signature, timestamp, nonce, body, serialNo })
     if (!ok) {
-      return { statusCode: 200, body: JSON.stringify({ code: 'FAIL', message: '签名验证失败' }) }
+      return response('FAIL', '签名验证失败')
     }
 
     const cfg = loadPayConfig()
     const parsed = JSON.parse(body)
     if (!parsed.resource) {
-      return { statusCode: 200, body: JSON.stringify({ code: 'FAIL', message: '缺少 resource' }) }
+      return response('FAIL', '缺少 resource')
     }
 
     const decryptedText = decryptAESGCM(parsed.resource, cfg.api_v3_key)
     const decryptedData = JSON.parse(decryptedText)
 
     const result = await processRefundNotification(decryptedData)
-    return { statusCode: 200, body: JSON.stringify({ code: 'SUCCESS', message: result.message || '成功' }) }
+    return response('SUCCESS', result.message || '成功')
   } catch (e) {
-    console.error('处理退款回调失败:', e)
+    logger.error({ event: 'refund_notify_failed', message: e && e.message })
     // 仍返回 200，避免微信反复重试导致风暴
-    return { statusCode: 200, body: JSON.stringify({ code: 'FAIL', message: e.message || '处理失败' }) }
+    return response('FAIL', e.message || '处理失败')
   }
 }
-

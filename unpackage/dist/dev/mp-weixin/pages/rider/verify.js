@@ -70,7 +70,7 @@ const _sfc_main = {
         }
       } catch (e) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/rider/verify.vue:118", "提交失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/verify.vue:120", "提交失败:", e);
         common_vendor.index.showToast({ title: "提交失败", icon: "none" });
         form.value.captcha = "";
         if (captchaRef.value) {
@@ -103,8 +103,12 @@ const _sfc_main = {
           modelValue: form.value.captcha
         }),
         n: profile.value
-      }, profile.value ? {} : {}, {
-        o: common_vendor.o(submit, "48")
+      }, profile.value ? common_vendor.e({
+        o: profile.value.status === "approved"
+      }, profile.value.status === "approved" ? {} : profile.value.status === "pending" ? {} : {}, {
+        p: profile.value.status === "pending"
+      }) : {}, {
+        q: common_vendor.o(submit, "03")
       });
     };
   }

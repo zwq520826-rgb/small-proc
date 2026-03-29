@@ -13,6 +13,20 @@
   font-weight: 600;
   font-size: 30rpx;
 }
+.top-right-actions.data-v-462fe6d9 {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.manual-mini-btn.data-v-462fe6d9 {
+  font-size: 22rpx;
+  color: #1e3a8a;
+  background: #e8eefc;
+  border: 1rpx solid #c7d2fe;
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  line-height: 1;
+}
 .bell.data-v-462fe6d9 {
   font-size: 34rpx;
 }
@@ -103,6 +117,8 @@
   justify-content: center;
   text-align: center;
   line-height: 1.2;
+  white-space: nowrap;
+  word-break: keep-all;
   color: #1f2f4a;
   font-weight: 600;
   box-sizing: border-box;
@@ -267,6 +283,75 @@
   text-align: center;
   padding: 22rpx 0;
   font-weight: 500;
+}
+.manual-mask.data-v-462fe6d9 {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  box-sizing: border-box;
+}
+.manual-modal.data-v-462fe6d9 {
+  position: relative;
+  width: 100%;
+  max-width: 640rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 38rpx 30rpx 30rpx;
+  box-sizing: border-box;
+}
+.manual-close-x.data-v-462fe6d9 {
+  position: absolute;
+  top: 14rpx;
+  right: 20rpx;
+  width: 56rpx;
+  height: 56rpx;
+  line-height: 52rpx;
+  text-align: center;
+  font-size: 44rpx;
+  color: #94a3b8;
+  font-weight: 300;
+}
+.manual-modal-title.data-v-462fe6d9 {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 18rpx;
+}
+.manual-modal-list.data-v-462fe6d9 {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+.manual-modal-item.data-v-462fe6d9 {
+  font-size: 26rpx;
+  line-height: 1.45;
+  color: #334155;
+}
+.manual-modal-note.data-v-462fe6d9 {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #b45309;
+}
+.manual-modal-btn.data-v-462fe6d9 {
+  margin-top: 22rpx;
+  width: 100%;
+  background: #1e3a8a;
+  color: #ffffff;
+  border-radius: 999rpx;
+  text-align: center;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  font-weight: 600;
 }
 .skeleton-container.data-v-462fe6d9 {
   padding-top: 12rpx;

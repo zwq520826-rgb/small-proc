@@ -12,6 +12,7 @@
 'use strict'
 
 const uniID = require('uni-id-common')
+const securityKit = require('./security-kit')
 const db = uniCloud.database()
 const dbCmd = db.command
 const fs = require('fs')
@@ -29,6 +30,44 @@ function checkAuth(ctx) {
     }
   }
   return { uid: ctx.uid }
+}
+
+const RATE_LIMIT_RULES = {
+  createJsapiOrder: {
+    ipRule: { limit: 20, windowSec: 60 },
+    uidRule: { limit: 10, windowSec: 60 }
+  },
+  queryOrder: {
+    ipRule: { limit: 120, windowSec: 60 },
+    uidRule: { limit: 60, windowSec: 60 }
+  },
+  confirmPaid: {
+    ipRule: { limit: 30, windowSec: 60 },
+    uidRule: { limit: 15, windowSec: 60 }
+  },
+  refundOrder: {
+    ipRule: { limit: 10, windowSec: 300 },
+    uidRule: { limit: 5, windowSec: 300 }
+  },
+  closeOrder: {
+    ipRule: { limit: 30, windowSec: 60 },
+    uidRule: { limit: 20, windowSec: 60 }
+  }
+}
+
+async function enforceRateLimit(ctx, apiName) {
+  const rule = RATE_LIMIT_RULES[apiName]
+  if (!rule) return null
+  const hit = await securityKit.checkRateLimit({
+    service: 'payment-service',
+    api: apiName,
+    ip: ctx.clientIP || '',
+    uid: ctx.uid || '',
+    ipRule: rule.ipRule,
+    uidRule: rule.uidRule
+  })
+  if (hit.allowed) return null
+  return securityKit.rateLimitedError({ requestId: ctx.requestId, retryAfterSec: hit.retryAfterSec || 1 })
 }
 
 let payConfigCache = null
@@ -49,7 +88,6 @@ function loadPayConfig() {
     // 如果配置为空，尝试直接读取文件（兼容旧方式）
     if (!payConfigCache || Object.keys(payConfigCache).length === 0) {
       const configPath = payConfigCenter.resolve('wechat-pay.json')
-      console.log('尝试从路径加载配置:', configPath)
       if (fs.existsSync(configPath)) {
         const json = fs.readFileSync(configPath, 'utf8')
         payConfigCache = JSON.parse(json)
@@ -58,10 +96,9 @@ function loadPayConfig() {
       }
     }
     
-    console.log('加载的支付配置 private_key_path:', payConfigCache.private_key_path)
     return payConfigCache
   } catch (e) {
-    console.error('加载 wechat-pay.json 失败:', e)
+    console.error('加载 wechat-pay.json 失败:', e && e.message)
     throw new Error('微信支付配置文件加载失败，请检查路径和 JSON 格式: ' + e.message)
   }
 }
@@ -73,31 +110,23 @@ function loadPrivateKey() {
     throw new Error('微信支付配置缺少 private_key_path')
   }
   
-  console.log('配置中的 private_key_path:', cfg.private_key_path)
-  
   let keyPath
   // 如果是绝对路径（Windows: G:/ 或 C:/，Unix: /），说明配置错误
   if (cfg.private_key_path.startsWith('/') || /^[A-Za-z]:/.test(cfg.private_key_path)) {
-    console.error('检测到绝对路径:', cfg.private_key_path)
     throw new Error('private_key_path 不能使用绝对路径，请使用相对路径（如：certs/apiclient_key.pem）')
   }
   
   // 相对路径，从云函数目录解析
   keyPath = path.resolve(__dirname, cfg.private_key_path)
-  console.log('解析后的私钥路径:', keyPath)
-  console.log('__dirname:', __dirname)
   
   try {
     if (!fs.existsSync(keyPath)) {
-      console.error('私钥文件不存在，尝试的路径:', keyPath)
       throw new Error(`私钥文件不存在: ${keyPath}`)
     }
     privateKeyCache = fs.readFileSync(keyPath, 'utf8')
-    console.log('成功加载私钥文件')
     return privateKeyCache
   } catch (e) {
-    console.error('读取微信商户私钥失败:', e)
-    console.error('尝试的路径:', keyPath)
+    console.error('读取微信商户私钥失败:', e && e.message)
     throw new Error('读取微信商户私钥失败，请检查 private_key_path 路径是否正确。提示：私钥文件需要放在云函数目录中，不能使用本地绝对路径。')
   }
 }
@@ -291,6 +320,11 @@ module.exports = {
    */
   async _before() {
     const clientInfo = this.getClientInfo()
+    this.clientIP = clientInfo.clientIP || ''
+    this.requestId = securityKit.resolveRequestId({
+      headers: (clientInfo && clientInfo.headers) || {},
+      fallback: this.getUniCloudRequestId ? this.getUniCloudRequestId() : ''
+    })
     this.uniID = uniID.createInstance({
       clientInfo
     })
@@ -320,9 +354,21 @@ module.exports = {
     try {
       this.payConfig = loadPayConfig()
     } catch (e) {
-      console.error(e)
+      console.error('[payment-service] pay config error:', e && e.message)
       this.payConfigError = e.message
     }
+
+    this.logger = securityKit.createLogger({
+      service: 'payment-service',
+      uid: this.uid || '',
+      ip: this.clientIP,
+      requestId: this.requestId
+    })
+  },
+
+  _after(error, result) {
+    if (error) throw error
+    return securityKit.withRequestId(result, this.requestId)
   },
 
 	/**
@@ -331,6 +377,8 @@ module.exports = {
    * @param {String} payload.orderId 业务订单ID（orders._id）
    */
   async createJsapiOrder(payload = {}) {
+    const limitErr = await enforceRateLimit(this, 'createJsapiOrder')
+    if (limitErr) return limitErr
     const auth = checkAuth(this)
     if (auth.code) return auth
     const uid = auth.uid
@@ -474,13 +522,11 @@ module.exports = {
           }
         )
       } catch (httpError) {
-        console.error('调用微信支付 API 异常:', httpError)
-        console.error('请求 URL:', 'https://api.mch.weixin.qq.com' + urlPath)
-        console.error('请求体:', JSON.stringify(body, null, 2))
+        console.error('调用微信支付 API 异常:', httpError && httpError.message)
         return {
           code: 'HTTP_REQUEST_ERROR',
           message: `网络请求失败: ${httpError.message || '未知错误'}`,
-          raw: httpError
+          requestId: this.requestId
         }
       }
 
@@ -497,7 +543,6 @@ module.exports = {
       const statusCode = wxRes.statusCode || wxRes.status
       if (!statusCode) {
         console.error('微信支付 API 响应缺少状态码')
-        console.error('完整响应对象:', JSON.stringify(wxRes, null, 2))
         return {
           code: 'INVALID_RESPONSE',
           message: '微信支付 API 响应格式异常，请稍后重试',
@@ -507,8 +552,6 @@ module.exports = {
 
       if (statusCode !== 200 && statusCode !== 201) {
         console.error('微信下单失败 - 状态码:', statusCode)
-        console.error('微信下单失败 - 响应数据:', JSON.stringify(wxRes.data, null, 2))
-        console.error('微信下单失败 - 请求体:', JSON.stringify(body, null, 2))
         return {
           code: 'WECHAT_PAY_ERROR',
           message:
@@ -568,6 +611,8 @@ module.exports = {
    * @param {String} payload.outTradeNo 商户订单号
    */
   async queryOrder(payload = {}) {
+    const limitErr = await enforceRateLimit(this, 'queryOrder')
+    if (limitErr) return limitErr
     const auth = checkAuth(this)
     if (auth.code) return auth
 
@@ -604,6 +649,8 @@ module.exports = {
    * @param {String} payload.outTradeNo 商户订单号
    */
   async confirmPaid(payload = {}) {
+    const limitErr = await enforceRateLimit(this, 'confirmPaid')
+    if (limitErr) return limitErr
     const auth = checkAuth(this)
     if (auth.code) return auth
 
@@ -698,6 +745,8 @@ module.exports = {
    * @param {Number} payload.amount 退款金额（可选，不传默认全额）
    */
   async refundOrder(payload = {}) {
+    const limitErr = await enforceRateLimit(this, 'refundOrder')
+    if (limitErr) return limitErr
     // 兼容两种调用方式：
     // 1) 客户端直调：有登录态 this.uid
     // 2) 服务端内部调用（例如 order-service.cancelOrder）：通过 payload.userId 传入
@@ -912,6 +961,8 @@ module.exports = {
    * @param {String} payload.outTradeNo 商户订单号
    */
   async closeOrder(payload = {}) {
+    const limitErr = await enforceRateLimit(this, 'closeOrder')
+    if (limitErr) return limitErr
     const auth = checkAuth(this)
     if (auth.code) return auth
 

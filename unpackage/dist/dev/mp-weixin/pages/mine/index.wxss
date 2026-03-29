@@ -217,6 +217,14 @@
   letter-spacing: 2rpx;
   margin-bottom: 36rpx;
 }
+.rider-guide-qr.data-v-569e925a {
+  width: 320rpx;
+  height: 320rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid #e5e7eb;
+  margin-bottom: 28rpx;
+  background: #f9fafb;
+}
 .service-popup-actions.data-v-569e925a {
   width: 100%;
   display: flex;

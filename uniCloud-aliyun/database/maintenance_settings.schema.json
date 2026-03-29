@@ -11,6 +11,49 @@
 	"properties": {
 		"_id": {
 			"description": "ID，系统自动生成"
+		},
+		"degrade_home_read": {
+			"bsonType": "bool",
+			"description": "首页读降级开关",
+			"defaultValue": false
+		},
+		"degrade_dashboard_read": {
+			"bsonType": "bool",
+			"description": "看板读降级开关",
+			"defaultValue": false
+		},
+		"degrade_non_core_write": {
+			"bsonType": "bool",
+			"description": "非核心写操作降级开关",
+			"defaultValue": false
+		},
+		"title": {
+			"bsonType": "string",
+			"description": "配置标题（如提现引导标题）"
+		},
+		"tip": {
+			"bsonType": "string",
+			"description": "配置说明文案"
+		},
+		"qr_file_id": {
+			"bsonType": "string",
+			"description": "二维码图片 fileID"
+		},
+		"enable": {
+			"bsonType": "bool",
+			"description": "是否启用"
+		},
+		"recruit_closed": {
+			"bsonType": "bool",
+			"description": "是否暂停新增骑手"
+		},
+		"recruit_closed_tip": {
+			"bsonType": "string",
+			"description": "暂停招募提示文案"
+		},
+		"update_time": {
+			"bsonType": "timestamp",
+			"description": "更新时间"
 		}
 	}
 }

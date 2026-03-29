@@ -56,6 +56,16 @@ export async function getComplaintsSummary() {
 	return assertAdminResponse(res, { dataOnly: true })
 }
 
+export async function listInterventionOrders(params = {}) {
+	const res = await adminService.listInterventionOrders(params)
+	return assertAdminResponse(res, { dataOnly: true })
+}
+
+export async function updateInterventionOrder(params = {}) {
+	const res = await adminService.updateInterventionOrder(params)
+	return assertAdminResponse(res)
+}
+
 export async function updateComplaintStatus(params = {}) {
 	const res = await adminService.updateComplaintStatus(params)
 	return assertAdminResponse(res)
@@ -93,6 +103,16 @@ export async function setRiderProfileStatus(params = {}) {
 
 export async function listRidersWithBalances(params = {}) {
   const res = await adminService.listRidersWithBalances(params)
+  return assertAdminResponse(res, { dataOnly: true })
+}
+
+export async function revokeRiderIdentity(params = {}) {
+  const res = await adminService.revokeRiderIdentity(params)
+  return assertAdminResponse(res)
+}
+
+export async function removeLegacyRiderMenus() {
+  const res = await adminService.removeLegacyRiderMenus()
   return assertAdminResponse(res, { dataOnly: true })
 }
 

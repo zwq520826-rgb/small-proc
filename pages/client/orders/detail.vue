@@ -121,6 +121,24 @@
       </view>
     </view>
 
+    <view v-if="order?.status === 'abnormal'" class="abnormal-reminder-card">
+      <view class="abnormal-title">送达照片反馈处理中</view>
+      <view class="abnormal-row">
+        <text class="abnormal-label">反馈次数：</text>
+        <text class="abnormal-value">{{ Number(order?.photo_feedback_count || 0) }} / {{ FEEDBACK_LIMIT }}</text>
+      </view>
+      <view class="abnormal-row" v-if="order?.need_customer_service">
+        <text class="abnormal-value">已触发客服介入，请联系客服跟进。</text>
+      </view>
+      <view class="abnormal-row" v-else>
+        <text class="abnormal-value">骑手需重新上传送达照片，您可稍后查看。</text>
+      </view>
+      <view class="abnormal-row" v-if="order?.abnormal_remark">
+        <text class="abnormal-label">反馈备注：</text>
+        <text class="abnormal-value">{{ order.abnormal_remark }}</text>
+      </view>
+    </view>
+
     <!-- Bottom Action Bar (Fixed) -->
     <view class="bottom-bar">
       <!-- pending_accept: 取消订单 + 加急 -->
@@ -151,13 +169,21 @@
       </template>
 
       <!-- completed: 删除订单 -->
-      <button
-        v-if="order?.status === 'completed'"
-        class="action-btn btn-delete"
-        @click="handleDeleteOrder"
-      >
-        删除订单
-      </button>
+      <template v-if="order?.status === 'completed' || order?.status === 'abnormal'">
+        <button
+          class="action-btn btn-delete"
+          @click="handleDeleteOrder"
+        >
+          删除订单
+        </button>
+        <button
+          class="action-btn btn-feedback"
+          :disabled="feedbackDisabled"
+          @click="handleWrongPhotoFeedback"
+        >
+          {{ feedbackDisabled ? '请联系客服' : '异常反馈' }}
+        </button>
+      </template>
     </view>
   </view>
 </template>
@@ -173,6 +199,7 @@ const store = useClientOrderStore()
 const order = ref(null)
 const illegalOrder = ref(null)
 const illegalOrderPromise = ref(null)
+const FEEDBACK_LIMIT = 3
 
 const db = uniCloud.database()
 
@@ -187,8 +214,13 @@ const timelineSteps = [
 // Check if should show rider info
 const shouldShowRider = computed(() => {
   return order.value && 
-    (order.value.status === 'delivering' || order.value.status === 'completed') &&
+    (order.value.status === 'delivering' || order.value.status === 'completed' || order.value.status === 'abnormal') &&
     order.value.rider
+})
+
+const feedbackDisabled = computed(() => {
+  if (!order.value) return true
+  return Number(order.value.photo_feedback_count || 0) >= FEEDBACK_LIMIT || !!order.value.need_customer_service
 })
 
 // Get status title
@@ -199,6 +231,7 @@ const getStatusTitle = () => {
     pending_accept: '等待骑手接单',
     delivering: '骑手正在配送中',
     completed: '订单已完成',
+    abnormal: '异常单待处理',
     cancelled: '订单已取消'
   }
   return statusMap[order.value.status] || '订单处理中'
@@ -214,6 +247,8 @@ const getStatusSubtitle = () => {
     return '正在为您匹配骑手'
   } else if (order.value.status === 'completed') {
     return '感谢您的使用'
+  } else if (order.value.status === 'abnormal') {
+    return '已通知骑手重传送达照片'
   }
   return ''
 }
@@ -225,7 +260,8 @@ const isStepActive = (stepStatus) => {
   const statusMapping = {
     pending_accept: 'accepted',
     delivering: 'delivering',
-    completed: 'completed'
+    completed: 'completed',
+    abnormal: 'completed'
   }
   
   return statusMapping[order.value.status] === stepStatus
@@ -242,7 +278,8 @@ const isStepCompleted = (stepStatus) => {
     const mapping = {
       pending_accept: 'accepted',
       delivering: 'delivering',
-      completed: 'completed'
+      completed: 'completed',
+      abnormal: 'completed'
     }
     return mapping[currentStatus] === s
   })
@@ -512,6 +549,53 @@ const handleDeleteOrder = () => {
   })
 }
 
+const handleWrongPhotoFeedback = () => {
+  if (!order.value?.id) return
+  if (feedbackDisabled.value) {
+    uni.showModal({
+      title: '请联系客服',
+      content: '该订单反馈次数已达上限，请联系客服人工处理。',
+      showCancel: false
+    })
+    return
+  }
+
+  uni.showModal({
+    title: '提交异常反馈',
+    editable: true,
+    placeholderText: '请输入异常说明（例如：图片不是我宿舍门口）',
+    content: '请填写备注说明，提交后会通知骑手重新上传送达凭证。',
+    success: async (res) => {
+      if (!res.confirm) return
+      const reason = String(res.content || '').trim()
+      if (!reason) {
+        uni.showToast({ title: '请填写异常说明', icon: 'none' })
+        return
+      }
+      uni.showLoading({ title: '提交中...' })
+      const ret = await store.reportDeliveryIssue(order.value.id, reason)
+      uni.hideLoading()
+      if (!ret?.success) return
+
+      const feedbackCount = Number(ret?.data?.feedbackCount || 0)
+      const needCS = !!ret?.data?.contactRequired
+      if (order.value) {
+        order.value = {
+          ...order.value,
+          status: 'abnormal',
+          abnormal_remark: reason,
+          photo_feedback_count: feedbackCount,
+          need_customer_service: needCS
+        }
+      }
+      uni.showToast({
+        title: needCS ? '已转客服介入' : '已通知骑手重传',
+        icon: 'none'
+      })
+    }
+  })
+}
+
 // Load order
 const loadOrder = async () => {
   // 从 store 重新获取最新数据
@@ -593,6 +677,10 @@ onShow(async () => {
   &.cancelled {
     background: linear-gradient(135deg, #999999 0%, #bdbdbd 100%);
   }
+
+  &.abnormal {
+    background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  }
 }
 
 .status-title {
@@ -637,6 +725,37 @@ onShow(async () => {
 .illegal-value {
   font-size: 26rpx;
   color: #333;
+}
+
+.abnormal-reminder-card {
+  margin: 20rpx 24rpx 0;
+  background: #fff1f2;
+  border: 1rpx solid #fecdd3;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.abnormal-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #be123c;
+  margin-bottom: 12rpx;
+}
+
+.abnormal-row {
+  margin-bottom: 8rpx;
+}
+
+.abnormal-label {
+  font-size: 26rpx;
+  color: #9f1239;
+  font-weight: 600;
+}
+
+.abnormal-value {
+  font-size: 26rpx;
+  color: #4c0519;
 }
 
 /* Timeline Section */
@@ -978,6 +1097,10 @@ onShow(async () => {
     background: #ffebee;
     color: #e53935;
   }
+
+  &.btn-feedback {
+    background: #fff7ed;
+    color: #c2410c;
+  }
 }
 </style>
-

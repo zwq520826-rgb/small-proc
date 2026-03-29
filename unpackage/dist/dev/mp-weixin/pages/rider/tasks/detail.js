@@ -32,12 +32,13 @@ const _sfc_main = {
         pending_accept: "待接单",
         pending_pickup: "待取货",
         delivering: "配送中",
-        completed: "已送达"
+        completed: "已送达",
+        abnormal: "异常单"
       };
       return map[(_a = task.value) == null ? void 0 : _a.status] || ((_b = task.value) == null ? void 0 : _b.status);
     });
     const statusDesc = common_vendor.computed(() => {
-      var _a, _b, _c, _d;
+      var _a, _b, _c, _d, _e;
       if (((_a = task.value) == null ? void 0 : _a.status) === "pending_accept")
         return "点击下方按钮立即抢单";
       if (((_b = task.value) == null ? void 0 : _b.status) === "pending_pickup")
@@ -46,6 +47,8 @@ const _sfc_main = {
         return "请尽快送达客户手中";
       if (((_d = task.value) == null ? void 0 : _d.status) === "completed")
         return "任务已完成";
+      if (((_e = task.value) == null ? void 0 : _e.status) === "abnormal")
+        return "用户反馈送达照片不符，请重新上传";
       return "";
     });
     const goBack = () => common_vendor.index.navigateBack();
@@ -230,18 +233,22 @@ const _sfc_main = {
       }, task.value.status === "delivering" ? {
         B: common_vendor.o(handleConfirmDelivery, "41"),
         C: common_vendor.o(openCancelPopup, "ea")
+      } : {}, {
+        D: task.value.status === "abnormal"
+      }, task.value.status === "abnormal" ? {
+        E: common_vendor.o(handleConfirmDelivery, "90")
       } : {}) : {}, {
-        D: cancelPopupVisible.value
+        F: cancelPopupVisible.value
       }, cancelPopupVisible.value ? {
-        E: common_vendor.o(onChangeReasonMode, "28"),
-        F: cancelReasonType.value,
-        G: cancelReasonText.value,
-        H: common_vendor.o(($event) => cancelReasonText.value = $event.detail.value, "bb"),
-        I: common_vendor.o(closeCancelPopup, "ca"),
-        J: common_vendor.o(confirmCancel, "c0"),
-        K: common_vendor.o(() => {
-        }, "e7"),
-        L: common_vendor.o(closeCancelPopup, "e0")
+        G: common_vendor.o(onChangeReasonMode, "07"),
+        H: cancelReasonType.value,
+        I: cancelReasonText.value,
+        J: common_vendor.o(($event) => cancelReasonText.value = $event.detail.value, "bd"),
+        K: common_vendor.o(closeCancelPopup, "80"),
+        L: common_vendor.o(confirmCancel, "7a"),
+        M: common_vendor.o(() => {
+        }, "17"),
+        N: common_vendor.o(closeCancelPopup, "56")
       } : {});
     };
   }

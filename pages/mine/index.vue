@@ -121,6 +121,29 @@
       </view>
       </view>
     </uni-popup>
+
+    <uni-popup ref="riderJoinPopup" type="center">
+      <view class="service-popup" @click.stop>
+        <text class="service-popup-title">骑手加群指引</text>
+        <text class="service-popup-subtitle">{{ riderGuide.tip || '扫描二维码添加骑手群' }}</text>
+        <image
+          v-if="riderGuide.qr_file_id"
+          class="rider-guide-qr"
+          :src="riderGuide.qr_file_id"
+          mode="aspectFit"
+          @click="previewRiderGuideQr"
+        />
+        <text v-else class="service-popup-subtitle">暂未配置群二维码，请联系管理员</text>
+        <view class="service-popup-actions">
+          <button
+            v-if="riderJoinMode === 'approved'"
+            class="service-popup-btn primary"
+            @click="enterRiderMode"
+          >已添加，进入骑手端</button>
+          <button class="service-popup-btn ghost" @click="closeRiderJoinPopup">关闭</button>
+        </view>
+      </view>
+    </uni-popup>
     <uni-id-pages-bind-mobile ref="bind-mobile-by-sms" @success="bindMobileSuccess"></uni-id-pages-bind-mobile>
   </scroll-view>
   <TheTabBar />
@@ -182,7 +205,16 @@ const riderService = uniCloud.importObject("rider-service")
         },
         walletStore: null,
         couponCount: 3,
-        servicePhone: '18608945191'
+        servicePhone: '18608945191',
+        riderGuide: {
+          title: '提现请点我的',
+          tip: '扫描二维码添加骑手群',
+          qr_file_id: '',
+          enable: true,
+          recruit_closed: false,
+          recruit_closed_tip: '骑手已招满，待小程序做大做强后会公告扩招。'
+        },
+        riderJoinMode: 'pending'
 			}
 		},
     watch: {
@@ -202,6 +234,7 @@ const riderService = uniCloud.importObject("rider-service")
 			if (this.walletStore) {
 				await this.walletStore.loadFromCloud()
 			}
+			await this.loadRiderGuide()
 		},
 		async onLoad(e) {
 			if (e.showLoginManage) {
@@ -212,8 +245,45 @@ const riderService = uniCloud.importObject("rider-service")
 			this.hasPwd = res.isPasswordSet
 			// 初始化钱包 store
 			this.walletStore = useWalletStore()
+			await this.loadRiderGuide()
 		},
 		methods: {
+			async loadRiderGuide() {
+				try {
+					const res = await riderService.getWithdrawGuide()
+					if (res && res.code === 0 && res.data) {
+						this.riderGuide = {
+							title: res.data.title || '提现请点我的',
+							tip: res.data.tip || '扫描二维码添加骑手群',
+							qr_file_id: res.data.qr_file_id || '',
+							enable: res.data.enable !== false,
+							recruit_closed: res.data.recruit_closed === true,
+							recruit_closed_tip: res.data.recruit_closed_tip || '骑手已招满，待小程序做大做强后会公告扩招。'
+						}
+					}
+				} catch (e) {}
+			},
+			openRiderJoinPopup(mode = 'pending') {
+				this.riderJoinMode = mode
+				this.$refs.riderJoinPopup && this.$refs.riderJoinPopup.open()
+			},
+			closeRiderJoinPopup() {
+				this.$refs.riderJoinPopup && this.$refs.riderJoinPopup.close()
+			},
+			previewRiderGuideQr() {
+				if (!this.riderGuide.qr_file_id) return
+				uni.previewImage({ urls: [this.riderGuide.qr_file_id], current: this.riderGuide.qr_file_id })
+			},
+			enterRiderMode() {
+				this.closeRiderJoinPopup()
+				switchToRider()
+				uni.reLaunch({ 
+					url: '/pages/rider/hall',
+					success: () => {
+						uni.showToast({ title: '已切换到骑手端', icon: 'success', duration: 1500 })
+					}
+				})
+			},
       // 默认昵称：同学 + 长度为 3 的“数字或英文”随机组合，并按 uid 缓存保证稳定展示
 			getDefaultNickname() {
 				const uid = this.userInfo && this.userInfo._id ? String(this.userInfo._id) : ''
@@ -391,8 +461,19 @@ const riderService = uniCloud.importObject("rider-service")
         }
 
         try {
+          await this.loadRiderGuide()
+
           const res = await riderService.getMyProfile()
           const profile = res && res.code === 0 ? res.data : null
+
+          if (this.riderGuide.recruit_closed && (!profile || profile.status !== 'approved')) {
+            uni.showModal({
+              title: '暂停招募',
+              content: this.riderGuide.recruit_closed_tip || '骑手已招满，待小程序做大做强后会公告扩招。',
+              showCancel: false
+            })
+            return
+          }
 
           if (!profile) {
             // 没有资料时，引导去填写认证信息
@@ -400,18 +481,17 @@ const riderService = uniCloud.importObject("rider-service")
             return
           }
 
-          // 取消审核流程：只要有一份资料就视为已通过，直接切换到骑手端
-          switchToRider()
-          uni.reLaunch({ 
-            url: '/pages/rider/hall',
-            success: () => {
-              uni.showToast({
-                title: '已切换到骑手端',
-                icon: 'success',
-                duration: 1500
-              })
+          if (profile.status !== 'approved') {
+            if (profile.status === 'pending') {
+              uni.showToast({ title: '认证审核中，请先加群等待通知', icon: 'none' })
+              this.openRiderJoinPopup('pending')
+            } else {
+              uni.showToast({ title: '认证未通过，请修改资料后重提', icon: 'none' })
+              uni.navigateTo({ url: '/pages/rider/verify' })
             }
-          })
+            return
+          }
+          this.openRiderJoinPopup('approved')
         } catch (e) {
           uni.showToast({ title: '获取认证信息失败，请稍后重试', icon: 'none' })
         }
@@ -704,6 +784,15 @@ const riderService = uniCloud.importObject("rider-service")
     color: #007aff;
     letter-spacing: 2rpx;
     margin-bottom: 36rpx;
+  }
+
+  .rider-guide-qr {
+    width: 320rpx;
+    height: 320rpx;
+    border-radius: 16rpx;
+    border: 2rpx solid #e5e7eb;
+    margin-bottom: 28rpx;
+    background: #f9fafb;
   }
 
   .service-popup-actions {

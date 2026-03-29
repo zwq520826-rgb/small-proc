@@ -31,6 +31,11 @@
       </button>
     </view>
 
+    <view v-if="withdrawGuide.enable" class="guide-entry" @click="openWithdrawGuide">
+      <text class="guide-entry-title">{{ withdrawGuide.title || '提现请点我的' }}</text>
+      <text class="guide-entry-desc">点击查看骑手群二维码，提现问题可在群内联系运营处理</text>
+    </view>
+
     <!-- 交易记录 -->
     <view class="transaction-section">
       <view class="section-header">
@@ -129,6 +134,22 @@
         </button>
       </view>
     </uni-popup>
+
+    <uni-popup ref="guidePopup" type="center">
+      <view class="guide-popup">
+        <text class="guide-popup-title">提现请点我的</text>
+        <text class="guide-popup-tip">{{ withdrawGuide.tip || '扫描二维码添加骑手群' }}</text>
+        <image
+          v-if="withdrawGuide.qr_file_id"
+          class="guide-qr"
+          :src="withdrawGuide.qr_file_id"
+          mode="aspectFit"
+          @click="previewGuideQr"
+        />
+        <view v-else class="guide-empty">暂未上传骑手群二维码，请联系管理员</view>
+        <button class="guide-close" @click="closeWithdrawGuide">我知道了</button>
+      </view>
+    </uni-popup>
   </view>
 </template>
 
@@ -137,16 +158,24 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { isRiderMode } from '@/store/user'
 import { useWalletStore } from '@/store/wallet'
+const riderService = uniCloud.importObject('rider-service')
 
 const walletStore = useWalletStore()
 
 // 弹窗引用
 const withdrawPopup = ref(null)
+const guidePopup = ref(null)
 
 // 提现相关
 const withdrawAmounts = [10, 20, 50, 100, 200]
 const withdrawAmount = ref(0)
 const customWithdrawAmount = ref('')
+const withdrawGuide = ref({
+  title: '提现请点我的',
+  tip: '扫描二维码添加骑手群',
+  qr_file_id: '',
+  enable: true
+})
 
 // 计算属性
 const balance = computed(() => walletStore.balance)
@@ -185,6 +214,35 @@ const showWithdrawPopup = () => {
 
 const closeWithdrawPopup = () => {
   withdrawPopup.value.close()
+}
+
+const openWithdrawGuide = () => {
+  guidePopup.value && guidePopup.value.open()
+}
+
+const closeWithdrawGuide = () => {
+  guidePopup.value && guidePopup.value.close()
+}
+
+const previewGuideQr = () => {
+  if (!withdrawGuide.value.qr_file_id) return
+  uni.previewImage({ urls: [withdrawGuide.value.qr_file_id], current: withdrawGuide.value.qr_file_id })
+}
+
+const loadWithdrawGuide = async () => {
+  try {
+    const res = await riderService.getWithdrawGuide()
+    if (res && res.code === 0 && res.data) {
+      withdrawGuide.value = {
+        title: res.data.title || '提现请点我的',
+        tip: res.data.tip || '扫描二维码添加骑手群',
+        qr_file_id: res.data.qr_file_id || '',
+        enable: res.data.enable !== false
+      }
+    }
+  } catch (e) {
+    // ignore, keep default guide
+  }
 }
 
 const selectWithdrawAmount = (amt) => {
@@ -292,6 +350,7 @@ onShow(async () => {
 
   await walletStore.loadFromCloud()
   await walletStore.getTransactions({ page: 1, pageSize: 20 }, true)
+  await loadWithdrawGuide()
 })
 </script>
 
@@ -382,6 +441,30 @@ onShow(async () => {
   display: flex;
   gap: 24rpx;
   margin: 0 24rpx 24rpx;
+}
+
+.guide-entry {
+  margin: 0 24rpx 24rpx;
+  border-radius: 16rpx;
+  padding: 20rpx 22rpx;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border: 2rpx solid #fdba74;
+  box-shadow: 0 10rpx 24rpx rgba(249, 115, 22, 0.12);
+}
+
+.guide-entry-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #c2410c;
+}
+
+.guide-entry-desc {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  line-height: 1.45;
+  color: #7c2d12;
 }
 
 .action-btn {
@@ -684,5 +767,56 @@ onShow(async () => {
 
 .withdraw-confirm {
   background: #ff6b00;
+}
+
+.guide-popup {
+  width: 620rpx;
+  max-width: calc(100vw - 48rpx);
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 30rpx;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.guide-popup-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #111827;
+}
+
+.guide-popup-tip {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: #4b5563;
+}
+
+.guide-qr {
+  width: 420rpx;
+  height: 420rpx;
+  margin: 24rpx auto 0;
+  border-radius: 14rpx;
+  border: 2rpx solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.guide-empty {
+  margin-top: 20rpx;
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+
+.guide-close {
+  margin-top: 24rpx;
+  width: 100%;
+  height: 84rpx;
+  line-height: 84rpx;
+  border-radius: 999rpx;
+  border: none;
+  background: #111827;
+  color: #ffffff;
+  font-size: 30rpx;
 }
 </style>

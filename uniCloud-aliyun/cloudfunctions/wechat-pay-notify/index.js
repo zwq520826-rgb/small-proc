@@ -12,6 +12,7 @@
 const crypto = require('crypto')
 const fs = require('fs')
 const path = require('path')
+const securityKit = require('./security-kit')
 const db = uniCloud.database()
 const dbCmd = db.command
 const createConfig = require('uni-config-center')
@@ -481,15 +482,40 @@ async function markParentOrderUrgent(parentOrderId, addonOrder = {}) {
 // ====== 主函数 ======
 
 exports.main = async (event, context) => {
-  console.log('收到微信支付回调:', {
-    method: event.method,
-    path: event.path,
-    headers: Object.keys(event.headers || {}),
-    bodyLength: event.body ? event.body.length : 0,
-    isBase64Encoded: event.isBase64Encoded
+  const requestId = securityKit.resolveRequestId({
+    headers: event.headers || {},
+    fallback: (context && (context.requestId || context.request_id)) || ''
+  })
+  const ip = (event && event.requestContext && event.requestContext.sourceIp) ||
+    (event && event.headers && (event.headers['x-forwarded-for'] || event.headers['X-Forwarded-For'])) || ''
+  const logger = securityKit.createLogger({
+    service: 'wechat-pay-notify',
+    api: 'notify',
+    ip,
+    requestId
   })
 
+  const response = (code, message) => ({
+    statusCode: 200,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code, message, requestId })
+  })
+
+  logger.info({ event: 'request_in', method: event.method, path: event.path, bodyLength: event.body ? event.body.length : 0 })
+
   try {
+    const rate = await securityKit.checkRateLimit({
+      service: 'wechat-pay-notify',
+      api: 'notify',
+      ip,
+      uid: '',
+      ipRule: { limit: 600, windowSec: 60 }
+    })
+    if (!rate.allowed) {
+      logger.warn({ event: 'rate_limited', retryAfter: rate.retryAfterSec || 1 })
+      return response('RATE_LIMITED', '请求过于频繁，请稍后重试')
+    }
+
     // 1. 处理请求体（可能是 base64 编码）
     let body = event.body
     if (event.isBase64Encoded) {
@@ -497,14 +523,7 @@ exports.main = async (event, context) => {
     }
 
     if (!body) {
-      return {
-        statusCode: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          code: 'FAIL',
-          message: '请求体为空'
-        })
-      }
+      return response('FAIL', '请求体为空')
     }
 
     // 2. 解析 JSON
@@ -512,14 +531,7 @@ exports.main = async (event, context) => {
     try {
       callbackData = JSON.parse(body)
     } catch (e) {
-      return {
-        statusCode: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          code: 'FAIL',
-          message: '请求体 JSON 解析失败: ' + e.message
-        })
-      }
+      return response('FAIL', '请求体 JSON 解析失败: ' + e.message)
     }
 
     // 3. 读取请求头
@@ -530,15 +542,8 @@ exports.main = async (event, context) => {
     const serialNo = headers['wechatpay-serial'] || headers['Wechatpay-Serial']
 
     if (!signature || !timestamp || !nonce || !serialNo) {
-      console.error('缺少必要的签名头信息:', { signature: !!signature, timestamp: !!timestamp, nonce: !!nonce, serialNo: !!serialNo })
-      return {
-        statusCode: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          code: 'FAIL',
-          message: '缺少必要的签名头信息'
-        })
-      }
+      logger.warn({ event: 'missing_sign_headers', signature: !!signature, timestamp: !!timestamp, nonce: !!nonce, serialNo: !!serialNo })
+      return response('FAIL', '缺少必要的签名头信息')
     }
 
     // 4. 验证签名
@@ -551,46 +556,26 @@ exports.main = async (event, context) => {
     })
 
     if (!isValid) {
-      console.error('签名验证失败')
-      return {
-        statusCode: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          code: 'FAIL',
-          message: '签名验证失败'
-        })
-      }
+      logger.warn({ event: 'signature_verify_failed' })
+      return response('FAIL', '签名验证失败')
     }
 
     // 5. 解密 resource 字段
     const cfg = loadPayConfig()
     if (!callbackData.resource) {
-      return {
-        statusCode: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          code: 'FAIL',
-          message: '缺少 resource 字段'
-        })
-      }
+      return response('FAIL', '缺少 resource 字段')
     }
 
     let decryptedData
     try {
       decryptedData = decryptResource(callbackData.resource, cfg.api_v3_key)
     } catch (e) {
-      console.error('解密失败:', e)
-      return {
-        statusCode: 200,
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          code: 'FAIL',
-          message: '解密失败: ' + e.message
-        })
-      }
+      logger.error({ event: 'decrypt_failed', message: e && e.message })
+      return response('FAIL', '解密失败: ' + e.message)
     }
 
-    console.log('解密后的数据:', {
+    logger.info({
+      event: 'payment_notify_decrypted',
       out_trade_no: decryptedData.out_trade_no,
       trade_state: decryptedData.trade_state,
       transaction_id: decryptedData.transaction_id
@@ -600,24 +585,10 @@ exports.main = async (event, context) => {
     const result = await processPaymentNotification(decryptedData)
 
     // 7. 返回成功应答
-    return {
-      statusCode: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        code: 'SUCCESS',
-        message: result.message || '成功'
-      })
-    }
+    return response('SUCCESS', result.message || '成功')
   } catch (error) {
     // 错误处理：即使失败也返回 200，避免微信重复通知
-    console.error('处理支付回调时出错:', error)
-    return {
-      statusCode: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        code: 'FAIL',
-        message: error.message || '处理失败'
-      })
-    }
+    logger.error({ event: 'notify_process_failed', message: error && error.message })
+    return response('FAIL', error.message || '处理失败')
   }
 }

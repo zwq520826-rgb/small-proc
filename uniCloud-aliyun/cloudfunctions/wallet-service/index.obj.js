@@ -1,5 +1,6 @@
 // 钱包服务云对象
 const uniIdCommon = require('uni-id-common')
+const securityKit = require('./security-kit')
 const db = uniCloud.database()
 const dbCmd = db.command
 
@@ -31,6 +32,10 @@ module.exports = {
 	_before: async function() {
 		// 获取客户端信息
 		this.clientInfo = this.getClientInfo()
+		this.requestId = securityKit.resolveRequestId({
+			headers: (this.clientInfo && this.clientInfo.headers) || {},
+			fallback: this.getUniCloudRequestId ? this.getUniCloudRequestId() : ''
+		})
 		// 解析 token 获取用户 ID
 		const uniIdCommonIns = uniIdCommon.createInstance({
 			clientInfo: this.clientInfo
@@ -49,6 +54,11 @@ module.exports = {
 			this.uid = null
 			this.authInfo = null
 		}
+	},
+
+	_after(error, result) {
+		if (error) throw error
+		return securityKit.withRequestId(result, this.requestId)
 	},
 
 	/**

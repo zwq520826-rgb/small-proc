@@ -51,6 +51,22 @@
   background: #e8f2ff;
   border-bottom: 4rpx solid #1a73e8;
 }
+.tab.danger.data-v-1cb17a62 {
+  color: #b91c1c;
+}
+.danger-count.data-v-1cb17a62 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34rpx;
+  height: 34rpx;
+  border-radius: 999rpx;
+  background: #ef4444;
+  color: #fff;
+  font-size: 20rpx;
+  margin-left: 8rpx;
+  padding: 0 8rpx;
+}
 .task-list.data-v-1cb17a62 {
   display: flex;
   flex-direction: column;
@@ -65,6 +81,28 @@
 .completed-card.data-v-1cb17a62 {
   background: #fafbfc;
   opacity: 0.9;
+}
+.abnormal-card.data-v-1cb17a62 {
+  border: 2rpx solid #fecaca;
+  background: #fff7f7;
+}
+.abnormal-text.data-v-1cb17a62 {
+  font-size: 26rpx;
+  color: #b91c1c;
+  font-weight: 700;
+}
+.abnormal-meta.data-v-1cb17a62 {
+  font-size: 24rpx;
+  color: #b45309;
+  font-weight: 600;
+}
+.danger-tip.data-v-1cb17a62 {
+  margin-bottom: 12rpx;
+  padding: 10rpx 12rpx;
+  border-radius: 10rpx;
+  background: #fff1f2;
+  color: #9f1239;
+  font-size: 24rpx;
 }
 .card-header.data-v-1cb17a62 {
   display: flex;

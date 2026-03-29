@@ -56,7 +56,16 @@ const _sfc_main = {
       },
       walletStore: null,
       couponCount: 3,
-      servicePhone: "18608945191"
+      servicePhone: "18608945191",
+      riderGuide: {
+        title: "提现请点我的",
+        tip: "扫描二维码添加骑手群",
+        qr_file_id: "",
+        enable: true,
+        recruit_closed: false,
+        recruit_closed_tip: "骑手已招满，待小程序做大做强后会公告扩招。"
+      },
+      riderJoinMode: "pending"
     };
   },
   watch: {
@@ -78,6 +87,7 @@ const _sfc_main = {
     if (this.walletStore) {
       await this.walletStore.loadFromCloud();
     }
+    await this.loadRiderGuide();
   },
   async onLoad(e) {
     if (e.showLoginManage) {
@@ -86,8 +96,47 @@ const _sfc_main = {
     let res = await uniIdCo.getAccountInfo();
     this.hasPwd = res.isPasswordSet;
     this.walletStore = store_wallet.useWalletStore();
+    await this.loadRiderGuide();
   },
   methods: {
+    async loadRiderGuide() {
+      try {
+        const res = await riderService.getWithdrawGuide();
+        if (res && res.code === 0 && res.data) {
+          this.riderGuide = {
+            title: res.data.title || "提现请点我的",
+            tip: res.data.tip || "扫描二维码添加骑手群",
+            qr_file_id: res.data.qr_file_id || "",
+            enable: res.data.enable !== false,
+            recruit_closed: res.data.recruit_closed === true,
+            recruit_closed_tip: res.data.recruit_closed_tip || "骑手已招满，待小程序做大做强后会公告扩招。"
+          };
+        }
+      } catch (e) {
+      }
+    },
+    openRiderJoinPopup(mode = "pending") {
+      this.riderJoinMode = mode;
+      this.$refs.riderJoinPopup && this.$refs.riderJoinPopup.open();
+    },
+    closeRiderJoinPopup() {
+      this.$refs.riderJoinPopup && this.$refs.riderJoinPopup.close();
+    },
+    previewRiderGuideQr() {
+      if (!this.riderGuide.qr_file_id)
+        return;
+      common_vendor.index.previewImage({ urls: [this.riderGuide.qr_file_id], current: this.riderGuide.qr_file_id });
+    },
+    enterRiderMode() {
+      this.closeRiderJoinPopup();
+      store_user.switchToRider();
+      common_vendor.index.reLaunch({
+        url: "/pages/rider/hall",
+        success: () => {
+          common_vendor.index.showToast({ title: "已切换到骑手端", icon: "success", duration: 1500 });
+        }
+      });
+    },
     // 默认昵称：同学 + 长度为 3 的“数字或英文”随机组合，并按 uid 缓存保证稳定展示
     getDefaultNickname() {
       const uid = this.userInfo && this.userInfo._id ? String(this.userInfo._id) : "";
@@ -239,23 +288,32 @@ const _sfc_main = {
         return;
       }
       try {
+        await this.loadRiderGuide();
         const res = await riderService.getMyProfile();
         const profile = res && res.code === 0 ? res.data : null;
+        if (this.riderGuide.recruit_closed && (!profile || profile.status !== "approved")) {
+          common_vendor.index.showModal({
+            title: "暂停招募",
+            content: this.riderGuide.recruit_closed_tip || "骑手已招满，待小程序做大做强后会公告扩招。",
+            showCancel: false
+          });
+          return;
+        }
         if (!profile) {
           common_vendor.index.navigateTo({ url: "/pages/rider/verify" });
           return;
         }
-        store_user.switchToRider();
-        common_vendor.index.reLaunch({
-          url: "/pages/rider/hall",
-          success: () => {
-            common_vendor.index.showToast({
-              title: "已切换到骑手端",
-              icon: "success",
-              duration: 1500
-            });
+        if (profile.status !== "approved") {
+          if (profile.status === "pending") {
+            common_vendor.index.showToast({ title: "认证审核中，请先加群等待通知", icon: "none" });
+            this.openRiderJoinPopup("pending");
+          } else {
+            common_vendor.index.showToast({ title: "认证未通过，请修改资料后重提", icon: "none" });
+            common_vendor.index.navigateTo({ url: "/pages/rider/verify" });
           }
-        });
+          return;
+        }
+        this.openRiderJoinPopup("approved");
       } catch (e) {
         common_vendor.index.showToast({ title: "获取认证信息失败，请稍后重试", icon: "none" });
       }
@@ -400,8 +458,25 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     O: common_vendor.p({
       type: "center"
     }),
-    P: common_vendor.sr("bind-mobile-by-sms", "569e925a-4"),
-    Q: common_vendor.o($options.bindMobileSuccess, "5d")
+    P: common_vendor.t($data.riderGuide.tip || "扫描二维码添加骑手群"),
+    Q: $data.riderGuide.qr_file_id
+  }, $data.riderGuide.qr_file_id ? {
+    R: $data.riderGuide.qr_file_id,
+    S: common_vendor.o((...args) => $options.previewRiderGuideQr && $options.previewRiderGuideQr(...args), "1a")
+  } : {}, {
+    T: $data.riderJoinMode === "approved"
+  }, $data.riderJoinMode === "approved" ? {
+    U: common_vendor.o((...args) => $options.enterRiderMode && $options.enterRiderMode(...args), "70")
+  } : {}, {
+    V: common_vendor.o((...args) => $options.closeRiderJoinPopup && $options.closeRiderJoinPopup(...args), "c4"),
+    W: common_vendor.o(() => {
+    }, "3c"),
+    X: common_vendor.sr("riderJoinPopup", "569e925a-4"),
+    Y: common_vendor.p({
+      type: "center"
+    }),
+    Z: common_vendor.sr("bind-mobile-by-sms", "569e925a-5"),
+    aa: common_vendor.o($options.bindMobileSuccess, "63")
   });
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-569e925a"]]);

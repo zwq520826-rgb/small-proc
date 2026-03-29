@@ -2,12 +2,17 @@
 
 // 引入 uni-id-common
 const uniID = require('uni-id-common')
+const securityKit = require('./security-kit')
 const db = uniCloud.database()
 const dbCmd = db.command
 const ORDER_CLASS = {
 	NORMAL: 'normal',
 	URGENT_ADDON: 'urgent_addon'
 }
+const ORDER_STATUS = {
+	ABNORMAL: 'abnormal'
+}
+const FEEDBACK_LIMIT = 3
 const HALL_TASK_FIELD_PROJECTION = {
 	_id: 1,
 	type: 1,
@@ -48,12 +53,18 @@ const MY_TASK_FIELD_PROJECTION = {
 	'content.isDelivery': 1,
 	'content.requiredRiderGender': 1,
 	'content.rider_income': 1,
+	'content.pending_redelivery_upload': 1,
 	tags: 1,
 	rider_id: 1,
 	user_id: 1,
 	accept_time: 1,
 	pickup_time: 1,
-	complete_time: 1
+	complete_time: 1,
+	photo_feedback_count: 1,
+	need_customer_service: 1,
+	abnormal_reason: 1,
+	abnormal_remark: 1,
+	abnormal_time: 1
 }
 
 function pad2(n) {
@@ -170,6 +181,51 @@ function normalizeAmount(val) {
 	return Math.round(n * 100) / 100
 }
 
+const RATE_LIMIT_RULES = {
+	getOrderList: {
+		ipRule: { limit: 120, windowSec: 60 },
+		uidRule: { limit: 60, windowSec: 60 }
+	},
+	getHallTasks: {
+		ipRule: { limit: 120, windowSec: 60 },
+		uidRule: { limit: 60, windowSec: 60 }
+	},
+	getMyTasks: {
+		ipRule: { limit: 120, windowSec: 60 },
+		uidRule: { limit: 60, windowSec: 60 }
+	},
+	getRiderDashboard: {
+		ipRule: { limit: 80, windowSec: 60 },
+		uidRule: { limit: 40, windowSec: 60 }
+	},
+	reportWrongDeliveryPhoto: {
+		ipRule: { limit: 30, windowSec: 60 },
+		uidRule: { limit: 10, windowSec: 60 }
+	},
+	reportDeliveryIssue: {
+		ipRule: { limit: 30, windowSec: 60 },
+		uidRule: { limit: 10, windowSec: 60 }
+	}
+}
+
+async function enforceRateLimit(ctx, apiName) {
+	const rule = RATE_LIMIT_RULES[apiName]
+	if (!rule) return null
+	const hit = await securityKit.checkRateLimit({
+		service: 'order-service',
+		api: apiName,
+		ip: ctx.clientIP || '',
+		uid: ctx.uid || '',
+		ipRule: rule.ipRule,
+		uidRule: rule.uidRule
+	})
+	if (hit.allowed) return null
+	return securityKit.rateLimitedError({
+		requestId: ctx.requestId,
+		retryAfterSec: hit.retryAfterSec || 1
+	})
+}
+
 async function getRiderStatsByUid(uid) {
 	const profileRes = await db.collection('rider_profiles')
 		.where({ user_id: uid })
@@ -277,6 +333,11 @@ module.exports = {
 	async _before() {
 		// 获取客户端信息
 		const clientInfo = this.getClientInfo()
+		this.clientIP = clientInfo.clientIP || ''
+		this.requestId = securityKit.resolveRequestId({
+			headers: (clientInfo && clientInfo.headers) || {},
+			fallback: this.getUniCloudRequestId ? this.getUniCloudRequestId() : ''
+		})
 		
 		// 创建 uni-id 实例
 		this.uniID = uniID.createInstance({
@@ -306,6 +367,17 @@ module.exports = {
 			this.uid = null
 			this.authInfo = null
 		}
+		this.logger = securityKit.createLogger({
+			service: 'order-service',
+			uid: this.uid || '',
+			ip: this.clientIP,
+			requestId: this.requestId
+		})
+	},
+
+	_after(error, result) {
+		if (error) throw error
+		return securityKit.withRequestId(result, this.requestId)
 	},
 
 	/**
@@ -492,6 +564,8 @@ module.exports = {
 	 * @returns {object} 订单列表
 	 */
 	async getOrderList(params = {}) {
+		const limitErr = await enforceRateLimit(this, 'getOrderList')
+		if (limitErr) return limitErr
 		const authResult = checkAuth(this)
 		if (authResult.code) {
 			return authResult
@@ -1134,6 +1208,8 @@ module.exports = {
 	 * 目的：减少前端首屏多次云函数调用
 	 */
 	async getRiderDashboard(params = {}) {
+		const limitErr = await enforceRateLimit(this, 'getRiderDashboard')
+		if (limitErr) return limitErr
 		const authResult = checkAuth(this)
 		if (authResult.code) {
 			return authResult
@@ -1193,6 +1269,8 @@ module.exports = {
 	 * @returns {object} 任务列表
 	 */
 	async getHallTasks(params = {}) {
+		const limitErr = await enforceRateLimit(this, 'getHallTasks')
+		if (limitErr) return limitErr
 		const authResult = checkAuth(this)
 		if (authResult.code) {
 			return authResult
@@ -1286,28 +1364,36 @@ module.exports = {
 				}
 			}
 
+			// 骑手资质检查：必须管理员审核通过后才可接单
+			const riderProfileRes = await db.collection('rider_profiles')
+				.where({ user_id: uid })
+				.limit(1)
+				.get()
+			if (!riderProfileRes.data.length) {
+				return {
+					code: 'NO_RIDER_PROFILE',
+					message: '请先提交骑手认证资料'
+				}
+			}
+			const riderProfile = riderProfileRes.data[0] || {}
+			if (riderProfile.status !== 'approved') {
+				if (riderProfile.status === 'pending') {
+					return {
+						code: 'RIDER_NOT_APPROVED',
+						message: '骑手认证审核中，请等待管理员通过后接单'
+					}
+				}
+				return {
+					code: 'RIDER_NOT_APPROVED',
+					message: '骑手认证未通过，请联系管理员'
+				}
+			}
+
 			// 如果是送货上门订单，校验骑手性别是否符合要求
 			const isDelivery = !!(order.content && order.content.isDelivery)
 			const requiredGender = order.content && order.content.requiredRiderGender
 
 			if (isDelivery && requiredGender) {
-				// 查询骑手认证资料
-				const riderProfileRes = await db.collection('rider_profiles')
-					.where({
-						user_id: uid,
-						status: 'approved'
-					})
-					.limit(1)
-					.get()
-
-				if (!riderProfileRes.data.length) {
-					return {
-						code: 'NO_RIDER_PROFILE',
-						message: '请先完成骑手认证后再接送货上门订单'
-					}
-				}
-
-				const riderProfile = riderProfileRes.data[0] || {}
 				const riderGender = riderProfile.gender // male / female
 
 				if (!riderGender) {
@@ -1369,6 +1455,8 @@ module.exports = {
 	 * @returns {object} 任务列表
 	 */
 	async getMyTasks(params = {}) {
+		const limitErr = await enforceRateLimit(this, 'getMyTasks')
+		if (limitErr) return limitErr
 		const authResult = checkAuth(this)
 		if (authResult.code) {
 			return authResult
@@ -1527,32 +1615,48 @@ module.exports = {
 				}
 			}
 
-			// 检查订单状态：必须是配送中状态
-			if (order.status !== 'delivering') {
+			// 检查订单状态：配送中 或 异常单都允许上传送达凭证
+			if (!['delivering', ORDER_STATUS.ABNORMAL].includes(order.status)) {
 				return {
 					code: 'INVALID_STATUS',
 					message: '订单状态不正确，无法确认送达'
 				}
 			}
 
-			// 更新订单：完成订单，记录完成时间和送达凭证
-			await db.collection('orders')
-				.doc(orderId)
-				.update({
-					status: 'completed',
-					complete_time: Date.now(),
-					'content.delivery_images': images
-				})
+			const now = Date.now()
 
-			await incDashboardMetrics({ completedInc: 1 })
+			if (order.status === 'delivering') {
+				// 首次送达：完成订单，记录完成时间和送达凭证
+				await db.collection('orders')
+					.doc(orderId)
+					.update({
+						status: 'completed',
+						complete_time: now,
+						'content.delivery_images': images,
+						'content.pending_redelivery_upload': false
+					})
 
-			// 调用骑手服务，更新累计单数和等级抽成，并给骑手入账
-			try {
-				const riderService = uniCloud.importObject('rider-service')
-				await riderService.afterOrderCompleted(orderId, order.rider_id, order.price)
-			} catch (e) {
-				console.error('调用骑手结算服务失败:', e)
-				// 不影响送达成功本身，只记录错误日志
+				await incDashboardMetrics({ completedInc: 1 })
+
+				// 调用骑手服务，更新累计单数和等级抽成，并给骑手入账
+				try {
+					const riderService = uniCloud.importObject('rider-service')
+					await riderService.afterOrderCompleted(orderId, order.rider_id, order.price)
+				} catch (e) {
+					console.error('调用骑手结算服务失败:', e)
+					// 不影响送达成功本身，只记录错误日志
+				}
+			} else {
+				// 异常单重传送达图：恢复为已完成，不重复结算
+				await db.collection('orders')
+					.doc(orderId)
+					.update({
+						status: 'completed',
+						'content.delivery_images': images,
+						'content.pending_redelivery_upload': false,
+						abnormal_resolved_time: now,
+						update_time: now
+					})
 			}
 
 			return {
@@ -1566,6 +1670,116 @@ module.exports = {
 				message: '确认送达失败：' + error.message
 			}
 		}
+	},
+
+	/**
+	 * 用户提交配送异常反馈（需备注说明）
+	 * - 同一订单可多次反馈
+	 * - 反馈次数达到阈值后，自动生成客服介入单并禁止继续反馈
+	 */
+	async reportWrongDeliveryPhoto({ orderId, reason = '' } = {}) {
+		const limitErr = await enforceRateLimit(this, 'reportWrongDeliveryPhoto')
+		if (limitErr) return limitErr
+		const authResult = checkAuth(this)
+		if (authResult.code) return authResult
+		const uid = authResult.uid
+		const reasonText = String(reason || '').trim().slice(0, 120)
+
+		if (!orderId) {
+			return { code: 'INVALID_PARAM', message: 'orderId 不能为空' }
+		}
+		if (!reasonText) {
+			return { code: 'INVALID_PARAM', message: '请填写异常备注说明' }
+		}
+
+		try {
+			const orderRes = await db.collection('orders').doc(orderId).get()
+			if (!orderRes.data || !orderRes.data.length) {
+				return { code: 'NOT_FOUND', message: '订单不存在' }
+			}
+			const order = orderRes.data[0]
+			if (order.user_id !== uid) {
+				return { code: 'NO_PERMISSION', message: '无权反馈此订单' }
+			}
+			if (!['completed', ORDER_STATUS.ABNORMAL].includes(order.status)) {
+				return { code: 'INVALID_STATUS', message: '当前订单状态不支持异常反馈' }
+			}
+
+			const prevCount = Number(order.photo_feedback_count || 0)
+			if (prevCount >= FEEDBACK_LIMIT) {
+				return {
+					code: 'CUSTOMER_SERVICE_REQUIRED',
+					message: '该订单已触发客服介入，请联系客服处理',
+					data: {
+						feedbackCount: prevCount,
+						limit: FEEDBACK_LIMIT,
+						contactRequired: true
+					}
+				}
+			}
+
+			const now = Date.now()
+			const nextCount = prevCount + 1
+			const needCS = nextCount >= FEEDBACK_LIMIT
+			const feedbackLog = {
+				time: now,
+				by: uid,
+				reason: reasonText
+			}
+
+			await db.collection('orders').doc(orderId).update({
+				status: ORDER_STATUS.ABNORMAL,
+				abnormal_reason: 'delivery_issue',
+				abnormal_remark: reasonText,
+				abnormal_time: now,
+				photo_feedback_count: nextCount,
+				photo_feedback_last_time: now,
+				need_customer_service: needCS,
+				'content.pending_redelivery_upload': !needCS,
+				'content.delivery_feedback_logs': dbCmd.push(feedbackLog),
+				update_time: now
+			})
+
+			if (needCS) {
+				await db.collection('customer_service_interventions').doc(orderId).set({
+					order_id: orderId,
+					user_id: order.user_id,
+					rider_id: order.rider_id || '',
+					type: 'delivery_issue',
+					status: 'open',
+					feedback_count: nextCount,
+					latest_reason: feedbackLog.reason,
+					latest_feedback_time: now,
+					create_time: now,
+					update_time: now
+				})
+			}
+
+			return {
+				code: 0,
+				message: needCS
+					? '反馈次数已达上限，请联系客服处理，系统已生成介入单'
+					: '反馈成功，已通知骑手处理异常并重新上传送达凭证',
+				data: {
+					feedbackCount: nextCount,
+					limit: FEEDBACK_LIMIT,
+					contactRequired: needCS
+				}
+			}
+		} catch (error) {
+			console.error('提交配送异常反馈失败:', error)
+			return {
+				code: 'DB_ERROR',
+				message: '反馈失败：' + error.message
+			}
+		}
+	},
+
+	/**
+	 * 别名：reportDeliveryIssue -> 复用异常反馈逻辑
+	 */
+	async reportDeliveryIssue({ orderId, reason = '' } = {}) {
+		return this.reportWrongDeliveryPhoto({ orderId, reason })
 	},
 
   /**
@@ -1602,6 +1816,10 @@ module.exports = {
    * 新增地址
    */
   async addAddress (addressData) {
+		const flags = await securityKit.getRuntimeFlags()
+		if (flags.degrade_non_core_write) {
+			return { code: 'DEGRADED', message: '当前处于降级模式，请稍后再试' }
+		}
     const authResult = checkAuth(this)
     if (authResult.code) {
       return authResult
@@ -1652,6 +1870,10 @@ module.exports = {
    * 更新地址
    */
   async updateAddress (id, addressData = {}) {
+		const flags = await securityKit.getRuntimeFlags()
+		if (flags.degrade_non_core_write) {
+			return { code: 'DEGRADED', message: '当前处于降级模式，请稍后再试' }
+		}
     const authResult = checkAuth(this)
     if (authResult.code) {
       return authResult
@@ -1701,6 +1923,10 @@ module.exports = {
    * 删除地址
    */
   async deleteAddress (id) {
+		const flags = await securityKit.getRuntimeFlags()
+		if (flags.degrade_non_core_write) {
+			return { code: 'DEGRADED', message: '当前处于降级模式，请稍后再试' }
+		}
     const authResult = checkAuth(this)
     if (authResult.code) {
       return authResult
@@ -1732,6 +1958,10 @@ module.exports = {
    * 设置默认地址
    */
   async setDefaultAddress (id) {
+		const flags = await securityKit.getRuntimeFlags()
+		if (flags.degrade_non_core_write) {
+			return { code: 'DEGRADED', message: '当前处于降级模式，请稍后再试' }
+		}
     const authResult = checkAuth(this)
     if (authResult.code) {
       return authResult
@@ -1802,6 +2032,18 @@ module.exports = {
    */
   async getHomeContent () {
     try {
+			const flags = await securityKit.getRuntimeFlags()
+			if (flags.degrade_home_read) {
+				return {
+					code: 0,
+					message: '首页已降级为缓存模式',
+					data: {
+						heroes: [],
+						announcements: []
+					}
+				}
+			}
+
       const heroRes = await db.collection('home_hero')
         .where(dbCmd.or([{ enabled: true }, { enabled: dbCmd.exists(false) }]))
         .orderBy('sort', 'asc')

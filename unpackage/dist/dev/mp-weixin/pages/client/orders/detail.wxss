@@ -48,6 +48,9 @@
 .status-header.cancelled.data-v-00b5e79f {
   background: linear-gradient(135deg, #999999 0%, #bdbdbd 100%);
 }
+.status-header.abnormal.data-v-00b5e79f {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+}
 .status-title.data-v-00b5e79f {
   display: block;
   font-size: 40rpx;
@@ -84,6 +87,32 @@
 .illegal-value.data-v-00b5e79f {
   font-size: 26rpx;
   color: #333;
+}
+.abnormal-reminder-card.data-v-00b5e79f {
+  margin: 20rpx 24rpx 0;
+  background: #fff1f2;
+  border: 1rpx solid #fecdd3;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+.abnormal-title.data-v-00b5e79f {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #be123c;
+  margin-bottom: 12rpx;
+}
+.abnormal-row.data-v-00b5e79f {
+  margin-bottom: 8rpx;
+}
+.abnormal-label.data-v-00b5e79f {
+  font-size: 26rpx;
+  color: #9f1239;
+  font-weight: 600;
+}
+.abnormal-value.data-v-00b5e79f {
+  font-size: 26rpx;
+  color: #4c0519;
 }
 
 /* Timeline Section */
@@ -377,4 +406,8 @@
 .action-btn.btn-delete.data-v-00b5e79f {
   background: #ffebee;
   color: #e53935;
+}
+.action-btn.btn-feedback.data-v-00b5e79f {
+  background: #fff7ed;
+  color: #c2410c;
 }

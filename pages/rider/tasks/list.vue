@@ -5,10 +5,11 @@
       v-for="(item, index) in tabs"
       :key="item.value"
       class="tab"
-      :class="{ active: index === currentTab }"
+      :class="{ active: index === currentTab, danger: item.value === 'abnormal' }"
       @click="currentTab = index"
     >
       {{ item.label }}
+      <text v-if="item.value === 'abnormal' && abnormalCount > 0" class="danger-count">{{ abnormalCount }}</text>
     </view>
   </view>
 
@@ -143,6 +144,31 @@
         </view>
       </view>
     </view>
+
+    <!-- 异常单 -->
+    <view v-if="currentTab === 3" class="task-list">
+      <view v-for="task in taskList" :key="task.id" class="card abnormal-card" @click="goTaskDetail(task)">
+        <view class="card-header">
+          <view class="route">
+            <text class="delivery">{{ task.delivery }}</text>
+          </view>
+          <text class="abnormal-text">异常单</text>
+        </view>
+
+        <view class="info-row">
+          <text class="type">{{ task.type === 'pickup' ? '快递代取' : '跑腿服务' }}</text>
+          <text class="abnormal-meta">反馈 {{ Number(task.photo_feedback_count || 0) }} 次</text>
+        </view>
+
+        <view class="danger-tip">
+          <text>{{ task.abnormal_remark ? `用户反馈：${task.abnormal_remark}` : '用户提交了异常反馈，请处理并重新上传送达凭证。' }}</text>
+        </view>
+
+        <view class="actions">
+          <button class="deliver-btn" @click.stop="confirmDelivery(task)">重新上传送达图</button>
+        </view>
+      </view>
+    </view>
   </view>
   <TheTabBar />
 </template>
@@ -156,13 +182,16 @@ import { buildVisualTags } from '@/utils/orderTags'
 
 // 【修改点2】初始化 store
 const store = useRiderTaskStore()
-const currentTab = ref(0) // 0: 待取货, 1: 配送中, 2: 已送达
+const currentTab = ref(0) // 0: 待取货, 1: 配送中, 2: 已送达, 3: 异常单
 
 const tabs = [
   { label: '待取货', value: 'pending_pickup' },
   { label: '配送中', value: 'delivering' },
-  { label: '已送达', value: 'completed' }
+  { label: '已送达', value: 'completed' },
+  { label: '异常单', value: 'abnormal' }
 ]
+
+const abnormalCount = computed(() => store.tasksByStatus('abnormal').length)
 
 let pulling = false
 let pageRefreshing = false
@@ -203,7 +232,7 @@ onPullDownRefresh(async () => {
 // 【修改点3】重写列表获取逻辑
 const taskList = computed(() => {
   // 状态映射数组，对应 currentTab 的 0, 1, 2
-  const statusKeys = ['pending_pickup', 'delivering', 'completed']
+  const statusKeys = ['pending_pickup', 'delivering', 'completed', 'abnormal']
   const currentStatus = statusKeys[currentTab.value]
 
   // 直接调用 store 的 getter 获取数据
@@ -252,7 +281,8 @@ const taskList = computed(() => {
 const statusMap = {
   pending_pickup: '待取货',
   delivering: '配送中',
-  completed: '已送达'
+  completed: '已送达',
+  abnormal: '异常单'
 }
 
 // 从 address 字段中提取电话（兼容旧数据）
@@ -382,7 +412,7 @@ const confirmDelivery = (task) => {
         if (success) {
           uni.showToast({ title: '送达确认成功', icon: 'success' })
           // 自动切到已送达 Tab
-          if (currentTab.value === 1) {
+          if (currentTab.value === 1 || currentTab.value === 3) {
             setTimeout(() => {
               currentTab.value = 2
             }, 500)
@@ -473,6 +503,24 @@ const formatTime = (timestamp) => {
   border-bottom: 4rpx solid #1a73e8;
 }
 
+.tab.danger {
+  color: #b91c1c;
+}
+
+.danger-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34rpx;
+  height: 34rpx;
+  border-radius: 999rpx;
+  background: #ef4444;
+  color: #fff;
+  font-size: 20rpx;
+  margin-left: 8rpx;
+  padding: 0 8rpx;
+}
+
 .task-list {
   display: flex;
   flex-direction: column;
@@ -489,6 +537,32 @@ const formatTime = (timestamp) => {
 .completed-card {
   background: #fafbfc;
   opacity: 0.9;
+}
+
+.abnormal-card {
+  border: 2rpx solid #fecaca;
+  background: #fff7f7;
+}
+
+.abnormal-text {
+  font-size: 26rpx;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.abnormal-meta {
+  font-size: 24rpx;
+  color: #b45309;
+  font-weight: 600;
+}
+
+.danger-tip {
+  margin-bottom: 12rpx;
+  padding: 10rpx 12rpx;
+  border-radius: 10rpx;
+  background: #fff1f2;
+  color: #9f1239;
+  font-size: 24rpx;
 }
 
 .card-header {

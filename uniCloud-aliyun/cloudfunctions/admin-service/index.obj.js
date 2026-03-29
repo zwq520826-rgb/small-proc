@@ -6,6 +6,7 @@
  */
 const uniIdCommon = require('uni-id-common')
 const crypto = require('crypto')
+const securityKit = require('./security-kit')
 const db = uniCloud.database()
 const dbCmd = db.command
 
@@ -17,6 +18,27 @@ const DASHBOARD_COUNTERS_COLLECTION = 'dashboard_counters'
 
 const ADMIN_LOCAL_UID = 'admin-local-account'
 const ADMIN_REGISTER_LIMIT = 2
+
+const ADMIN_LOGIN_RATE_RULE = {
+	ipRule: { limit: 5, windowSec: 300 },
+	uidRule: null
+}
+
+async function enforceAdminLoginRateLimit(ctx) {
+	const hit = await securityKit.checkRateLimit({
+		service: 'admin-service',
+		api: 'adminLoginByPassword',
+		ip: ctx.clientIP || '',
+		uid: '',
+		ipRule: ADMIN_LOGIN_RATE_RULE.ipRule,
+		uidRule: ADMIN_LOGIN_RATE_RULE.uidRule
+	})
+	if (hit.allowed) return null
+	return securityKit.rateLimitedError({
+		requestId: ctx.requestId,
+		retryAfterSec: hit.retryAfterSec || 1
+	})
+}
 
 function pad2(n) {
 	return String(n).padStart(2, '0')
@@ -208,6 +230,30 @@ async function writeCleanupSettings(ttlDays) {
 	return { ttl_days: ttlDays, updated_at: now }
 }
 
+async function cleanupLegacyRiderMenusInDb() {
+	const labels = ['骑手认证', '骑手流水']
+	const targets = [
+		{ coll: 'opendb-admin-menus', nameField: 'name' },
+		{ coll: 'opendb-admin-menus', nameField: 'title' },
+		{ coll: 'uni-id-permissions', nameField: 'permission_name' },
+		{ coll: 'uni-id-permissions', nameField: 'comment' }
+	]
+
+	let affected = 0
+	for (const t of targets) {
+		for (const label of labels) {
+			try {
+				const res = await db.collection(t.coll).where({ [t.nameField]: label }).remove()
+				affected += Number((res && (res.deleted || res.affectedDocs || res.removed)) || 0)
+			} catch (e) {
+				// 集合不存在/字段不存在时忽略，兼容不同后台版本
+			}
+		}
+	}
+
+	return affected
+}
+
 function extractFileIds(order) {
 	const ids = new Set()
 	const paths = [
@@ -322,7 +368,24 @@ async function getRecentDailyStats(ymd, days = 7) {
 
 module.exports = {
 	_before: async function () {
+		const clientInfo = this.getClientInfo()
+		this.clientIP = clientInfo.clientIP || ''
+		this.requestId = securityKit.resolveRequestId({
+			headers: (clientInfo && clientInfo.headers) || {},
+			fallback: this.getUniCloudRequestId ? this.getUniCloudRequestId() : ''
+		})
 		this.uid = await initAuth(this)
+		this.logger = securityKit.createLogger({
+			service: 'admin-service',
+			uid: this.uid || '',
+			ip: this.clientIP,
+			requestId: this.requestId
+		})
+	},
+
+	_after(error, result) {
+		if (error) throw error
+		return securityKit.withRequestId(result, this.requestId)
 	},
 
 	/**
@@ -341,6 +404,30 @@ module.exports = {
 	async getDashboard({ date } = {}) {
 		const auth = await assertAdmin(this.uid)
 		if (auth.code !== 0) return auth
+		const flags = await securityKit.getRuntimeFlags()
+		if (flags.degrade_dashboard_read) {
+			const counters = await readOrderCounters()
+			return {
+				code: 0,
+				message: '看板已降级为缓存模式',
+				data: {
+					date: date || formatYMD(new Date()),
+					order_count: 0,
+					paid_order_count: 0,
+					gmv: 0,
+					total_order_all_time: Number(counters.total_order_count || 0),
+					total_paid_order_all_time: Number(counters.total_paid_order_count || 0),
+					total_completed_order_all_time: Number(counters.total_completed_order_count || 0),
+					status_distribution: [],
+					type_distribution: [],
+					income_trend_7d: [],
+					order_trend_7d: [],
+					paid_order_trend_7d: [],
+					rider_rank_7d: [],
+					hourly: []
+				}
+			}
+		}
 
 		const { start, end, startMs, endMs } = date ? getDayRange(date) : getDayRange()
 		const ymd = formatYMD(start)
@@ -829,6 +916,85 @@ module.exports = {
 	},
 
 	/**
+	 * 客服介入单列表（由订单送达照片反馈达到阈值自动生成）
+	 */
+	async listInterventionOrders({ status = 'open', page = 1, pageSize = 20 } = {}) {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+
+		const p = Math.max(1, parseInt(page, 10) || 1)
+		const ps = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20))
+		const skip = (p - 1) * ps
+
+		const cond = {}
+		if (status && status !== 'all') {
+			cond.status = status
+		}
+
+		const coll = db.collection('customer_service_interventions')
+		const totalRes = await coll.where(cond).count()
+		const listRes = await coll
+			.where(cond)
+			.orderBy('update_time', 'desc')
+			.skip(skip)
+			.limit(ps)
+			.get()
+
+		return {
+			code: 0,
+			data: {
+				list: listRes.data || [],
+				total: Number(totalRes.total || 0),
+				page: p,
+				pageSize: ps
+			}
+		}
+	},
+
+	/**
+	 * 处理客服介入单（标记处理中/已解决）
+	 */
+	async updateInterventionOrder({ id, status, admin_remark = '' } = {}) {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+		if (!id) return { code: 400, message: '缺少 id' }
+		if (!['open', 'processing', 'resolved'].includes(status)) {
+			return { code: 400, message: 'status 需为 open/processing/resolved' }
+		}
+
+		const now = Date.now()
+		const payload = {
+			status,
+			update_time: now,
+			handled_by_uid: this.uid
+		}
+		if (admin_remark) payload.admin_remark = String(admin_remark).slice(0, 200)
+
+		const res = await db.collection('customer_service_interventions').doc(id).update(payload)
+		if (!res || !res.updated) {
+			return { code: 404, message: '未找到介入单' }
+		}
+
+		// 同步回订单（解除客服介入标记）
+		if (status === 'resolved') {
+			try {
+				const rowRes = await db.collection('customer_service_interventions').doc(id).get()
+				const row = Array.isArray(rowRes.data) ? rowRes.data[0] : rowRes.data
+				if (row && row.order_id) {
+					await db.collection('orders').doc(row.order_id).update({
+						need_customer_service: false,
+						update_time: now
+					})
+				}
+			} catch (e) {
+				console.warn('[admin-service] sync order intervention flag failed:', e.message)
+			}
+		}
+
+		return { code: 0, message: '已更新' }
+	},
+
+	/**
 	 * 读取 daily_stats 区间（用于图表）
 	 */
 	async getDailyStatsRange({ startDate, endDate } = {}) {
@@ -961,9 +1127,11 @@ module.exports = {
 		const ps = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20))
 		const skip = (p - 1) * ps
 
-		const cond = {}
+		let cond = {
+			status: dbCmd.in(['pending', 'rejected'])
+		}
 		if (status && ['pending', 'approved', 'rejected'].includes(status)) {
-			cond.status = status
+			cond = { status }
 		}
 
 		const col = db.collection('rider_profiles')
@@ -1000,24 +1168,104 @@ module.exports = {
 		const cur = await db.collection('rider_profiles').doc(id).get()
 		const row0 = Array.isArray(cur.data) ? cur.data[0] : cur.data
 		if (!row0) return { code: 404, message: '未找到认证记录' }
-		if (row0.status !== 'pending') {
-			return { code: 400, message: '仅待审核状态可操作' }
-		}
-
 		const now = Date.now()
 		await db.collection('rider_profiles').doc(id).update({
 			status,
 			remark: remark || (status === 'approved' ? '已通过' : '未通过'),
 			update_time: now
 		})
+
+		if (status !== 'approved' && row0.user_id) {
+			try {
+				const uRes = await db.collection('uni-id-users').doc(row0.user_id).get()
+				const user0 = Array.isArray(uRes.data) ? uRes.data[0] : uRes.data
+				if (user0 && Array.isArray(user0.role) && user0.role.includes('rider')) {
+					await db.collection('uni-id-users').doc(row0.user_id).update({
+						role: user0.role.filter((r) => r !== 'rider'),
+						update_date: now
+					})
+				}
+			} catch (e) {
+				console.warn('[admin-service] remove rider role failed:', e.message)
+			}
+		}
 		return { code: 0, message: '已更新' }
 	},
 
 	/**
-	 * 骑手认证资料 + 钱包（余额、冻结、累计收支）
+	 * 从「骑手与余额」页取消骑手身份
+	 * - 本质上将 rider_profiles.status 置为 rejected
+	 * - 同时移除 uni-id-users.role 中的 rider 标记（若存在）
+	 */
+	async revokeRiderIdentity({ profileId, userId, remark = '' } = {}) {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+
+		let profile = null
+		if (profileId) {
+			const cur = await db.collection('rider_profiles').doc(profileId).get()
+			profile = Array.isArray(cur.data) ? cur.data[0] : cur.data
+		} else if (userId) {
+			const q = await db.collection('rider_profiles')
+				.where({ user_id: String(userId) })
+				.orderBy('update_time', 'desc')
+				.limit(1)
+				.get()
+			profile = q.data && q.data[0]
+		}
+
+		if (!profile) {
+			return { code: 404, message: '未找到骑手认证记录' }
+		}
+
+		if (profile.status === 'rejected') {
+			return { code: 0, message: '该账号已是非骑手状态' }
+		}
+
+		const now = Date.now()
+		await db.collection('rider_profiles').doc(profile._id).update({
+			status: 'rejected',
+			remark: remark || '管理员取消骑手身份',
+			update_time: now
+		})
+
+		if (profile.user_id) {
+			try {
+				const uRes = await db.collection('uni-id-users').doc(profile.user_id).get()
+				const user0 = Array.isArray(uRes.data) ? uRes.data[0] : uRes.data
+				if (user0 && Array.isArray(user0.role) && user0.role.includes('rider')) {
+					await db.collection('uni-id-users').doc(profile.user_id).update({
+						role: user0.role.filter((r) => r !== 'rider'),
+						update_date: now
+					})
+				}
+			} catch (e) {
+				console.warn('[admin-service] remove rider role failed:', e.message)
+			}
+		}
+
+		return { code: 0, message: '已取消骑手身份' }
+	},
+
+	/**
+	 * 清理后台重复菜单项（骑手认证/骑手流水）
+	 */
+	async removeLegacyRiderMenus() {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+		const affected = await cleanupLegacyRiderMenusInDb()
+		return {
+			code: 0,
+			message: '菜单已清理',
+			data: { affected }
+		}
+	},
+
+	/**
+	 * 骑手与余额列表（默认仅已通过认证）
 	 * 以 rider_profiles 为列表主体，按 user_id 合并 wallets
 	 */
-  async listRidersWithBalances({ status, page = 1, pageSize = 20, keyword = '' } = {}) {
+  async listRidersWithBalances({ status = 'approved', page = 1, pageSize = 20, keyword = '' } = {}) {
     const auth = await assertAdmin(this.uid)
     if (auth.code !== 0) return auth
 
@@ -1028,6 +1276,8 @@ module.exports = {
 		const parts = []
 		if (status && ['pending', 'approved', 'rejected'].includes(status)) {
 			parts.push({ status })
+		} else {
+			parts.push({ status: 'approved' })
 		}
 		const kw = String(keyword || '').trim()
 		if (kw) {
@@ -1079,6 +1329,7 @@ module.exports = {
 				student_no: row.student_no,
 				college_class: row.college_class,
 				cert_status: row.status,
+				can_revoke: row.status === 'approved',
 				id_card: row.id_card,
 				wallet_id: w ? w._id : null,
 				balance: w ? Number(Number(w.balance || 0).toFixed(2)) : 0,
@@ -1331,6 +1582,62 @@ module.exports = {
 				price: rounded,
 				create_time: now,
 				update_time: now
+			})
+		}
+
+		return { code: 0, message: '已保存' }
+	},
+
+	/**
+	 * 骑手提现引导配置（二维码）
+	 */
+	async getRiderWithdrawGuideConfig() {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+
+		const res = await db.collection('maintenance_settings').doc('rider_withdraw_guide').get()
+		const row = Array.isArray(res.data) ? res.data[0] : res.data
+		return {
+			code: 0,
+			data: {
+				title: row?.title || '提现请点我的',
+				tip: row?.tip || '扫描二维码添加骑手群',
+				qr_file_id: row?.qr_file_id || '',
+				enable: row?.enable !== false,
+				recruit_closed: row?.recruit_closed === true,
+				recruit_closed_tip: row?.recruit_closed_tip || '骑手已招满，待小程序做大做强后会公告扩招。',
+				hint: '请上传清晰二维码图片，骑手钱包页会展示并可点击放大。可开启「暂停招募骑手」。'
+			}
+		}
+	},
+
+	async saveRiderWithdrawGuideConfig({ title, tip, qr_file_id, enable = true, recruit_closed = false, recruit_closed_tip = '' } = {}) {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+
+		const now = Date.now()
+		const doc = {
+			title: String(title || '提现请点我的').slice(0, 30),
+			tip: String(tip || '扫描二维码添加骑手群').slice(0, 80),
+			qr_file_id: String(qr_file_id || ''),
+			enable: enable !== false,
+			recruit_closed: recruit_closed === true,
+			recruit_closed_tip: String(recruit_closed_tip || '骑手已招满，待小程序做大做强后会公告扩招。').slice(0, 120),
+			update_time: now
+		}
+		if (!doc.qr_file_id) {
+			return { code: 400, message: '请上传骑手群二维码' }
+		}
+
+		const cur = await db.collection('maintenance_settings').doc('rider_withdraw_guide').get()
+		const existed = Array.isArray(cur.data) ? cur.data[0] : cur.data
+		if (existed) {
+			await db.collection('maintenance_settings').doc('rider_withdraw_guide').update(doc)
+		} else {
+			await db.collection('maintenance_settings').add({
+				_id: 'rider_withdraw_guide',
+				...doc,
+				create_time: now
 			})
 		}
 
@@ -1622,6 +1929,8 @@ module.exports = {
 	 * 管理端账号密码登录（校验 admin_accounts，签发本地管理员 token）
 	 */
 	async adminLoginByPassword({ username, password } = {}) {
+		const limitErr = await enforceAdminLoginRateLimit(this)
+		if (limitErr) return limitErr
 		const uname = String(username || '').trim().toLowerCase()
 		if (!uname || !password) {
 			return { code: 400, message: '请输入账号和密码' }

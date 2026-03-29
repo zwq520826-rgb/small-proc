@@ -23,6 +23,10 @@ function formatOrderFromDB(order) {
     deliveryLocation: order.delivery_location || "",
     address: order.address || order.delivery_location || "",
     status: order.status,
+    abnormal_reason: order.abnormal_reason || "",
+    abnormal_remark: order.abnormal_remark || "",
+    photo_feedback_count: Number(order.photo_feedback_count || 0),
+    need_customer_service: !!order.need_customer_service,
     price: order.price,
     content: order.content || {},
     tags: order.tags || [],
@@ -73,7 +77,7 @@ async function fetchOrdersFromCloud({ page = 1, pageSize = 20, append = false } 
       inited = true;
       return true;
     }
-    common_vendor.index.__f__("error", "at store/clientOrder.js:101", "加载订单失败:", res.message);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:105", "加载订单失败:", res.message);
     if (res.code !== "NO_LOGIN") {
       common_vendor.index.showToast({
         title: res.message || "加载失败",
@@ -82,7 +86,7 @@ async function fetchOrdersFromCloud({ page = 1, pageSize = 20, append = false } 
     }
     return false;
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:111", "加载订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:115", "加载订单失败:", error);
     return false;
   } finally {
     pagingState.loading = false;
@@ -133,7 +137,7 @@ async function addOrder(payload) {
       return null;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:172", "创建订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:176", "创建订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -165,7 +169,7 @@ async function cancelOrder(id) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:212", "取消订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:216", "取消订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -189,13 +193,48 @@ async function deleteOrder(id) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:241", "删除订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:245", "删除订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
     });
     return false;
   }
+}
+async function reportDeliveryIssue(id, reason = "") {
+  var _a, _b, _c;
+  try {
+    const callApi = orderService.reportDeliveryIssue || orderService.reportWrongDeliveryPhoto;
+    const res = await callApi.call(orderService, { orderId: id, reason });
+    if (res.code === 0) {
+      const idx = state.orders.findIndex((o) => o.id === id || o._id === id);
+      if (idx >= 0) {
+        const old = state.orders[idx];
+        state.orders[idx] = {
+          ...old,
+          status: "abnormal",
+          abnormal_reason: "delivery_issue",
+          abnormal_remark: String(reason || "").trim(),
+          photo_feedback_count: Number(((_a = res.data) == null ? void 0 : _a.feedbackCount) || old.photo_feedback_count || 0),
+          need_customer_service: !!((_b = res.data) == null ? void 0 : _b.contactRequired),
+          content: {
+            ...old.content || {},
+            pending_redelivery_upload: !((_c = res.data) == null ? void 0 : _c.contactRequired)
+          }
+        };
+      }
+      return { success: true, data: res.data || {} };
+    }
+    common_vendor.index.showToast({ title: res.message || "反馈失败", icon: "none" });
+    return { success: false, data: res.data || {} };
+  } catch (error) {
+    common_vendor.index.__f__("error", "at store/clientOrder.js:281", "提交异常反馈失败:", error);
+    common_vendor.index.showToast({ title: "网络错误，请稍后重试", icon: "none" });
+    return { success: false };
+  }
+}
+async function reportWrongDeliveryPhoto(id, reason = "") {
+  return reportDeliveryIssue(id, reason);
 }
 function ordersByStatus(status) {
   if (status === "all")
@@ -225,6 +264,8 @@ function useClientOrderStore() {
     addOrder,
     cancelOrder,
     deleteOrder,
+    reportDeliveryIssue,
+    reportWrongDeliveryPhoto,
     loadFromStorage: (force = true) => loadOrdersFromCloud({ force, page: 1, pageSize: pagingState.pageSize, append: false }),
     reloadOrders,
     loadNextPage,

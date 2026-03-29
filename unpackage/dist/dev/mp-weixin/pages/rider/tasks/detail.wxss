@@ -16,6 +16,8 @@
 }
 .header.completed.data-v-163fccdb { background: linear-gradient(135deg, #4caf50, #81c784);
 }
+.header.abnormal.data-v-163fccdb { background: linear-gradient(135deg, #ef4444, #f87171);
+}
 .status-text.data-v-163fccdb { font-size: 40rpx; font-weight: bold; display: block;
 }
 .status-desc.data-v-163fccdb { font-size: 26rpx; opacity: 0.9; margin-top: 10rpx; display: block;

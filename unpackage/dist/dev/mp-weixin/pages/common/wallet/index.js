@@ -13,11 +13,19 @@ if (!Math) {
 const _sfc_main = {
   __name: "index",
   setup(__props) {
+    const riderService = common_vendor._r.importObject("rider-service");
     const walletStore = store_wallet.useWalletStore();
     const withdrawPopup = common_vendor.ref(null);
+    const guidePopup = common_vendor.ref(null);
     const withdrawAmounts = [10, 20, 50, 100, 200];
     const withdrawAmount = common_vendor.ref(0);
     const customWithdrawAmount = common_vendor.ref("");
+    const withdrawGuide = common_vendor.ref({
+      title: "提现请点我的",
+      tip: "扫描二维码添加骑手群",
+      qr_file_id: "",
+      enable: true
+    });
     const balance = common_vendor.computed(() => walletStore.balance);
     const totalIncome = common_vendor.computed(() => walletStore.totalIncome);
     const totalExpense = common_vendor.computed(() => walletStore.totalExpense);
@@ -46,6 +54,31 @@ const _sfc_main = {
     };
     const closeWithdrawPopup = () => {
       withdrawPopup.value.close();
+    };
+    const openWithdrawGuide = () => {
+      guidePopup.value && guidePopup.value.open();
+    };
+    const closeWithdrawGuide = () => {
+      guidePopup.value && guidePopup.value.close();
+    };
+    const previewGuideQr = () => {
+      if (!withdrawGuide.value.qr_file_id)
+        return;
+      common_vendor.index.previewImage({ urls: [withdrawGuide.value.qr_file_id], current: withdrawGuide.value.qr_file_id });
+    };
+    const loadWithdrawGuide = async () => {
+      try {
+        const res = await riderService.getWithdrawGuide();
+        if (res && res.code === 0 && res.data) {
+          withdrawGuide.value = {
+            title: res.data.title || "提现请点我的",
+            tip: res.data.tip || "扫描二维码添加骑手群",
+            qr_file_id: res.data.qr_file_id || "",
+            enable: res.data.enable !== false
+          };
+        }
+      } catch (e) {
+      }
     };
     const selectWithdrawAmount = (amt) => {
       if (amt > balance.value) {
@@ -140,6 +173,7 @@ const _sfc_main = {
       }
       await walletStore.loadFromCloud();
       await walletStore.getTransactions({ page: 1, pageSize: 20 }, true);
+      await loadWithdrawGuide();
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
@@ -148,10 +182,15 @@ const _sfc_main = {
         c: common_vendor.t(totalIncome.value.toFixed(2)),
         d: common_vendor.t(totalExpense.value.toFixed(2)),
         e: common_vendor.o(showWithdrawPopup, "10"),
-        f: common_vendor.o(loadMoreTransactions, "e9"),
-        g: transactions.value.length === 0
+        f: withdrawGuide.value.enable
+      }, withdrawGuide.value.enable ? {
+        g: common_vendor.t(withdrawGuide.value.title || "提现请点我的"),
+        h: common_vendor.o(openWithdrawGuide, "4a")
+      } : {}, {
+        i: common_vendor.o(loadMoreTransactions, "54"),
+        j: transactions.value.length === 0
       }, transactions.value.length === 0 ? {} : {
-        h: common_vendor.f(transactions.value, (item, k0, i0) => {
+        k: common_vendor.f(transactions.value, (item, k0, i0) => {
           return common_vendor.e({
             a: common_vendor.t(getTransIcon(item.type)),
             b: common_vendor.t(getTransTitle(item.type)),
@@ -181,9 +220,9 @@ const _sfc_main = {
           });
         })
       }, {
-        i: common_vendor.o(closeWithdrawPopup, "51"),
-        j: common_vendor.t(balance.value.toFixed(2)),
-        k: common_vendor.f(withdrawAmounts, (amt, k0, i0) => {
+        l: common_vendor.o(closeWithdrawPopup, "27"),
+        m: common_vendor.t(balance.value.toFixed(2)),
+        n: common_vendor.f(withdrawAmounts, (amt, k0, i0) => {
           return {
             a: common_vendor.t(amt),
             b: amt,
@@ -192,15 +231,28 @@ const _sfc_main = {
             e: common_vendor.o(($event) => selectWithdrawAmount(amt), amt)
           };
         }),
-        l: common_vendor.o([($event) => customWithdrawAmount.value = $event.detail.value, ($event) => onCustomAmountInput("withdraw")], "6a"),
-        m: customWithdrawAmount.value,
-        n: common_vendor.t(withdrawAmount.value || customWithdrawAmount.value || 0),
-        o: common_vendor.o(handleWithdraw, "6f"),
-        p: common_vendor.sr(withdrawPopup, "2e9d1a34-0", {
+        o: common_vendor.o([($event) => customWithdrawAmount.value = $event.detail.value, ($event) => onCustomAmountInput("withdraw")], "6a"),
+        p: customWithdrawAmount.value,
+        q: common_vendor.t(withdrawAmount.value || customWithdrawAmount.value || 0),
+        r: common_vendor.o(handleWithdraw, "36"),
+        s: common_vendor.sr(withdrawPopup, "2e9d1a34-0", {
           "k": "withdrawPopup"
         }),
-        q: common_vendor.p({
+        t: common_vendor.p({
           type: "bottom"
+        }),
+        v: common_vendor.t(withdrawGuide.value.tip || "扫描二维码添加骑手群"),
+        w: withdrawGuide.value.qr_file_id
+      }, withdrawGuide.value.qr_file_id ? {
+        x: withdrawGuide.value.qr_file_id,
+        y: common_vendor.o(previewGuideQr, "fc")
+      } : {}, {
+        z: common_vendor.o(closeWithdrawGuide, "38"),
+        A: common_vendor.sr(guidePopup, "2e9d1a34-1", {
+          "k": "guidePopup"
+        }),
+        B: common_vendor.p({
+          type: "center"
         })
       });
     };

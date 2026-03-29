@@ -1,0 +1,29 @@
+{
+	"bsonType": "object",
+	"required": ["_id", "dimension", "service", "api", "identity", "window_sec", "limit", "hits"],
+	"permission": {
+		"read": false,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"indexes": [
+		{
+			"name": "idx_expire_at",
+			"unique": false,
+			"field": [{ "name": "expire_at", "type": "asc" }]
+		}
+	],
+	"properties": {
+		"_id": { "bsonType": "string", "description": "限流窗口主键" },
+		"dimension": { "bsonType": "string", "enum": ["ip", "uid"], "description": "维度" },
+		"service": { "bsonType": "string", "description": "服务名" },
+		"api": { "bsonType": "string", "description": "接口名" },
+		"identity": { "bsonType": "string", "description": "哈希后的IP或UID" },
+		"window_sec": { "bsonType": "int", "description": "窗口秒数" },
+		"limit": { "bsonType": "int", "description": "窗口上限" },
+		"hits": { "bsonType": "array", "description": "窗口内时间戳列表" },
+		"expire_at": { "bsonType": "timestamp", "description": "过期时间" },
+		"update_time": { "bsonType": "timestamp", "description": "更新时间" }
+	}
+}

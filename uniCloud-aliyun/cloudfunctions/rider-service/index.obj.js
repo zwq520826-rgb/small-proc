@@ -3,6 +3,7 @@
 // 骑手实名认证相关云对象
 
 const uniID = require('uni-id-common')
+const securityKit = require('./security-kit')
 const db = uniCloud.database()
 const uniCaptcha = require('uni-captcha')
 
@@ -82,6 +83,10 @@ module.exports = {
    */
   async _before() {
     const clientInfo = this.getClientInfo()
+    this.requestId = securityKit.resolveRequestId({
+      headers: (clientInfo && clientInfo.headers) || {},
+      fallback: this.getUniCloudRequestId ? this.getUniCloudRequestId() : ''
+    })
 
     this.uniID = uniID.createInstance({
       clientInfo
@@ -109,6 +114,11 @@ module.exports = {
     }
   },
 
+  _after(error, result) {
+    if (error) throw error
+    return securityKit.withRequestId(result, this.requestId)
+  },
+
   /**
    * 获取当前用户的骑手认证信息
    */
@@ -125,6 +135,42 @@ module.exports = {
     return {
       code: 0,
       data: res.data[0] || null
+    }
+  },
+
+  /**
+   * 提现联系指引（骑手端钱包使用）
+   */
+  async getWithdrawGuide() {
+    const auth = checkAuth(this)
+    if (auth.code) return auth
+
+    try {
+      const res = await db.collection('maintenance_settings').doc('rider_withdraw_guide').get()
+      const row = Array.isArray(res.data) ? res.data[0] : res.data
+      return {
+        code: 0,
+        data: {
+          title: row?.title || '提现请点我的',
+          tip: row?.tip || '扫描二维码添加骑手群',
+          qr_file_id: row?.qr_file_id || '',
+          enable: row?.enable !== false,
+          recruit_closed: row?.recruit_closed === true,
+          recruit_closed_tip: row?.recruit_closed_tip || '骑手已招满，待小程序做大做强后会公告扩招。'
+        }
+      }
+    } catch (e) {
+      return {
+        code: 0,
+        data: {
+          title: '提现请点我的',
+          tip: '扫描二维码添加骑手群',
+          qr_file_id: '',
+          enable: true,
+          recruit_closed: false,
+          recruit_closed_tip: '骑手已招满，待小程序做大做强后会公告扩招。'
+        }
+      }
     }
   },
 
@@ -241,15 +287,15 @@ module.exports = {
         level_name: old.level_name || '萌新骑手',
         commission_rate: typeof old.commission_rate === 'number' ? old.commission_rate : 0.15,
         rider_share: typeof old.rider_share === 'number' ? old.rider_share : 0.85,
-        // 取消审核流程：直接标记为已通过
-        status: 'approved',
+        // 提交后需管理员审核
+        status: 'pending',
         real_name_verified: true,
         real_name_verify_time: now,
         update_time: now
       })
       return {
         code: 0,
-        message: '已更新认证资料，已通过认证',
+        message: '已更新认证资料，等待管理员审核',
         data: { _id: id }
       }
     } else {
@@ -268,8 +314,8 @@ module.exports = {
         level_name: '萌新骑手',
         commission_rate: 0.15,
         rider_share: 0.85,
-        // 取消审核流程：直接标记为已通过
-        status: 'approved',
+        // 提交后需管理员审核
+        status: 'pending',
         real_name_verified: true,
         real_name_verify_time: now,
         create_time: now,
@@ -277,7 +323,7 @@ module.exports = {
       })
       return {
         code: 0,
-        message: '认证已通过',
+        message: '认证资料已提交，等待管理员审核',
         data: { _id: addRes.id }
       }
     }
@@ -464,4 +510,3 @@ module.exports = {
     }
   }
 }
-

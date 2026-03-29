@@ -32,17 +32,32 @@
         class="card"
         @click="goDetail(order.id)"
       >
-        <view class="row between">
-          <view class="type-badge" :class="order.type">{{ order.typeLabel }}</view>
+        <view class="row between row-top">
+          <view class="top-left">
+            <view class="type-badge" :class="order.type">{{ order.typeLabel }}</view>
+            <view v-if="order.primaryTags && order.primaryTags.length" class="inline-tags">
+              <view
+                v-for="tag in order.primaryTags"
+                :key="tag.key"
+                class="tag-chip compact"
+                :class="`tag-${tag.type}`"
+              >
+                <text v-if="tag.icon" class="chip-icon">{{ tag.icon }}</text>
+                <text>{{ tag.text }}</text>
+              </view>
+            </view>
+          </view>
           <text class="badge" :class="order.status">{{ statusMap[order.status] }}</text>
         </view>
         <view class="row">
           <text class="place">{{ order.pickupLocation }}</text>
-          <text class="place">{{ order.deliveryLocation || order.address }}</text>
+          <text class="place destination">
+            <text class="destination-label">目的地：</text>{{ order.deliveryLocation || order.address }}
+          </text>
         </view>
-        <view v-if="order.visualTags && order.visualTags.length" class="row tag-row">
+        <view v-if="order.secondaryTags && order.secondaryTags.length" class="row tag-row">
           <view
-            v-for="tag in order.visualTags"
+            v-for="tag in order.secondaryTags"
             :key="tag.key"
             class="tag-chip"
             :class="`tag-${tag.type}`"
@@ -51,8 +66,9 @@
             <text>{{ tag.text }}</text>
           </view>
         </view>
-        <view class="row">
-          <text class="desc">{{ order.content?.description || order.content?.remark || '订单详情' }}</text>
+        <view v-if="order.remarkText" class="remark-wrap">
+          <text class="remark-label">备注：</text>
+          <text class="remark-content">{{ order.remarkText }}</text>
         </view>
         <view class="row between footer-row">
           <view class="price-info">
@@ -116,7 +132,8 @@ const tabs = [
   { label: '全部', status: 'all' },
   { label: '待接单', status: 'pending_accept' },
   { label: '进行中', status: 'delivering' },
-  { label: '已完成', status: 'completed' }
+  { label: '已完成', status: 'completed' },
+  { label: '异常单', status: 'abnormal' }
 ]
 
 const statusMap = {
@@ -124,12 +141,29 @@ const statusMap = {
   pending_pickup: '待取货',
   delivering: '配送中',
   completed: '已完成',
-  cancelled: '已取消'
+  cancelled: '已取消',
+  abnormal: '异常单'
 }
 
 const currentTab = ref(0)
 const pageSize = ref(20)
 const loadStatus = ref('more') // 'more' | 'loading' | 'noMore'
+const PRIMARY_TAG_TYPES = new Set(['urgent', 'delivery'])
+
+const splitTags = (tags = []) => {
+  const primary = []
+  const secondary = []
+  tags.forEach((tag) => {
+    if (PRIMARY_TAG_TYPES.has(tag?.type)) {
+      primary.push(tag)
+    } else {
+      secondary.push(tag)
+    }
+  })
+  return { primary, secondary }
+}
+
+const resolveRemark = (order) => String(order?.content?.remark || order?.content?.description || '').trim()
 
 // 【修改点3】重写 displayList 为计算属性，直接从 store 获取
 const displayList = computed(() => {
@@ -137,14 +171,20 @@ const displayList = computed(() => {
   // 使用 clientOrder store 提供的 getter
   const list = store.ordersByStatus(status)
 
-  return list.map((o) => ({
-    ...o,
-    visualTags: buildVisualTags({
+  return list.map((o) => {
+    const visualTags = buildVisualTags({
       rawTags: o.tags,
       content: o.content,
       requiredGender: o.content?.requiredRiderGender
     })
-  }))
+    const { primary, secondary } = splitTags(visualTags)
+    return {
+      ...o,
+      primaryTags: primary,
+      secondaryTags: secondary,
+      remarkText: resolveRemark(o)
+    }
+  })
 })
 
 const refreshLoadStatus = () => {
@@ -289,8 +329,23 @@ onLoad(async () => {
   gap: 12rpx;
   margin-top: 8rpx;
 }
+.row-top {
+  margin-top: 0;
+}
 .between {
   justify-content: space-between;
+}
+.top-left {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  flex-wrap: wrap;
+}
+.inline-tags {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-wrap: wrap;
 }
 .type-badge {
   padding: 6rpx 14rpx;
@@ -328,8 +383,21 @@ onLoad(async () => {
   color: #9e9e9e;
   background: #f2f2f2;
 }
+.badge.abnormal {
+  color: #b91c1c;
+  background: #fee2e2;
+}
 .place {
   font-size: 26rpx;
+}
+
+.place.destination {
+  color: inherit;
+}
+
+.destination-label {
+  color: #1d4ed8;
+  font-weight: 700;
 }
 .arrow {
   color: #c0c0c0;
@@ -357,6 +425,11 @@ onLoad(async () => {
   font-weight: 600;
 }
 
+.tag-chip.compact {
+  padding: 3rpx 10rpx;
+  font-size: 20rpx;
+}
+
 .tag-chip.tag-urgent {
   background: #fee2e2;
   color: #b91c1c;
@@ -379,6 +452,26 @@ onLoad(async () => {
 
 .chip-icon {
   font-size: 20rpx;
+}
+
+.remark-wrap {
+  margin-top: 10rpx;
+  padding: 12rpx 14rpx;
+  border-radius: 10rpx;
+  border-left: 6rpx solid #ff8f00;
+  background: linear-gradient(90deg, #fff7e6 0%, #fffdf8 100%);
+}
+
+.remark-label {
+  font-size: 24rpx;
+  color: #b45309;
+  font-weight: 700;
+}
+
+.remark-content {
+  font-size: 24rpx;
+  color: #7c2d12;
+  margin-left: 4rpx;
 }
 .footer-row {
   margin-top: 12rpx;

@@ -33,7 +33,9 @@
     </view>
 
     <view class="status-tip" v-if="profile">
-      <text class="ok">当前状态：已通过认证</text>
+      <text v-if="profile.status === 'approved'" class="ok">当前状态：已通过认证</text>
+      <text v-else-if="profile.status === 'pending'" class="pending">当前状态：审核中，请等待管理员处理</text>
+      <text v-else class="rejected">当前状态：未通过，请修改信息后重新提交</text>
     </view>
 
     <button class="submit-btn" @click="submit">提交认证</button>
@@ -191,5 +193,4 @@ onLoad(() => {
   color: #e74c3c;
 }
 </style>
-
 

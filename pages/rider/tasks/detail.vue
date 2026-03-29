@@ -88,6 +88,11 @@
         <button class="btn btn-success" @click="handleConfirmDelivery">拍照送达</button>
         <button class="btn btn-cancel" @click="openCancelPopup">取消订单</button>
       </template>
+
+      <!-- 异常单：仅重新上传送达图 -->
+      <template v-if="task.status === 'abnormal'">
+        <button class="btn btn-success" @click="handleConfirmDelivery">重新上传送达图</button>
+      </template>
     </view>
 
     <!-- 骑手取消弹窗 -->
@@ -167,7 +172,8 @@ const statusText = computed(() => {
     pending_accept: '待接单',
     pending_pickup: '待取货',
     delivering: '配送中',
-    completed: '已送达'
+    completed: '已送达',
+    abnormal: '异常单'
   }
   return map[task.value?.status] || task.value?.status
 })
@@ -177,6 +183,7 @@ const statusDesc = computed(() => {
   if (task.value?.status === 'pending_pickup') return '请前往取货点取货'
   if (task.value?.status === 'delivering') return '请尽快送达客户手中'
   if (task.value?.status === 'completed') return '任务已完成'
+  if (task.value?.status === 'abnormal') return '用户反馈送达照片不符，请重新上传'
   return ''
 })
 
@@ -350,6 +357,7 @@ const handleConfirmDelivery = () => {
 .header.pending_pickup { background: linear-gradient(135deg, #ff9800, #ffb74d); }
 .header.delivering { background: linear-gradient(135deg, #2196f3, #64b5f6); }
 .header.completed { background: linear-gradient(135deg, #4caf50, #81c784); }
+.header.abnormal { background: linear-gradient(135deg, #ef4444, #f87171); }
 
 .status-text { font-size: 40rpx; font-weight: bold; display: block; }
 .status-desc { font-size: 26rpx; opacity: 0.9; margin-top: 10rpx; display: block; }

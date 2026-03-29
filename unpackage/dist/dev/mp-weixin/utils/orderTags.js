@@ -27,6 +27,13 @@ const TAG_LIBRARY = [
     icon: "♀",
     type: "info",
     match: ({ content, requiredGender, rawValue }) => requiredGender === "female" || /限女|女生宿舍/.test(rawValue || "")
+  },
+  {
+    key: "photo-feedback",
+    text: "待重传送达图",
+    icon: "⚠",
+    type: "urgent",
+    match: ({ content }) => Boolean(content == null ? void 0 : content.pending_redelivery_upload)
   }
 ];
 function resolveDormSuffix(content = {}) {
