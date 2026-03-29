@@ -7,6 +7,14 @@ const state = reactive({
   orders: []
 })
 
+const pagingState = reactive({
+  page: 1,
+  pageSize: 20,
+  total: 0,
+  hasMore: true,
+  loading: false
+})
+
 let inited = false
 let initPromise = null
 
@@ -62,16 +70,30 @@ function formatOrderToDB(orderData) {
 /**
  * 从云数据库加载订单
  */
-async function fetchOrdersFromCloud() {
+async function fetchOrdersFromCloud({ page = 1, pageSize = 20, append = false } = {}) {
   try {
+    pagingState.loading = true
     const res = await orderService.getOrderList({
       status: 'all',
-      page: 1,
-      pageSize: 7
+      page,
+      pageSize
     })
 
     if (res.code === 0) {
-      state.orders = (res.data || []).map(formatOrderFromDB)
+      const mapped = (res.data || []).map(formatOrderFromDB)
+      if (append) {
+        const seen = new Set(state.orders.map((o) => o.id || o._id))
+        const incoming = mapped.filter((o) => !seen.has(o.id || o._id))
+        state.orders = state.orders.concat(incoming)
+      } else {
+        state.orders = mapped
+      }
+
+      const total = Number(res.total || 0)
+      pagingState.page = page
+      pagingState.pageSize = pageSize
+      pagingState.total = total
+      pagingState.hasMore = state.orders.length < total
       inited = true
       return true
     }
@@ -89,18 +111,34 @@ async function fetchOrdersFromCloud() {
     console.error('加载订单失败:', error)
     // 网络错误时不显示提示，避免干扰用户体验
     return false
+  } finally {
+    pagingState.loading = false
   }
 }
 
-async function loadOrdersFromCloud({ force = false } = {}) {
+async function loadOrdersFromCloud({ force = false, page = 1, pageSize = 20, append = false } = {}) {
   if (inited && !force) return true
   if (initPromise) return initPromise
 
   // 并发复用：避免多个组件/钩子同时触发同一次加载
-  initPromise = fetchOrdersFromCloud().finally(() => {
+  initPromise = fetchOrdersFromCloud({ page, pageSize, append }).finally(() => {
     initPromise = null
   })
   return initPromise
+}
+
+async function loadNextPage() {
+  if (pagingState.loading || !pagingState.hasMore) return false
+  const next = pagingState.page + 1
+  return fetchOrdersFromCloud({ page: next, pageSize: pagingState.pageSize, append: true })
+}
+
+async function reloadOrders({ pageSize = 20 } = {}) {
+  pagingState.page = 1
+  pagingState.pageSize = pageSize
+  pagingState.total = 0
+  pagingState.hasMore = true
+  return fetchOrdersFromCloud({ page: 1, pageSize, append: false })
 }
 
 /**
@@ -233,7 +271,7 @@ function getOrderById(id) {
 export function useClientOrderStore() {
   // 单例初始化：避免每次 useClientOrderStore() 都触发云函数全量拉取
   if (!inited && !initPromise) {
-    initPromise = loadOrdersFromCloud({ force: false }).finally(() => {
+    initPromise = loadOrdersFromCloud({ force: false, page: 1, pageSize: pagingState.pageSize, append: false }).finally(() => {
       initPromise = null
     })
   }
@@ -247,6 +285,11 @@ export function useClientOrderStore() {
     addOrder,
     cancelOrder,
     deleteOrder,
-    loadFromStorage: (force = true) => loadOrdersFromCloud({ force }) // 下拉刷新/需要强制时使用
+    loadFromStorage: (force = true) => loadOrdersFromCloud({ force, page: 1, pageSize: pagingState.pageSize, append: false }),
+    reloadOrders,
+    loadNextPage,
+    getPaging() {
+      return pagingState
+    }
   }
 }

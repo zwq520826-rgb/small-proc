@@ -17,9 +17,7 @@ const config = {
     // "google",
     // "alipay",
     // "douyin",
-    "weixin",
-    "username",
-    "smsCode"
+    "weixin"
   ],
   // 政策协议
   agreements: {

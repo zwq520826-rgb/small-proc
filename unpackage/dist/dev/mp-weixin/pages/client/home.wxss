@@ -25,6 +25,9 @@
   border-radius: 20rpx;
   overflow: hidden;
 }
+.hero-swiper.compact.data-v-462fe6d9 {
+  height: 220rpx;
+}
 .hero-card.data-v-462fe6d9 {
   min-height: 220rpx;
   background: #ffffff;
@@ -109,7 +112,7 @@
   background: #ffffff;
 }
 .grid.data-v-462fe6d9 {
-  margin-top: 24rpx;
+  margin-top: 18rpx;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20rpx;

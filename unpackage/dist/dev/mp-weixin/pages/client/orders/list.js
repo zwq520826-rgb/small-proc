@@ -25,8 +25,7 @@ const _sfc_main = {
       cancelled: "已取消"
     };
     const currentTab = common_vendor.ref(0);
-    common_vendor.ref(1);
-    common_vendor.ref(5);
+    const pageSize = common_vendor.ref(20);
     const loadStatus = common_vendor.ref("more");
     const displayList = common_vendor.computed(() => {
       const status = tabs[currentTab.value].status;
@@ -43,14 +42,37 @@ const _sfc_main = {
         };
       });
     });
+    const refreshLoadStatus = () => {
+      const paging = store.getPaging();
+      if (paging.loading) {
+        loadStatus.value = "loading";
+        return;
+      }
+      loadStatus.value = paging.hasMore ? "more" : "noMore";
+    };
+    const loadData = async () => {
+      if (loadStatus.value === "loading")
+        return;
+      loadStatus.value = "loading";
+      await store.reloadOrders({ pageSize: pageSize.value });
+      refreshLoadStatus();
+    };
     const onTabChange = (index) => {
       currentTab.value = index;
     };
     const handleReachBottom = () => {
-      loadStatus.value = "noMore";
+      if (loadStatus.value === "loading")
+        return;
+      if (loadStatus.value === "noMore")
+        return;
+      loadStatus.value = "loading";
+      store.loadNextPage().finally(() => {
+        refreshLoadStatus();
+      });
     };
     const reloadCurrent = async () => {
-      await store.loadFromStorage();
+      await store.reloadOrders({ pageSize: pageSize.value });
+      refreshLoadStatus();
     };
     const handleCancel = async (id) => {
       common_vendor.index.showModal({
@@ -99,6 +121,9 @@ const _sfc_main = {
     common_vendor.onPullDownRefresh(async () => {
       await reloadCurrent();
       common_vendor.index.stopPullDownRefresh();
+    });
+    common_vendor.onLoad(async () => {
+      await loadData();
     });
     return (_ctx, _cache) => {
       return common_vendor.e({

@@ -258,6 +258,43 @@ async function readOrderCounters() {
 	}
 }
 
+function buildCounterViewWithFloor(raw = {}, floor = {}) {
+	const view = {
+		total_order_count: Math.max(Number(raw.total_order_count || 0), Number(floor.total_order_count || 0)),
+		total_paid_order_count: Math.max(Number(raw.total_paid_order_count || 0), Number(floor.total_paid_order_count || 0)),
+		total_completed_order_count: Math.max(Number(raw.total_completed_order_count || 0), Number(floor.total_completed_order_count || 0)),
+		total_gmv: Math.max(Number(raw.total_gmv || 0), Number(floor.total_gmv || 0))
+	}
+	const changed =
+		view.total_order_count !== Number(raw.total_order_count || 0) ||
+		view.total_paid_order_count !== Number(raw.total_paid_order_count || 0) ||
+		view.total_completed_order_count !== Number(raw.total_completed_order_count || 0) ||
+		view.total_gmv !== Number(raw.total_gmv || 0)
+	return { view, changed }
+}
+
+async function writeOrderCounters(counterView) {
+	const payload = {
+		total_order_count: Number(counterView.total_order_count || 0),
+		total_paid_order_count: Number(counterView.total_paid_order_count || 0),
+		total_completed_order_count: Number(counterView.total_completed_order_count || 0),
+		total_gmv: Number(counterView.total_gmv || 0),
+		update_time: Date.now()
+	}
+	try {
+		const upRes = await db.collection(DASHBOARD_COUNTERS_COLLECTION).doc('orders').update(payload)
+		if (!upRes || !upRes.updated) {
+			await db.collection(DASHBOARD_COUNTERS_COLLECTION).add({ _id: 'orders', ...payload })
+		}
+	} catch (e) {
+		try {
+			await db.collection(DASHBOARD_COUNTERS_COLLECTION).add({ _id: 'orders', ...payload })
+		} catch (ee) {
+			console.warn('[admin-service] writeOrderCounters failed', ee.message)
+		}
+	}
+}
+
 async function getRecentDailyStats(ymd, days = 7) {
 	const startDate = shiftYMD(ymd, -(days - 1))
 	const res = await db.collection('daily_stats')
@@ -308,7 +345,7 @@ module.exports = {
 		const { start, end, startMs, endMs } = date ? getDayRange(date) : getDayRange()
 		const ymd = formatYMD(start)
 		const recentDaily = await getRecentDailyStats(ymd, 7)
-		const counters = await readOrderCounters()
+		let counters = await readOrderCounters()
 		const trendOrder7d = recentDaily.map((x) => ({ date: x.stat_date, order_count: x.order_count }))
 		const trendPaidOrder7d = recentDaily.map((x) => ({ date: x.stat_date, paid_order_count: x.paid_order_count }))
 		const trendIncome7d = recentDaily.map((x) => ({ date: x.stat_date, gmv: Number(x.gmv.toFixed(2)) }))
@@ -317,6 +354,17 @@ module.exports = {
 		const cacheRes = await db.collection('daily_stats').where({ stat_date: ymd }).limit(1).get()
 		const cached = cacheRes.data && cacheRes.data[0]
 		if (cached) {
+			const floor = {
+				total_order_count: Number(cached.order_count || 0),
+				total_paid_order_count: Number(cached.paid_order_count || 0),
+				total_completed_order_count: Number(cached.completed_order_count || 0),
+				total_gmv: Number(cached.gmv || 0)
+			}
+			const merged = buildCounterViewWithFloor(counters, floor)
+			if (merged.changed) {
+				await writeOrderCounters(merged.view)
+			}
+			counters = merged.view
 			return {
 				code: 0,
 				data: {
@@ -380,6 +428,15 @@ module.exports = {
 		const todayOrderCount = summary.order_count || 0
 		const todayPaidCount = summary.paid_order_count || 0
 		const todayGmv = Number((summary.gmv || 0).toFixed(2))
+		const merged = buildCounterViewWithFloor(counters, {
+			total_order_count: todayOrderCount,
+			total_paid_order_count: todayPaidCount,
+			total_gmv: todayGmv
+		})
+		if (merged.changed) {
+			await writeOrderCounters(merged.view)
+		}
+		counters = merged.view
 
 		// 写入 daily_stats 缓存，后续直接命中
 		try {

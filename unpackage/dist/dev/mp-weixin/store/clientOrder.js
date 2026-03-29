@@ -4,6 +4,13 @@ const orderService = common_vendor._r.importObject("order-service");
 const state = common_vendor.reactive({
   orders: []
 });
+const pagingState = common_vendor.reactive({
+  page: 1,
+  pageSize: 20,
+  total: 0,
+  hasMore: true,
+  loading: false
+});
 let inited = false;
 let initPromise = null;
 function formatOrderFromDB(order) {
@@ -41,19 +48,32 @@ function formatOrderToDB(orderData) {
     tags: orderData.tags || []
   };
 }
-async function fetchOrdersFromCloud() {
+async function fetchOrdersFromCloud({ page = 1, pageSize = 20, append = false } = {}) {
   try {
+    pagingState.loading = true;
     const res = await orderService.getOrderList({
       status: "all",
-      page: 1,
-      pageSize: 7
+      page,
+      pageSize
     });
     if (res.code === 0) {
-      state.orders = (res.data || []).map(formatOrderFromDB);
+      const mapped = (res.data || []).map(formatOrderFromDB);
+      if (append) {
+        const seen = new Set(state.orders.map((o) => o.id || o._id));
+        const incoming = mapped.filter((o) => !seen.has(o.id || o._id));
+        state.orders = state.orders.concat(incoming);
+      } else {
+        state.orders = mapped;
+      }
+      const total = Number(res.total || 0);
+      pagingState.page = page;
+      pagingState.pageSize = pageSize;
+      pagingState.total = total;
+      pagingState.hasMore = state.orders.length < total;
       inited = true;
       return true;
     }
-    common_vendor.index.__f__("error", "at store/clientOrder.js:79", "加载订单失败:", res.message);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:101", "加载订单失败:", res.message);
     if (res.code !== "NO_LOGIN") {
       common_vendor.index.showToast({
         title: res.message || "加载失败",
@@ -62,19 +82,34 @@ async function fetchOrdersFromCloud() {
     }
     return false;
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:89", "加载订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:111", "加载订单失败:", error);
     return false;
+  } finally {
+    pagingState.loading = false;
   }
 }
-async function loadOrdersFromCloud({ force = false } = {}) {
+async function loadOrdersFromCloud({ force = false, page = 1, pageSize = 20, append = false } = {}) {
   if (inited && !force)
     return true;
   if (initPromise)
     return initPromise;
-  initPromise = fetchOrdersFromCloud().finally(() => {
+  initPromise = fetchOrdersFromCloud({ page, pageSize, append }).finally(() => {
     initPromise = null;
   });
   return initPromise;
+}
+async function loadNextPage() {
+  if (pagingState.loading || !pagingState.hasMore)
+    return false;
+  const next = pagingState.page + 1;
+  return fetchOrdersFromCloud({ page: next, pageSize: pagingState.pageSize, append: true });
+}
+async function reloadOrders({ pageSize = 20 } = {}) {
+  pagingState.page = 1;
+  pagingState.pageSize = pageSize;
+  pagingState.total = 0;
+  pagingState.hasMore = true;
+  return fetchOrdersFromCloud({ page: 1, pageSize, append: false });
 }
 async function addOrder(payload) {
   try {
@@ -98,7 +133,7 @@ async function addOrder(payload) {
       return null;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:134", "创建订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:172", "创建订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -130,7 +165,7 @@ async function cancelOrder(id) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:174", "取消订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:212", "取消订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -154,7 +189,7 @@ async function deleteOrder(id) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:203", "删除订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:241", "删除订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -177,7 +212,7 @@ function getOrderById(id) {
 }
 function useClientOrderStore() {
   if (!inited && !initPromise) {
-    initPromise = loadOrdersFromCloud({ force: false }).finally(() => {
+    initPromise = loadOrdersFromCloud({ force: false, page: 1, pageSize: pagingState.pageSize, append: false }).finally(() => {
       initPromise = null;
     });
   }
@@ -190,8 +225,12 @@ function useClientOrderStore() {
     addOrder,
     cancelOrder,
     deleteOrder,
-    loadFromStorage: (force = true) => loadOrdersFromCloud({ force })
-    // 下拉刷新/需要强制时使用
+    loadFromStorage: (force = true) => loadOrdersFromCloud({ force, page: 1, pageSize: pagingState.pageSize, append: false }),
+    reloadOrders,
+    loadNextPage,
+    getPaging() {
+      return pagingState;
+    }
   };
 }
 exports.useClientOrderStore = useClientOrderStore;

@@ -73,8 +73,8 @@ const _sfc_main = {
         e: detail.value,
         f: common_vendor.o(($event) => detail.value = $event.detail.value, "da"),
         g: isDefault.value,
-        h: common_vendor.o(onDefaultChange, "54"),
-        i: common_vendor.o(saveAddress, "ff")
+        h: common_vendor.o(onDefaultChange, "80"),
+        i: common_vendor.o(saveAddress, "33")
       };
     };
   }

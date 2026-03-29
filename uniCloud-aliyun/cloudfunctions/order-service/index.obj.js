@@ -501,19 +501,21 @@ module.exports = {
 		const { status = 'all', page = 1, pageSize = 10 } = params
 
 		try {
-			let query = db.collection('orders').where({
+			const cond = {
 				user_id: uid,
 				order_class: dbCmd.neq(ORDER_CLASS.URGENT_ADDON)
-			})
+			}
 
 			// 根据状态过滤
 			if (status && status !== 'all') {
-				query = query.where({
-					status: status
-				})
+				cond.status = status
 			}
 
-			const result = await query
+			const col = db.collection('orders')
+			const totalRes = await col.where(cond).count()
+			const total = Number(totalRes.total || 0)
+
+			const result = await col.where(cond)
 				.orderBy('create_time', 'desc')
 				.skip((page - 1) * pageSize)
 				.limit(pageSize)
@@ -523,8 +525,7 @@ module.exports = {
 				code: 0,
 				message: '获取成功',
 				data: result.data,
-				// 兼容旧字段：前端当前不依赖精确 total，因此用当前返回的数量回填
-				total: (result.data && result.data.length) ? result.data.length : 0
+				total
 			}
 		} catch (error) {
 			console.error('获取订单列表失败:', error)

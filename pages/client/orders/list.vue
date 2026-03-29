@@ -105,7 +105,7 @@
 <script setup>
 import TheTabBar from '@/components/TheTabBar.vue'
 import { ref, computed } from 'vue'
-import { onPullDownRefresh } from '@dcloudio/uni-app'
+import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
 import { useClientOrderStore } from '@/store/clientOrder'
 import { buildVisualTags } from '@/utils/orderTags'
 
@@ -128,9 +128,7 @@ const statusMap = {
 }
 
 const currentTab = ref(0)
-// 分页相关变量保留，但目前 store 暂未实现分页，我们先直接获取全部
-const page = ref(1)
-const pageSize = ref(5)
+const pageSize = ref(20)
 const loadStatus = ref('more') // 'more' | 'loading' | 'noMore'
 
 // 【修改点3】重写 displayList 为计算属性，直接从 store 获取
@@ -149,15 +147,20 @@ const displayList = computed(() => {
   }))
 })
 
-// 【修改点4】简化加载逻辑 (因为改成了 computed，不需要手动 loadData)
-const loadData = () => {
-  // 暂时留空，或者用来做下拉刷新的占位
+const refreshLoadStatus = () => {
+  const paging = store.getPaging()
+  if (paging.loading) {
+    loadStatus.value = 'loading'
+    return
+  }
+  loadStatus.value = paging.hasMore ? 'more' : 'noMore'
+}
+
+const loadData = async () => {
   if (loadStatus.value === 'loading') return
   loadStatus.value = 'loading'
-  
-  setTimeout(() => {
-    loadStatus.value = 'noMore' // 假设一次性加载完
-  }, 500)
+  await store.reloadOrders({ pageSize: pageSize.value })
+  refreshLoadStatus()
 }
 
 const onTabChange = (index) => {
@@ -166,13 +169,17 @@ const onTabChange = (index) => {
 }
 
 const handleReachBottom = () => {
-  // 暂时不处理分页
-  loadStatus.value = 'noMore'
+  if (loadStatus.value === 'loading') return
+  if (loadStatus.value === 'noMore') return
+  loadStatus.value = 'loading'
+  store.loadNextPage().finally(() => {
+    refreshLoadStatus()
+  })
 }
 
 const reloadCurrent = async () => {
-  // 刷新逻辑：从云端重新加载订单列表
-  await store.loadFromStorage()
+  await store.reloadOrders({ pageSize: pageSize.value })
+  refreshLoadStatus()
 }
 
 const handleCancel = async (id) => {
@@ -231,6 +238,10 @@ const goDetail = (id) => {
 onPullDownRefresh(async () => {
   await reloadCurrent()
   uni.stopPullDownRefresh()
+})
+
+onLoad(async () => {
+  await loadData()
 })
 </script>
 

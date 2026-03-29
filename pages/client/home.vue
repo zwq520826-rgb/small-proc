@@ -24,6 +24,7 @@
       <swiper
         v-if="heroes.length"
         class="hero-swiper hero-card-only"
+        :class="{ compact: heroSwiperCompact }"
         :indicator-dots="heroes.length > 1"
         indicator-color="rgba(255,255,255,0.45)"
         indicator-active-color="#ffffff"
@@ -128,7 +129,7 @@
 
 <script setup>
 import TheTabBar from '@/components/TheTabBar.vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { requireLogin } from '@/utils/auth.js'
 
@@ -149,6 +150,11 @@ const features = [
 
 const showContactModal = ref(false)
 const contactPhone = '18608945191'
+
+const heroSwiperCompact = computed(() => {
+  if (!heroes.value.length) return false
+  return heroes.value.every((h) => !h.image_file_id)
+})
 
 const openContactModal = () => {
   showContactModal.value = true
@@ -327,6 +333,10 @@ onShow(() => {
   overflow: hidden;
 }
 
+.hero-swiper.compact {
+  height: 220rpx;
+}
+
 .hero-card {
   min-height: 220rpx;
   background: #ffffff;
@@ -421,7 +431,7 @@ onShow(() => {
 }
 
 .grid {
-  margin-top: 24rpx;
+  margin-top: 18rpx;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 20rpx;

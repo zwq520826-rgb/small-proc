@@ -28,7 +28,7 @@
         <input
           class="input"
           v-model="detail"
-          placeholder="例：紫荆公寓5号楼302"
+          placeholder="例：南苑5舍"
         />
       </view>
       <view class="form-item row">
@@ -187,4 +187,3 @@ const saveAddress = async () => {
   font-size: 30rpx;
 }
 </style>
-

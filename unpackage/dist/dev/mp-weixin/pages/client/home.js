@@ -21,6 +21,11 @@ const _sfc_main = {
       { icon: "/static/tabbar/paotuifuwu.png", text: "跑腿服务", path: "/pages/client/forms/errand" }
     ];
     const showContactModal = common_vendor.ref(false);
+    const heroSwiperCompact = common_vendor.computed(() => {
+      if (!heroes.value.length)
+        return false;
+      return heroes.value.every((h) => !h.image_file_id);
+    });
     const openContactModal = () => {
       showContactModal.value = true;
     };
@@ -115,7 +120,7 @@ const _sfc_main = {
         announcements.value = nextAnnouncements;
         saveFn({ heroes: nextHeroes, announcements: nextAnnouncements });
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/home.vue:252", "[home] loadHomeContent failed", e);
+        common_vendor.index.__f__("error", "at pages/client/home.vue:258", "[home] loadHomeContent failed", e);
         loadError.value = formatErrorMessage(e, "首页内容加载失败，请稍后重试");
         if (!showSkeleton) {
           common_vendor.index.showToast({ title: loadError.value, icon: "none" });
@@ -187,13 +192,14 @@ const _sfc_main = {
             j: hero._id || hero.title
           });
         }),
-        h: heroes.value.length > 1,
+        h: heroSwiperCompact.value ? 1 : "",
         i: heroes.value.length > 1,
-        j: heroes.value.length > 1
+        j: heroes.value.length > 1,
+        k: heroes.value.length > 1
       } : {
-        k: common_vendor.o(($event) => onHeroCta(null), "67")
+        l: common_vendor.o(($event) => onHeroCta(null), "36")
       }, {
-        l: common_vendor.f(features, (item, k0, i0) => {
+        m: common_vendor.f(features, (item, k0, i0) => {
           return {
             a: item.icon,
             b: common_vendor.t(item.text),
@@ -201,9 +207,9 @@ const _sfc_main = {
             d: common_vendor.o(($event) => goFeature(item), item.text)
           };
         }),
-        m: announcements.value.length
+        n: announcements.value.length
       }, announcements.value.length ? {
-        n: common_vendor.f(announcements.value, (a, k0, i0) => {
+        o: common_vendor.f(announcements.value, (a, k0, i0) => {
           return common_vendor.e({
             a: a.image_file_id
           }, a.image_file_id ? {
@@ -214,20 +220,20 @@ const _sfc_main = {
             e: a._id
           });
         }),
-        o: announcements.value.length > 1,
         p: announcements.value.length > 1,
-        q: announcements.value.length > 1
+        q: announcements.value.length > 1,
+        r: announcements.value.length > 1
       } : {}), {
         c: loadError.value,
-        r: showContactModal.value
+        s: showContactModal.value
       }, showContactModal.value ? {
-        s: common_vendor.o(closeContactModal, "35"),
-        t: common_vendor.t(contactPhone),
-        v: common_vendor.o(copyPhone, "c4"),
-        w: common_vendor.o(closeContactModal, "21"),
-        x: common_vendor.o(() => {
-        }, "ab"),
-        y: common_vendor.o(closeContactModal, "3f")
+        t: common_vendor.o(closeContactModal, "0a"),
+        v: common_vendor.t(contactPhone),
+        w: common_vendor.o(copyPhone, "b7"),
+        x: common_vendor.o(closeContactModal, "73"),
+        y: common_vendor.o(() => {
+        }, "0b"),
+        z: common_vendor.o(closeContactModal, "50")
       } : {});
     };
   }
