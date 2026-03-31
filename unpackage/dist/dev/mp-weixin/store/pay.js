@@ -20,6 +20,13 @@ async function payForOrder({ method, orderId, amount }) {
             reason: res.message || "创建支付订单失败"
           };
         }
+        if (res.data && res.data.skipPayment) {
+          common_vendor.index.hideLoading();
+          return {
+            success: true,
+            reason: res.message || "支付成功"
+          };
+        }
         const { appId, timeStamp, nonceStr, package: packageValue, signType, paySign } = res.data;
         return new Promise((resolve) => {
           common_vendor.index.requestPayment({
@@ -40,7 +47,7 @@ async function payForOrder({ method, orderId, amount }) {
               try {
                 await paymentService.confirmPaid({ outTradeNo: res.data.outTradeNo });
               } catch (e) {
-                common_vendor.index.__f__("warn", "at store/pay.js:65", "confirmPaid 失败（可忽略，等待回调）:", e);
+                common_vendor.index.__f__("warn", "at store/pay.js:73", "confirmPaid 失败（可忽略，等待回调）:", e);
               }
               resolve({
                 success: true,
@@ -48,7 +55,7 @@ async function payForOrder({ method, orderId, amount }) {
               });
             },
             fail: (err) => {
-              common_vendor.index.__f__("error", "at store/pay.js:73", "微信支付失败:", err);
+              common_vendor.index.__f__("error", "at store/pay.js:81", "微信支付失败:", err);
               common_vendor.index.hideLoading();
               if (err.errMsg && err.errMsg.includes("cancel")) {
                 resolve({
@@ -66,7 +73,7 @@ async function payForOrder({ method, orderId, amount }) {
         });
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at store/pay.js:93", "微信支付异常:", error);
+        common_vendor.index.__f__("error", "at store/pay.js:101", "微信支付异常:", error);
         return {
           success: false,
           reason: error.message || "支付失败，请重试"
@@ -78,7 +85,7 @@ async function payForOrder({ method, orderId, amount }) {
       reason: `不支持的支付方式: ${method}`
     };
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/pay.js:105", "payForOrder 异常:", error);
+    common_vendor.index.__f__("error", "at store/pay.js:113", "payForOrder 异常:", error);
     return {
       success: false,
       reason: error.message || "支付失败，请重试"

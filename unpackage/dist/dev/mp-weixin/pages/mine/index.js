@@ -313,7 +313,7 @@ const _sfc_main = {
           }
           return;
         }
-        this.openRiderJoinPopup("approved");
+        this.enterRiderMode();
       } catch (e) {
         common_vendor.index.showToast({ title: "获取认证信息失败，请稍后重试", icon: "none" });
       }
@@ -464,19 +464,15 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     R: $data.riderGuide.qr_file_id,
     S: common_vendor.o((...args) => $options.previewRiderGuideQr && $options.previewRiderGuideQr(...args), "1a")
   } : {}, {
-    T: $data.riderJoinMode === "approved"
-  }, $data.riderJoinMode === "approved" ? {
-    U: common_vendor.o((...args) => $options.enterRiderMode && $options.enterRiderMode(...args), "70")
-  } : {}, {
-    V: common_vendor.o((...args) => $options.closeRiderJoinPopup && $options.closeRiderJoinPopup(...args), "c4"),
-    W: common_vendor.o(() => {
+    T: common_vendor.o((...args) => $options.closeRiderJoinPopup && $options.closeRiderJoinPopup(...args), "df"),
+    U: common_vendor.o(() => {
     }, "3c"),
-    X: common_vendor.sr("riderJoinPopup", "569e925a-4"),
-    Y: common_vendor.p({
+    V: common_vendor.sr("riderJoinPopup", "569e925a-4"),
+    W: common_vendor.p({
       type: "center"
     }),
-    Z: common_vendor.sr("bind-mobile-by-sms", "569e925a-5"),
-    aa: common_vendor.o($options.bindMobileSuccess, "63")
+    X: common_vendor.sr("bind-mobile-by-sms", "569e925a-5"),
+    Y: common_vendor.o($options.bindMobileSuccess, "34")
   });
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-569e925a"]]);

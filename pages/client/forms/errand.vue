@@ -124,9 +124,15 @@
 
     <!-- 底部栏 -->
     <view class="bottom-bar">
-      <view class="total">
-        <text class="total-label">合计:</text>
-        <text class="total-price">¥ {{ totalPrice }}</text>
+      <view class="total-block">
+        <view class="total">
+          <text class="total-label">合计:</text>
+          <view class="price-wrap">
+            <text v-if="discountPreview.canUse" class="total-original">¥ {{ totalPrice }}</text>
+            <text class="total-price">¥ {{ payablePrice }}</text>
+          </view>
+        </view>
+        <view v-if="discountPreview.canUse" class="discount-tip">首单立减 ¥{{ discountPreview.amount.toFixed(2) }}</view>
       </view>
       <button class="pay-btn" @click="handlePayClick">立即发布</button>
     </view>
@@ -153,6 +159,8 @@ const deliveryDormType = ref('') // 'male' | 'female'
 // 地址 & 订单
 const addressStore = useAddressStore()
 const store = useClientOrderStore()
+const orderService = uniCloud.importObject('order-service')
+const discountPreview = ref({ canUse: false, amount: 0 })
 const currentAddress = computed(() => {
   // 只展示用户明确选择的地址，避免自动带出默认/历史地址
   return addressStore.selectedAddress || null
@@ -164,6 +172,12 @@ const totalPrice = computed(() => {
   if (isUrgent.value) price += 1
   if (isDelivery.value) price += 1
   return price.toFixed(2)
+})
+
+const payablePrice = computed(() => {
+  const total = Number(totalPrice.value || 0)
+  const reduced = discountPreview.value.canUse ? Number(discountPreview.value.amount || 0) : 0
+  return Math.max(0, total - reduced).toFixed(2)
 })
 
 // 事件
@@ -364,12 +378,28 @@ const onPayConfirm = async (method = 'wechat') => {
   }
 }
 
-onLoad(() => {
+const loadFirstOrderDiscountPreview = async () => {
+  try {
+    const res = await orderService.getFirstOrderDiscountPreview()
+    if (res && res.code === 0 && res.data && res.data.enable && res.data.canUse) {
+      discountPreview.value = {
+        canUse: true,
+        amount: Number(res.data.amount || 0)
+      }
+      return
+    }
+  } catch (e) {}
+  discountPreview.value = { canUse: false, amount: 0 }
+}
+
+onLoad(async () => {
   // 预留：可从路由参数预填表单
+  await loadFirstOrderDiscountPreview()
 })
 
-onShow(() => {
+onShow(async () => {
   // 进入页面时可同步地址
+  await loadFirstOrderDiscountPreview()
 })
 </script>
 
@@ -651,15 +681,39 @@ onShow(() => {
   gap: 10rpx;
 }
 
+.total-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.price-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10rpx;
+}
+
 .total-label {
   color: #4a5568;
   font-size: 26rpx;
+}
+
+.total-original {
+  font-size: 24rpx;
+  color: #9ca3af;
+  text-decoration: line-through;
 }
 
 .total-price {
   font-size: 40rpx;
   font-weight: 800;
   color: #000000;
+}
+
+.discount-tip {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #16a34a;
+  font-weight: 600;
 }
 
 .pay-btn {

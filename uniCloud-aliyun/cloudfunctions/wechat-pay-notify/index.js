@@ -434,7 +434,10 @@ async function processPaymentNotification(decryptedData) {
       await db.collection('orders').doc(transaction.order_id).update(updateData)
 
       if (!isAddon) {
-        await incDashboardMetrics({ paidInc: 1, gmvInc: Number(order.price || 0) })
+        const paidAmount = Number((order.content && order.content.payable_amount) != null
+          ? order.content.payable_amount
+          : order.price || 0)
+        await incDashboardMetrics({ paidInc: 1, gmvInc: paidAmount })
       }
 
       if (isAddon && order.parent_order_id) {

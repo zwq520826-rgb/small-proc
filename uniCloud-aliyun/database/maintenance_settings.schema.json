@@ -43,6 +43,18 @@
 			"bsonType": "bool",
 			"description": "是否启用"
 		},
+		"amount": {
+			"bsonType": "double",
+			"description": "金额（如首单立减金额）"
+		},
+		"budget_limit": {
+			"bsonType": "double",
+			"description": "预算上限（元）"
+		},
+		"budget_used": {
+			"bsonType": "double",
+			"description": "预算已用（元）"
+		},
 		"recruit_closed": {
 			"bsonType": "bool",
 			"description": "是否暂停新增骑手"

@@ -135,11 +135,6 @@
         />
         <text v-else class="service-popup-subtitle">暂未配置群二维码，请联系管理员</text>
         <view class="service-popup-actions">
-          <button
-            v-if="riderJoinMode === 'approved'"
-            class="service-popup-btn primary"
-            @click="enterRiderMode"
-          >已添加，进入骑手端</button>
           <button class="service-popup-btn ghost" @click="closeRiderJoinPopup">关闭</button>
         </view>
       </view>
@@ -491,7 +486,7 @@ const riderService = uniCloud.importObject("rider-service")
             }
             return
           }
-          this.openRiderJoinPopup('approved')
+          this.enterRiderMode()
         } catch (e) {
           uni.showToast({ title: '获取认证信息失败，请稍后重试', icon: 'none' })
         }

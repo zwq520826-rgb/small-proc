@@ -4,8 +4,12 @@
 
 const uniID = require('uni-id-common')
 const securityKit = require('./security-kit')
+const wechatSubscribe = require('./wechat-subscribe')
 const db = uniCloud.database()
 const uniCaptcha = require('uni-captcha')
+
+const RIDER_SUBSCRIBE_CONFIG_ID = 'rider_subscribe_notify'
+let riderSubscribeConfigCache = { at: 0, value: null }
 
 function checkAuth(ctx) {
   if (!ctx || !ctx.uid) {
@@ -74,6 +78,67 @@ async function getCommissionByOrders(totalCompletedOrders) {
       commission_rate: commission,         // 平台抽成比例
       rider_share: 1 - commission         // 骑手分成比例
     }
+  }
+}
+
+function normalizeRiderSubscribeConfig(row = {}) {
+  const submitTpl = String(row.template_submit_id || '').trim()
+  const passTpl = String(row.template_pass_id || '').trim()
+  return {
+    enable: row.enable !== false,
+    template_submit_id: submitTpl,
+    template_pass_id: passTpl,
+    page_path: String(row.page_path || '/pages/mine/index').trim() || '/pages/mine/index',
+    send_retry: Math.max(0, Math.min(2, parseInt(row.send_retry, 10) || 0))
+  }
+}
+
+async function getRiderSubscribeConfig() {
+  const now = Date.now()
+  if (riderSubscribeConfigCache.at && now - riderSubscribeConfigCache.at < 3000 && riderSubscribeConfigCache.value) {
+    return riderSubscribeConfigCache.value
+  }
+  try {
+    const res = await db.collection('maintenance_settings').doc(RIDER_SUBSCRIBE_CONFIG_ID).get()
+    const row = Array.isArray(res.data) ? res.data[0] : res.data
+    const cfg = normalizeRiderSubscribeConfig(row || {})
+    riderSubscribeConfigCache = { at: now, value: cfg }
+    return cfg
+  } catch (e) {
+    const fallback = normalizeRiderSubscribeConfig({})
+    riderSubscribeConfigCache = { at: now, value: fallback }
+    return fallback
+  }
+}
+
+function resolveUserOpenid(user = {}) {
+  const wxOpenid = user && user.wx_openid
+  if (!wxOpenid) return ''
+  if (typeof wxOpenid === 'string') return wxOpenid
+  return String(wxOpenid.mp || '').trim()
+}
+
+function resolveSubscribeAccept(result = {}, templateId = '') {
+  if (!templateId || !result || typeof result !== 'object') return false
+  return result[templateId] === 'accept'
+}
+
+function formatTimeLabel(ts) {
+  const d = new Date(ts)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${y}-${m}-${day} ${hh}:${mm}`
+}
+
+function buildSubmitNotifyData(ts) {
+  const timeLabel = formatTimeLabel(ts)
+  return {
+    thing1: { value: '骑手认证审核中' },
+    time2: { value: timeLabel },
+    thing3: { value: '请扫码加入骑手群，审核结果将再次通知' }
   }
 }
 
@@ -175,6 +240,25 @@ module.exports = {
   },
 
   /**
+   * 读取骑手订阅通知配置（仅前端授权用）
+   */
+  async getSubscribeNotifyConfig() {
+    const auth = checkAuth(this)
+    if (auth.code) return auth
+
+    const cfg = await getRiderSubscribeConfig()
+    return {
+      code: 0,
+      data: {
+        enable: cfg.enable,
+        template_submit_id: cfg.template_submit_id,
+        template_pass_id: cfg.template_pass_id,
+        page_path: cfg.page_path
+      }
+    }
+  },
+
+  /**
    * 提交 / 更新骑手认证申请
    * @param {object} data
    * @param {string} data.name 姓名
@@ -194,7 +278,8 @@ module.exports = {
       student_no,
       college_class,
       id_card,
-      mobile
+      mobile,
+      subscribeResult
     } = data || {}
 
     if (!name || !student_no || !college_class || !id_card || !mobile) {
@@ -264,6 +349,25 @@ module.exports = {
 
     const now = Date.now()
     const col = db.collection('rider_profiles')
+    const logger = securityKit.createLogger({
+      service: 'rider-service',
+      api: 'submitApplication',
+      uid,
+      ip: this.clientIP || '',
+      requestId: this.requestId
+    })
+
+    const subscribeCfg = await getRiderSubscribeConfig()
+    const userRes = await db.collection('uni-id-users').doc(uid).get()
+    const user = Array.isArray(userRes.data) ? userRes.data[0] : userRes.data
+    const openid = resolveUserOpenid(user || {})
+    const subscribePayload = {
+      tpl_submit_accept: resolveSubscribeAccept(subscribeResult, subscribeCfg.template_submit_id),
+      tpl_pass_accept: resolveSubscribeAccept(subscribeResult, subscribeCfg.template_pass_id),
+      auth_time: now,
+      openid,
+      update_time: now
+    }
 
     // 根据身份证号自动识别性别（male/female）
     const gender = getGenderFromIdCard(id_card)
@@ -291,8 +395,36 @@ module.exports = {
         status: 'pending',
         real_name_verified: true,
         real_name_verify_time: now,
+        subscribe_notify: {
+          ...(old.subscribe_notify || {}),
+          ...subscribePayload
+        },
         update_time: now
       })
+
+      if (subscribeCfg.enable && subscribeCfg.template_submit_id && subscribePayload.tpl_submit_accept && openid) {
+        const sendRes = await wechatSubscribe.sendSubscribeMessage({
+          touser: openid,
+          template_id: subscribeCfg.template_submit_id,
+          page: subscribeCfg.page_path,
+          data: buildSubmitNotifyData(now)
+        })
+        if (sendRes.ok) {
+          await col.doc(id).update({
+            'subscribe_notify.last_submit_msgid': sendRes.msgid || '',
+            'subscribe_notify.last_submit_send_time': now,
+            'subscribe_notify.last_error': '',
+            update_time: now
+          })
+        } else {
+          logger.warn({ event: 'send_submit_notify_failed', errcode: sendRes.errcode, errmsg: sendRes.errmsg })
+          await col.doc(id).update({
+            'subscribe_notify.last_error': `${sendRes.errcode || 'UNKNOWN'}:${sendRes.errmsg || ''}`.slice(0, 180),
+            update_time: now
+          })
+        }
+      }
+
       return {
         code: 0,
         message: '已更新认证资料，等待管理员审核',
@@ -318,9 +450,34 @@ module.exports = {
         status: 'pending',
         real_name_verified: true,
         real_name_verify_time: now,
+        subscribe_notify: subscribePayload,
         create_time: now,
         update_time: now
       })
+
+      if (subscribeCfg.enable && subscribeCfg.template_submit_id && subscribePayload.tpl_submit_accept && openid) {
+        const sendRes = await wechatSubscribe.sendSubscribeMessage({
+          touser: openid,
+          template_id: subscribeCfg.template_submit_id,
+          page: subscribeCfg.page_path,
+          data: buildSubmitNotifyData(now)
+        })
+        if (sendRes.ok) {
+          await col.doc(addRes.id).update({
+            'subscribe_notify.last_submit_msgid': sendRes.msgid || '',
+            'subscribe_notify.last_submit_send_time': now,
+            'subscribe_notify.last_error': '',
+            update_time: now
+          })
+        } else {
+          logger.warn({ event: 'send_submit_notify_failed', errcode: sendRes.errcode, errmsg: sendRes.errmsg })
+          await col.doc(addRes.id).update({
+            'subscribe_notify.last_error': `${sendRes.errcode || 'UNKNOWN'}:${sendRes.errmsg || ''}`.slice(0, 180),
+            update_time: now
+          })
+        }
+      }
+
       return {
         code: 0,
         message: '认证资料已提交，等待管理员审核',

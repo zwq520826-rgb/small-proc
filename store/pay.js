@@ -34,6 +34,14 @@ export async function payForOrder({ method, orderId, amount }) {
           }
         }
 
+        if (res.data && res.data.skipPayment) {
+          uni.hideLoading()
+          return {
+            success: true,
+            reason: res.message || '支付成功'
+          }
+        }
+
         const { appId, timeStamp, nonceStr, package: packageValue, signType, paySign } = res.data
 
         // 2. 调起微信支付

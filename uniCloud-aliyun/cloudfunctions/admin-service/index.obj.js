@@ -1589,6 +1589,70 @@ module.exports = {
 	},
 
 	/**
+	 * 首单立减配置
+	 */
+	async getFirstOrderDiscountConfig() {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+
+		const res = await db.collection('maintenance_settings').doc('first_order_discount').get()
+		const row = Array.isArray(res.data) ? res.data[0] : res.data
+		const amount = Number(row?.amount)
+		const budgetLimit = Number(row?.budget_limit)
+		const budgetUsed = Number(row?.budget_used || 0)
+		const cap = Number.isFinite(budgetLimit) ? Math.max(0, budgetLimit) : 500
+		const used = Number.isFinite(budgetUsed) ? Math.max(0, budgetUsed) : 0
+		return {
+			code: 0,
+			data: {
+				enable: row?.enable !== false,
+				amount: Number.isFinite(amount) ? Math.max(0, Math.min(50, amount)) : 5,
+				budget_limit: cap,
+				budget_used: used,
+				budget_remaining: Math.max(0, cap - used),
+				hint: '首单立减仅对注册 7 天内用户生效，且每个用户仅一次。预算达到上限后自动停止发放。'
+			}
+		}
+	},
+
+	async saveFirstOrderDiscountConfig({ enable = true, amount = 5, budget_limit = 500 } = {}) {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+
+		const amt = Number(amount)
+		const budgetLimit = Number(budget_limit)
+		if (!Number.isFinite(amt) || amt < 0 || amt > 50) {
+			return { code: 400, message: '立减金额需在 0 ~ 50 元之间' }
+		}
+		if (!Number.isFinite(budgetLimit) || budgetLimit < 0 || budgetLimit > 100000) {
+			return { code: 400, message: '预算上限需在 0 ~ 100000 元之间' }
+		}
+
+		const now = Date.now()
+		const doc = {
+			enable: enable !== false,
+			amount: Math.round(amt * 100) / 100,
+			budget_limit: Math.round(budgetLimit * 100) / 100,
+			update_time: now
+		}
+
+		const cur = await db.collection('maintenance_settings').doc('first_order_discount').get()
+		const existed = Array.isArray(cur.data) ? cur.data[0] : cur.data
+		if (existed) {
+			await db.collection('maintenance_settings').doc('first_order_discount').update(doc)
+		} else {
+			await db.collection('maintenance_settings').add({
+				_id: 'first_order_discount',
+				...doc,
+				budget_used: 0,
+				create_time: now
+			})
+		}
+
+		return { code: 0, message: '已保存' }
+	},
+
+	/**
 	 * 骑手提现引导配置（二维码）
 	 */
 	async getRiderWithdrawGuideConfig() {

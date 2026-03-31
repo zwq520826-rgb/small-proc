@@ -256,14 +256,34 @@
   align-items: baseline;
   gap: 10rpx;
 }
+.total-block.data-v-0e9c11e7 {
+  display: flex;
+  flex-direction: column;
+}
+.price-wrap.data-v-0e9c11e7 {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10rpx;
+}
 .total-label.data-v-0e9c11e7 {
   color: #4a5568;
   font-size: 26rpx;
+}
+.total-original.data-v-0e9c11e7 {
+  font-size: 24rpx;
+  color: #9ca3af;
+  text-decoration: line-through;
 }
 .total-price.data-v-0e9c11e7 {
   font-size: 40rpx;
   font-weight: 800;
   color: #000000;
+}
+.discount-tip.data-v-0e9c11e7 {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #16a34a;
+  font-weight: 600;
 }
 .pay-btn.data-v-0e9c11e7 {
   min-width: 220rpx;

@@ -55,6 +55,103 @@ const RATE_LIMIT_RULES = {
   }
 }
 
+const FIRST_ORDER_DISCOUNT_AMOUNT = 5
+const FIRST_ORDER_DISCOUNT_COLLECTION = 'user_first_order_discount'
+const FIRST_ORDER_DISCOUNT_CONFIG_DOC = 'first_order_discount'
+const FIRST_ORDER_DISCOUNT_VALID_DAYS = 7
+const FIRST_ORDER_DISCOUNT_BUDGET_LIMIT = 500
+let firstOrderDiscountConfigCache = { at: 0, value: null }
+
+async function getFirstOrderDiscountConfig() {
+  const now = Date.now()
+  if (firstOrderDiscountConfigCache.at && now - firstOrderDiscountConfigCache.at < 3000 && firstOrderDiscountConfigCache.value) {
+    return firstOrderDiscountConfigCache.value
+  }
+
+  const fallback = {
+    enable: true,
+    amount: FIRST_ORDER_DISCOUNT_AMOUNT,
+    budget_limit: FIRST_ORDER_DISCOUNT_BUDGET_LIMIT,
+    budget_used: 0
+  }
+
+  try {
+    const res = await db.collection('maintenance_settings').doc(FIRST_ORDER_DISCOUNT_CONFIG_DOC).get()
+    const row = Array.isArray(res.data) ? res.data[0] : res.data
+    const amount = Number(row?.amount)
+    const budgetLimit = Number(row?.budget_limit)
+    const budgetUsed = Number(row?.budget_used)
+    const cfg = {
+      enable: row?.enable !== false,
+      amount: Number.isFinite(amount) ? Math.max(0, Math.min(50, amount)) : FIRST_ORDER_DISCOUNT_AMOUNT,
+      budget_limit: Number.isFinite(budgetLimit) ? Math.max(0, budgetLimit) : FIRST_ORDER_DISCOUNT_BUDGET_LIMIT,
+      budget_used: Number.isFinite(budgetUsed) ? Math.max(0, budgetUsed) : 0
+    }
+    firstOrderDiscountConfigCache = { at: now, value: cfg }
+    return cfg
+  } catch (e) {
+    firstOrderDiscountConfigCache = { at: now, value: fallback }
+    return fallback
+  }
+}
+
+async function ensureFirstOrderDiscountConfigDoc() {
+  const now = Date.now()
+  try {
+    await db.collection('maintenance_settings').add({
+      _id: FIRST_ORDER_DISCOUNT_CONFIG_DOC,
+      enable: true,
+      amount: FIRST_ORDER_DISCOUNT_AMOUNT,
+      budget_limit: FIRST_ORDER_DISCOUNT_BUDGET_LIMIT,
+      budget_used: 0,
+      create_time: now,
+      update_time: now
+    })
+  } catch (e) {}
+}
+
+async function reserveFirstOrderDiscountBudget(amount) {
+  const reserveAmount = Math.max(0, Number(amount || 0))
+  if (reserveAmount <= 0) return true
+
+  for (let i = 0; i < 3; i++) {
+    const cfgRes = await db.collection('maintenance_settings').doc(FIRST_ORDER_DISCOUNT_CONFIG_DOC).get()
+    const cfg = Array.isArray(cfgRes.data) ? cfgRes.data[0] : cfgRes.data
+    if (!cfg) {
+      await ensureFirstOrderDiscountConfigDoc()
+      continue
+    }
+    const limit = Number(cfg.budget_limit)
+    const used = Number(cfg.budget_used || 0)
+    const cap = Number.isFinite(limit) ? Math.max(0, limit) : FIRST_ORDER_DISCOUNT_BUDGET_LIMIT
+    if (used + reserveAmount > cap) return false
+
+    const updateRes = await db.collection('maintenance_settings')
+      .where({ _id: FIRST_ORDER_DISCOUNT_CONFIG_DOC, budget_used: used })
+      .update({
+        budget_used: dbCmd.inc(reserveAmount),
+        update_time: Date.now()
+      })
+    if (updateRes && updateRes.updated) {
+      firstOrderDiscountConfigCache = { at: 0, value: null }
+      return true
+    }
+  }
+  return false
+}
+
+async function rollbackFirstOrderDiscountBudget(amount) {
+  const rollbackAmount = Math.max(0, Number(amount || 0))
+  if (rollbackAmount <= 0) return
+  try {
+    await db.collection('maintenance_settings').doc(FIRST_ORDER_DISCOUNT_CONFIG_DOC).update({
+      budget_used: dbCmd.inc(-rollbackAmount),
+      update_time: Date.now()
+    })
+    firstOrderDiscountConfigCache = { at: 0, value: null }
+  } catch (e) {}
+}
+
 async function enforceRateLimit(ctx, apiName) {
   const rule = RATE_LIMIT_RULES[apiName]
   if (!rule) return null
@@ -314,6 +411,110 @@ async function queryWechatOrderByOutTradeNo(outTradeNo, cfg) {
   }
 }
 
+async function markFirstOrderDiscountUsedByHistory(uid) {
+  if (!uid) return
+  const now = Date.now()
+  try {
+    await db.collection(FIRST_ORDER_DISCOUNT_COLLECTION).add({
+      _id: uid,
+      user_id: uid,
+      status: 'used',
+      used_order_id: 'history',
+      used_at: now,
+      create_time: now,
+      update_time: now
+    })
+  } catch (e) {}
+}
+
+async function tryClaimFirstOrderDiscount(uid, order = {}) {
+  if (!uid || !order || !order._id) {
+    return { apply: false, amount: 0, alreadyApplied: false }
+  }
+
+  if (order.order_class && order.order_class !== 'normal') {
+    return { apply: false, amount: 0, alreadyApplied: false }
+  }
+
+  const content = order.content || {}
+  if (content.first_order_discount_applied) {
+    return {
+      apply: true,
+      amount: Number(content.first_order_discount_amount || 0),
+      alreadyApplied: true
+    }
+  }
+
+  const discountConfig = await getFirstOrderDiscountConfig()
+  if (!discountConfig.enable) {
+    return { apply: false, amount: 0, alreadyApplied: false }
+  }
+
+  const orderAmount = Number(order.price || 0)
+  if (!Number.isFinite(orderAmount) || orderAmount <= 0) {
+    return { apply: false, amount: 0, alreadyApplied: false }
+  }
+
+  // 仅新注册 7 天内可享
+  const userRes = await db.collection('uni-id-users').doc(uid).get()
+  const user = Array.isArray(userRes.data) ? userRes.data[0] : userRes.data
+  const registerTs = Number(user?.register_date || user?.create_date || 0)
+  const validMs = FIRST_ORDER_DISCOUNT_VALID_DAYS * 24 * 60 * 60 * 1000
+  if (!Number.isFinite(registerTs) || registerTs <= 0 || Date.now() - registerTs > validMs) {
+    return { apply: false, amount: 0, alreadyApplied: false }
+  }
+
+  try {
+    const discountRes = await db.collection(FIRST_ORDER_DISCOUNT_COLLECTION).doc(uid).get()
+    const discountDoc = Array.isArray(discountRes.data) ? discountRes.data[0] : discountRes.data
+    if (discountDoc && discountDoc.status === 'used') {
+      return { apply: false, amount: 0, alreadyApplied: false }
+    }
+  } catch (e) {}
+
+  const paidCountRes = await db.collection('orders').where({
+    user_id: uid,
+    order_class: db.command.neq('urgent_addon'),
+    pay_status: 'paid'
+  }).count()
+
+  if (Number(paidCountRes.total || 0) > 0) {
+    await markFirstOrderDiscountUsedByHistory(uid)
+    return { apply: false, amount: 0, alreadyApplied: false }
+  }
+
+  const now = Date.now()
+  const discountAmount = Math.max(0, Math.min(Number(discountConfig.amount || 0), orderAmount))
+  if (discountAmount <= 0) {
+    return { apply: false, amount: 0, alreadyApplied: false }
+  }
+
+  const budgetReserved = await reserveFirstOrderDiscountBudget(discountAmount)
+  if (!budgetReserved) {
+    return { apply: false, amount: 0, alreadyApplied: false }
+  }
+
+  try {
+    await db.collection(FIRST_ORDER_DISCOUNT_COLLECTION).add({
+      _id: uid,
+      user_id: uid,
+      status: 'used',
+      used_order_id: order._id,
+      used_at: now,
+      create_time: now,
+      update_time: now
+    })
+    return {
+      apply: true,
+      amount: discountAmount,
+      alreadyApplied: false
+    }
+  } catch (e) {
+    await rollbackFirstOrderDiscountBudget(discountAmount)
+    return { apply: false, amount: 0, alreadyApplied: false }
+  }
+}
+
 module.exports = {
   /**
    * 通用预处理器：校验登录、加载配置
@@ -425,15 +626,78 @@ module.exports = {
         }
       }
 
-      const amountYuan = Number(order.price || 0)
-      if (!amountYuan || amountYuan <= 0) {
+      const baseAmountYuan = Number(order.price || 0)
+      if (!baseAmountYuan || baseAmountYuan <= 0) {
         return {
           code: 'INVALID_AMOUNT',
           message: '订单金额不合法'
         }
       }
 
-      // 2. 获取用户 openid（小程序端）
+      const claim = await tryClaimFirstOrderDiscount(uid, order)
+      const discountAmount = claim.alreadyApplied
+        ? Number((order.content && order.content.first_order_discount_amount) || 0)
+        : Number(claim.amount || 0)
+      const hasFirstDiscount = claim.apply && (claim.alreadyApplied || discountAmount > 0)
+      const amountYuan = Math.max(0, Number((baseAmountYuan - discountAmount).toFixed(2)))
+      const now = Date.now()
+
+      // 2. 生成商户订单号
+      const outTradeNo = order.out_trade_no || buildOutTradeNo(cfg.mchid)
+
+      // 4. 写入/更新订单中的支付相关字段（强制回到“待支付且不进大厅”，避免未支付先被抢）
+      const orderUpdateData = {
+        out_trade_no: outTradeNo,
+        pay_method: 'wechat',
+        pay_status: 'unpaid',
+        status: 'pending_pay',
+        hall_visible: false,
+        update_time: now
+      }
+      if (hasFirstDiscount) {
+        orderUpdateData['content.first_order_discount_applied'] = true
+        orderUpdateData['content.first_order_discount_amount'] = discountAmount
+        orderUpdateData['content.original_price'] = baseAmountYuan
+        orderUpdateData['content.payable_amount'] = amountYuan
+      }
+      await db.collection('orders').doc(orderId).update(orderUpdateData)
+
+      // 5. 零元订单：直接完成支付，不调起微信
+      if (amountYuan <= 0) {
+      await db.collection('orders').doc(orderId).update({
+          pay_method: 'first_order_discount',
+          pay_status: 'paid',
+          pay_time: now,
+          status: 'pending_accept',
+          hall_visible: true,
+          'content.payable_amount': 0,
+          update_time: now
+        })
+        await db.collection('transactions').add({
+          user_id: uid,
+          type: 'pay',
+          amount: 0,
+          balance_before: 0,
+          balance_after: 0,
+          order_id: orderId,
+          status: 'success',
+          channel: 'first_order_discount',
+          out_trade_no: '',
+          remark: `首单立减¥${discountAmount.toFixed(2)}`,
+          create_time: now
+        })
+        await incDashboardMetrics({ paidInc: 1, gmvInc: 0 })
+        return {
+          code: 0,
+          message: '首单优惠已抵扣，无需支付',
+          data: {
+            skipPayment: true,
+            outTradeNo: ''
+          }
+        }
+      }
+
+      // 6. 获取用户 openid（小程序端）
       const userRes = await db.collection('uni-id-users').doc(uid).get()
       if (!userRes.data.length) {
         return {
@@ -450,20 +714,7 @@ module.exports = {
         }
       }
 
-      // 3. 生成商户订单号
-      const outTradeNo = order.out_trade_no || buildOutTradeNo(cfg.mchid)
-
-      // 4. 写入/更新订单中的支付相关字段（强制回到“待支付且不进大厅”，避免未支付先被抢）
-      await db.collection('orders').doc(orderId).update({
-        out_trade_no: outTradeNo,
-        pay_method: 'wechat',
-        pay_status: 'unpaid',
-        status: 'pending_pay',
-        hall_visible: false,
-        update_time: Date.now()
-      })
-
-      // 5. 写入一条交易记录（pending）
+      // 7. 写入一条交易记录（pending）
       await db.collection('transactions').add({
         user_id: uid,
         type: 'pay',
@@ -475,10 +726,10 @@ module.exports = {
         channel: 'wechat',
         out_trade_no: outTradeNo,
         remark: '微信小程序支付',
-        create_time: Date.now()
+        create_time: now
       })
 
-      // 6. 调用微信 JSAPI 下单接口
+      // 8. 调用微信 JSAPI 下单接口
       const totalFee = Math.round(amountYuan * 100) // 元转分
       const body = {
         appid: cfg.appid,
@@ -724,7 +975,10 @@ module.exports = {
     }
 
     if (!isAddon) {
-      await incDashboardMetrics({ paidInc: 1, gmvInc: Number(order.price || 0) })
+      const paidAmount = Number((order.content && order.content.payable_amount) != null
+        ? order.content.payable_amount
+        : order.price || 0)
+      await incDashboardMetrics({ paidInc: 1, gmvInc: paidAmount })
     }
 
     if (isAddon && order.parent_order_id) {
@@ -782,7 +1036,9 @@ module.exports = {
       return { code: 0, message: '已退款（幂等）' }
     }
 
-    const totalYuan = Number(order.price || 0)
+    const totalYuan = Number((order.content && order.content.payable_amount) != null
+      ? order.content.payable_amount
+      : order.price || 0)
     const refundYuan = typeof amount === 'number' ? Number(amount) : totalYuan
     if (!totalYuan || totalYuan <= 0 || refundYuan <= 0 || refundYuan - totalYuan > 0.0001) {
       return { code: 'INVALID_AMOUNT', message: '退款金额不合法' }

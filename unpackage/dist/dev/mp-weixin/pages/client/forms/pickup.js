@@ -23,6 +23,8 @@ const _sfc_main = {
     const deliveryDormType = common_vendor.ref("");
     const addressStore = store_address.useAddressStore();
     const store = store_clientOrder.useClientOrderStore();
+    const orderService = common_vendor._r.importObject("order-service");
+    const discountPreview = common_vendor.ref({ canUse: false, amount: 0 });
     const toFen = (yuan) => Math.round(Number(yuan || 0) * 100);
     const fromFen = (fen) => Number(fen || 0) / 100;
     const sizeOptions = common_vendor.computed(() => [
@@ -53,6 +55,11 @@ const _sfc_main = {
     const totalPrice = common_vendor.computed(() => {
       return fromFen(totalPriceFen.value).toFixed(2);
     });
+    const payablePriceFen = common_vendor.computed(() => {
+      const reduceFen = discountPreview.value.canUse ? toFen(discountPreview.value.amount || 0) : 0;
+      return Math.max(0, totalPriceFen.value - reduceFen);
+    });
+    const payablePrice = common_vendor.computed(() => fromFen(payablePriceFen.value).toFixed(2));
     const chooseImage = () => {
       common_vendor.wx$1.chooseMedia({
         count: 9 - images.value.length,
@@ -64,7 +71,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:217", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:232", "选择图片失败:", err);
         }
       });
     };
@@ -199,7 +206,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:389", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:404", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -258,13 +265,28 @@ ${deliveryLocation}`,
           }
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:461", "加载快递代取价格失败，将使用默认价格:", e);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:476", "加载快递代取价格失败，将使用默认价格:", e);
       } finally {
         pickupRatesPromise = null;
       }
     }
+    async function loadFirstOrderDiscountPreview() {
+      try {
+        const res = await orderService.getFirstOrderDiscountPreview();
+        if (res && res.code === 0 && res.data && res.data.enable && res.data.canUse) {
+          discountPreview.value = {
+            canUse: true,
+            amount: Number(res.data.amount || 0)
+          };
+          return;
+        }
+      } catch (e) {
+      }
+      discountPreview.value = { canUse: false, amount: 0 };
+    }
     common_vendor.onLoad(async () => {
       await loadPickupRatesIfNeeded();
+      await loadFirstOrderDiscountPreview();
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
@@ -314,8 +336,16 @@ ${deliveryLocation}`,
       } : {}, {
         y: remark.value,
         z: common_vendor.o(($event) => remark.value = $event.detail.value, "e2"),
-        A: common_vendor.t(totalPrice.value),
-        B: common_vendor.o(handlePayClick, "23")
+        A: discountPreview.value.canUse
+      }, discountPreview.value.canUse ? {
+        B: common_vendor.t(totalPrice.value)
+      } : {}, {
+        C: common_vendor.t(payablePrice.value),
+        D: discountPreview.value.canUse
+      }, discountPreview.value.canUse ? {
+        E: common_vendor.t(discountPreview.value.amount.toFixed(2))
+      } : {}, {
+        F: common_vendor.o(handlePayClick, "eb")
       });
     };
   }

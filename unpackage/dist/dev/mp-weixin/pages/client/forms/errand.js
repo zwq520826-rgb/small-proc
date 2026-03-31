@@ -17,6 +17,8 @@ const _sfc_main = {
     const deliveryDormType = common_vendor.ref("");
     const addressStore = store_address.useAddressStore();
     const store = store_clientOrder.useClientOrderStore();
+    const orderService = common_vendor._r.importObject("order-service");
+    const discountPreview = common_vendor.ref({ canUse: false, amount: 0 });
     const currentAddress = common_vendor.computed(() => {
       return addressStore.selectedAddress || null;
     });
@@ -27,6 +29,11 @@ const _sfc_main = {
       if (isDelivery.value)
         price += 1;
       return price.toFixed(2);
+    });
+    const payablePrice = common_vendor.computed(() => {
+      const total = Number(totalPrice.value || 0);
+      const reduced = discountPreview.value.canUse ? Number(discountPreview.value.amount || 0) : 0;
+      return Math.max(0, total - reduced).toFixed(2);
     });
     const chooseImage = () => {
       common_vendor.wx$1.chooseMedia({
@@ -39,7 +46,7 @@ const _sfc_main = {
           images.value = images.value.concat(paths);
         },
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:183", "选择图片失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:197", "选择图片失败:", err);
         }
       });
     };
@@ -183,13 +190,29 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:362", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:376", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
-    common_vendor.onLoad(() => {
+    const loadFirstOrderDiscountPreview = async () => {
+      try {
+        const res = await orderService.getFirstOrderDiscountPreview();
+        if (res && res.code === 0 && res.data && res.data.enable && res.data.canUse) {
+          discountPreview.value = {
+            canUse: true,
+            amount: Number(res.data.amount || 0)
+          };
+          return;
+        }
+      } catch (e) {
+      }
+      discountPreview.value = { canUse: false, amount: 0 };
+    };
+    common_vendor.onLoad(async () => {
+      await loadFirstOrderDiscountPreview();
     });
-    common_vendor.onShow(() => {
+    common_vendor.onShow(async () => {
+      await loadFirstOrderDiscountPreview();
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
@@ -238,8 +261,16 @@ ${deliveryLocation}`,
       } : {}, {
         E: extraRemark.value,
         F: common_vendor.o(($event) => extraRemark.value = $event.detail.value, "15"),
-        G: common_vendor.t(totalPrice.value),
-        H: common_vendor.o(handlePayClick, "ac")
+        G: discountPreview.value.canUse
+      }, discountPreview.value.canUse ? {
+        H: common_vendor.t(totalPrice.value)
+      } : {}, {
+        I: common_vendor.t(payablePrice.value),
+        J: discountPreview.value.canUse
+      }, discountPreview.value.canUse ? {
+        K: common_vendor.t(discountPreview.value.amount.toFixed(2))
+      } : {}, {
+        L: common_vendor.o(handlePayClick, "ec")
       });
     };
   }

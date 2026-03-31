@@ -123,9 +123,15 @@
 
     <!-- 底部栏 -->
     <view class="bottom-bar">
-      <view class="total">
-        <text class="total-label">合计:</text>
-        <text class="total-price">¥ {{ totalPrice }}</text>
+      <view class="total-block">
+        <view class="total">
+          <text class="total-label">合计:</text>
+          <view class="price-wrap">
+            <text v-if="discountPreview.canUse" class="total-original">¥ {{ totalPrice }}</text>
+            <text class="total-price">¥ {{ payablePrice }}</text>
+          </view>
+        </view>
+        <view v-if="discountPreview.canUse" class="discount-tip">首单立减 ¥{{ discountPreview.amount.toFixed(2) }}</view>
       </view>
       <button class="pay-btn" @click="handlePayClick">立即支付</button>
     </view>
@@ -161,6 +167,8 @@ const remark = ref('')
 const deliveryDormType = ref('') // 'male' | 'female'
 const addressStore = useAddressStore()
 const store = useClientOrderStore()
+const orderService = uniCloud.importObject('order-service')
+const discountPreview = ref({ canUse: false, amount: 0 })
 
 // 金额工具：统一在“分”上运算，避免浮点精度问题
 const toFen = (yuan) => Math.round(Number(yuan || 0) * 100)
@@ -200,6 +208,13 @@ const totalPriceFen = computed(() => {
 const totalPrice = computed(() => {
   return fromFen(totalPriceFen.value).toFixed(2)
 })
+
+const payablePriceFen = computed(() => {
+  const reduceFen = discountPreview.value.canUse ? toFen(discountPreview.value.amount || 0) : 0
+  return Math.max(0, totalPriceFen.value - reduceFen)
+})
+
+const payablePrice = computed(() => fromFen(payablePriceFen.value).toFixed(2))
 
 const chooseImage = () => {
   // 微信小程序端优先使用 wx.chooseMedia，支持图片/视频选择
@@ -464,8 +479,23 @@ async function refreshPickupRates() {
   }
 }
 
+async function loadFirstOrderDiscountPreview() {
+  try {
+    const res = await orderService.getFirstOrderDiscountPreview()
+    if (res && res.code === 0 && res.data && res.data.enable && res.data.canUse) {
+      discountPreview.value = {
+        canUse: true,
+        amount: Number(res.data.amount || 0)
+      }
+      return
+    }
+  } catch (e) {}
+  discountPreview.value = { canUse: false, amount: 0 }
+}
+
 onLoad(async () => {
   await loadPickupRatesIfNeeded()
+  await loadFirstOrderDiscountPreview()
   // 预留扩展：可从路由参数预填数量或服务选项
 })
 </script>
@@ -741,15 +771,39 @@ onLoad(async () => {
   gap: 10rpx;
 }
 
+.total-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.price-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10rpx;
+}
+
 .total-label {
   color: #4a5568;
   font-size: 26rpx;
+}
+
+.total-original {
+  font-size: 24rpx;
+  color: #9ca3af;
+  text-decoration: line-through;
 }
 
 .total-price {
   font-size: 40rpx;
   font-weight: 800;
   color: #000000;
+}
+
+.discount-tip {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #16a34a;
+  font-weight: 600;
 }
 
 .pay-btn {

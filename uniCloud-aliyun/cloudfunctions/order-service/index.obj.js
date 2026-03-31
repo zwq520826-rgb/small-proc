@@ -9,6 +9,7 @@ const ORDER_CLASS = {
 	NORMAL: 'normal',
 	URGENT_ADDON: 'urgent_addon'
 }
+const FIRST_ORDER_DISCOUNT_VALID_DAYS = 7
 const ORDER_STATUS = {
 	ABNORMAL: 'abnormal'
 }
@@ -2026,6 +2027,102 @@ module.exports = {
       return { code: 'DB_ERROR', message: '获取价格配置失败：' + error.message }
     }
   },
+
+	/**
+	 * 首单优惠预览（仅用于下单页展示，不做核销）
+	 */
+	async getFirstOrderDiscountPreview() {
+		const authResult = checkAuth(this)
+		if (authResult.code) return authResult
+		const uid = authResult.uid
+
+		try {
+			const settingRes = await db.collection('maintenance_settings').doc('first_order_discount').get()
+			const setting = Array.isArray(settingRes.data) ? settingRes.data[0] : settingRes.data
+			const enable = setting?.enable !== false
+			const amount = Number(setting?.amount)
+			const discountAmount = Number.isFinite(amount) ? Math.max(0, Math.min(50, amount)) : 5
+			const budgetLimit = Number(setting?.budget_limit)
+			const budgetUsed = Number(setting?.budget_used || 0)
+			const cap = Number.isFinite(budgetLimit) ? Math.max(0, budgetLimit) : 500
+
+			if (!enable || discountAmount <= 0) {
+				return { code: 0, data: { enable: false, canUse: false, amount: discountAmount } }
+			}
+			if (budgetUsed + discountAmount > cap) {
+				return {
+					code: 0,
+					data: {
+						enable: true,
+						canUse: false,
+						amount: discountAmount,
+						reason: 'BUDGET_EXHAUSTED'
+					}
+				}
+			}
+
+			const userRes = await db.collection('uni-id-users').doc(uid).get()
+			const user = Array.isArray(userRes.data) ? userRes.data[0] : userRes.data
+			const registerTs = Number(user?.register_date || user?.create_date || 0)
+			const validMs = FIRST_ORDER_DISCOUNT_VALID_DAYS * 24 * 60 * 60 * 1000
+			if (!Number.isFinite(registerTs) || registerTs <= 0 || Date.now() - registerTs > validMs) {
+				return {
+					code: 0,
+					data: {
+						enable: true,
+						canUse: false,
+						amount: discountAmount,
+						reason: 'NOT_IN_7_DAYS'
+					}
+				}
+			}
+
+			const usedRes = await db.collection('user_first_order_discount').doc(uid).get()
+			const usedDoc = Array.isArray(usedRes.data) ? usedRes.data[0] : usedRes.data
+			if (usedDoc && usedDoc.status === 'used') {
+				return {
+					code: 0,
+					data: {
+						enable: true,
+						canUse: false,
+						amount: discountAmount,
+						reason: 'ALREADY_USED'
+					}
+				}
+			}
+
+			const paidCountRes = await db.collection('orders').where({
+				user_id: uid,
+				order_class: dbCmd.neq(ORDER_CLASS.URGENT_ADDON),
+				pay_status: 'paid'
+			}).count()
+			if (Number(paidCountRes.total || 0) > 0) {
+				return {
+					code: 0,
+					data: {
+						enable: true,
+						canUse: false,
+						amount: discountAmount,
+						reason: 'HAD_PAID_ORDER'
+					}
+				}
+			}
+
+			return {
+				code: 0,
+				data: {
+					enable: true,
+					canUse: true,
+					amount: discountAmount
+				}
+			}
+		} catch (error) {
+			return {
+				code: 'DB_ERROR',
+				message: '获取首单优惠预览失败：' + error.message
+			}
+		}
+	},
 
   /**
    * 首页内容：广告位 + 公告列表

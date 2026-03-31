@@ -1,0 +1,28 @@
+{
+	"bsonType": "object",
+	"required": ["_id", "user_id", "status"],
+	"permission": {
+		"read": false,
+		"create": false,
+		"update": false,
+		"delete": false
+	},
+	"indexes": [
+		{
+			"name": "idx_user_id",
+			"unique": true,
+			"field": [
+				{ "name": "user_id", "type": "asc" }
+			]
+		}
+	],
+	"properties": {
+		"_id": { "bsonType": "string", "description": "用户ID（唯一）" },
+		"user_id": { "bsonType": "string", "description": "用户ID" },
+		"status": { "bsonType": "string", "description": "used" },
+		"used_order_id": { "bsonType": "string", "description": "使用优惠的订单ID或history" },
+		"used_at": { "bsonType": "timestamp", "description": "使用时间" },
+		"create_time": { "bsonType": "timestamp", "description": "创建时间" },
+		"update_time": { "bsonType": "timestamp", "description": "更新时间" }
+	}
+}
