@@ -259,7 +259,7 @@ const _sfc_main = {
         c: common_vendor.f(taskList.value, (task, k0, i0) => {
           return common_vendor.e({
             a: common_vendor.t(task.delivery),
-            b: common_vendor.t(task.price.toFixed(2)),
+            b: common_vendor.t(Number(task.displayPrice || task.price || 0).toFixed(2)),
             c: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
             d: common_vendor.t(statusMap[task.status]),
             e: task.visualTags && task.visualTags.length
@@ -294,7 +294,7 @@ const _sfc_main = {
         e: common_vendor.f(taskList.value, (task, k0, i0) => {
           return common_vendor.e({
             a: common_vendor.t(task.delivery),
-            b: common_vendor.t(task.price.toFixed(2)),
+            b: common_vendor.t(Number(task.displayPrice || task.price || 0).toFixed(2)),
             c: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
             d: task.visualTags && task.visualTags.length
           }, task.visualTags && task.visualTags.length ? {

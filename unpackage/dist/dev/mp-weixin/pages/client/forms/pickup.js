@@ -216,7 +216,7 @@ ${deliveryLocation}`,
     const formatPhone = (phone = "") => {
       if (!phone)
         return "";
-      return phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2");
+      return phone;
     };
     async function loadPickupRatesIfNeeded() {
       const now = Date.now();

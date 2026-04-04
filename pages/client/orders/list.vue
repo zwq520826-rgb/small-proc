@@ -66,9 +66,9 @@
             <text>{{ tag.text }}</text>
           </view>
         </view>
-        <view v-if="order.remarkText" class="remark-wrap">
+        <view class="remark-wrap">
           <text class="remark-label">备注：</text>
-          <text class="remark-content">{{ order.remarkText }}</text>
+          <text class="remark-content">{{ order.remarkText || '无' }}</text>
         </view>
         <view class="row between footer-row">
           <view class="price-info">
@@ -163,7 +163,12 @@ const splitTags = (tags = []) => {
   return { primary, secondary }
 }
 
-const resolveRemark = (order) => String(order?.content?.remark || order?.content?.description || '').trim()
+const resolveRemark = (order) => {
+  const content = order?.content || {}
+  const remark = content.remark || ''
+  const desc = content.description || ''
+  return String(remark || desc || '').trim()
+}
 
 // 【修改点3】重写 displayList 为计算属性，直接从 store 获取
 const displayList = computed(() => {

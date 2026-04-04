@@ -27,7 +27,7 @@
         </view>
         <view class="row">
           <text class="label">预计收入</text>
-          <text class="price">¥{{ Number(task.price || 0).toFixed(2) }}</text>
+          <text class="price">¥{{ Number(task.displayPrice || task.price || 0).toFixed(2) }}</text>
         </view>
         <view class="desc-box">
           <text class="label">备注内容：</text>
@@ -57,12 +57,15 @@
         </view>
       </view>
 
-      <view v-if="task.content?.phone || task.phone" class="card contact-card">
+      <view v-if="task && task.status !== 'pending_accept'" class="card contact-card">
         <view class="user-info">
           <text class="name">客户电话</text>
-          <text class="phone-hint">{{ task.content?.phone || task.phone || '' }}</text>
+          <text class="phone-hint">{{ displayUserPhone || '暂无电话' }}</text>
         </view>
-        <button class="call-btn" @click="handleCall">📞 拨打电话</button>
+        <view class="contact-actions">
+          <button class="call-btn" @click="handleCall">📞 拨打电话</button>
+          <button class="chat-btn" @click="openChat">在线沟通</button>
+        </view>
       </view>
     </view>
 
@@ -135,11 +138,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { useRiderTaskStore } from '@/store/riderTask'
 
 const store = useRiderTaskStore()
+const orderService = uniCloud.importObject('order-service')
 const task = ref(null)
+const orderDetail = ref(null)
 
 // 取消弹窗状态
 const cancelPopupVisible = ref(false)
@@ -154,6 +159,7 @@ onLoad(async (options) => {
     const found = store.getTaskById(options.id)
     if (found) {
       task.value = found
+      await loadOrderDetail(options.id)
       // 从列表页跳转过来时，可直接打开取消弹窗
       const openCancel = String(options.openCancel || '').toLowerCase() === '1'
       if (openCancel) openCancelPopup()
@@ -164,6 +170,11 @@ onLoad(async (options) => {
       }, 1500)
     }
   }
+})
+
+onShow(async () => {
+  if (!task.value?.id) return
+  await loadOrderDetail(task.value.id)
 })
 
 // 计算属性：状态文案
@@ -187,17 +198,38 @@ const statusDesc = computed(() => {
   return ''
 })
 
+const displayUserPhone = computed(() => {
+  return orderDetail.value?.user_contact?.phone || task.value?.content?.phone || task.value?.phone || ''
+})
+
 // 方法
 const goBack = () => uni.navigateBack()
 
 const handleCall = () => {
-  // 从 task.content.phone 或 task.phone 获取电话
-  const phone = task.value?.content?.phone || task.value?.phone || ''
+  const phone = displayUserPhone.value
   if (!phone) {
     uni.showToast({ title: '暂无客户电话', icon: 'none' })
     return
   }
   uni.makePhoneCall({ phoneNumber: phone.replace(/\*/g, '') })
+}
+
+const openChat = () => {
+  if (!task.value?.id) return
+  uni.navigateTo({
+    url: `/pages/common/chat/order?orderId=${encodeURIComponent(String(task.value.id))}&role=rider`
+  })
+}
+
+const loadOrderDetail = async (id) => {
+  try {
+    const res = await orderService.getOrderDetail(id)
+    if (res?.code === 0 && res.data) {
+      orderDetail.value = res.data
+    }
+  } catch (e) {
+    console.warn('获取订单详情失败:', e)
+  }
 }
 
 const openCancelPopup = () => {
@@ -271,6 +303,7 @@ const handleGrab = async () => {
           const updatedTask = store.getTaskById(task.value.id || task.value._id)
           if (updatedTask) {
             task.value = updatedTask
+            await loadOrderDetail(task.value.id)
           }
         } else {
           uni.showToast({ title: result.msg || '抢单失败', icon: 'none' })
@@ -304,6 +337,7 @@ const handleConfirmPickup = () => {
           const updatedTask = store.myTasks.find(t => t.id === task.value.id || t._id === task.value.id)
           if (updatedTask) {
             task.value = updatedTask
+            await loadOrderDetail(task.value.id)
           }
         } else {
           // 错误提示已在 store 中处理
@@ -330,6 +364,7 @@ const handleConfirmDelivery = () => {
         const updatedTask = store.myTasks.find(t => t.id === task.value.id || t._id === task.value.id)
         if (updatedTask) {
           task.value = updatedTask
+          await loadOrderDetail(task.value.id)
         }
       } else {
         // 错误提示已在 store 中处理
@@ -340,6 +375,7 @@ const handleConfirmDelivery = () => {
     }
   })
 }
+
 </script>
 
 <style scoped>
@@ -396,6 +432,8 @@ const handleConfirmDelivery = () => {
 .user-info .name { font-size: 30rpx; font-weight: bold; display: block; }
 .user-info .phone-hint { font-size: 24rpx; color: #999; }
 .call-btn { background: #e3f2fd; color: #1976d2; font-size: 26rpx; border: none; }
+.contact-actions { display: flex; gap: 12rpx; }
+.chat-btn { background: #eef9f1; color: #2e7d32; font-size: 26rpx; border: none; }
 
 .bottom-bar {
   position: fixed;

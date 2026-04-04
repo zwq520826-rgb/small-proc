@@ -240,6 +240,11 @@
   font-size: 24rpx;
   color: #666666;
 }
+.rider-actions.data-v-00b5e79f {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
 .call-btn.data-v-00b5e79f {
   display: flex;
   align-items: center;
@@ -253,6 +258,14 @@
 }
 .call-icon.data-v-00b5e79f {
   font-size: 28rpx;
+}
+.chat-btn.data-v-00b5e79f {
+  padding: 12rpx 20rpx;
+  border-radius: 12rpx;
+  border: none;
+  background: #ecf8ef;
+  color: #2e7d32;
+  font-size: 24rpx;
 }
 
 /* Order Info Card */
@@ -292,6 +305,19 @@
 }
 .content-section.data-v-00b5e79f {
   margin-bottom: 24rpx;
+}
+.remark-box.data-v-00b5e79f {
+  margin-top: 14rpx;
+  padding: 18rpx;
+  border-radius: 12rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e5e7eb;
+}
+.remark-line.data-v-00b5e79f {
+  display: block;
+  color: #374151;
+  font-size: 26rpx;
+  line-height: 1.6;
 }
 .image-grid.data-v-00b5e79f {
   display: flex;

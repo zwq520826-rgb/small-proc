@@ -5,7 +5,9 @@ const _sfc_main = {
   __name: "detail",
   setup(__props) {
     const store = store_riderTask.useRiderTaskStore();
+    const orderService = common_vendor._r.importObject("order-service");
     const task = common_vendor.ref(null);
+    const orderDetail = common_vendor.ref(null);
     const cancelPopupVisible = common_vendor.ref(false);
     const cancelReasonType = common_vendor.ref("rider_personal");
     const cancelReasonText = common_vendor.ref("");
@@ -15,6 +17,7 @@ const _sfc_main = {
         const found = store.getTaskById(options.id);
         if (found) {
           task.value = found;
+          await loadOrderDetail(options.id);
           const openCancel = String(options.openCancel || "").toLowerCase() === "1";
           if (openCancel)
             openCancelPopup();
@@ -25,6 +28,12 @@ const _sfc_main = {
           }, 1500);
         }
       }
+    });
+    common_vendor.onShow(async () => {
+      var _a;
+      if (!((_a = task.value) == null ? void 0 : _a.id))
+        return;
+      await loadOrderDetail(task.value.id);
     });
     const statusText = common_vendor.computed(() => {
       var _a, _b;
@@ -51,15 +60,36 @@ const _sfc_main = {
         return "用户反馈送达照片不符，请重新上传";
       return "";
     });
+    const displayUserPhone = common_vendor.computed(() => {
+      var _a, _b, _c, _d, _e;
+      return ((_b = (_a = orderDetail.value) == null ? void 0 : _a.user_contact) == null ? void 0 : _b.phone) || ((_d = (_c = task.value) == null ? void 0 : _c.content) == null ? void 0 : _d.phone) || ((_e = task.value) == null ? void 0 : _e.phone) || "";
+    });
     const goBack = () => common_vendor.index.navigateBack();
     const handleCall = () => {
-      var _a, _b, _c;
-      const phone = ((_b = (_a = task.value) == null ? void 0 : _a.content) == null ? void 0 : _b.phone) || ((_c = task.value) == null ? void 0 : _c.phone) || "";
+      const phone = displayUserPhone.value;
       if (!phone) {
         common_vendor.index.showToast({ title: "暂无客户电话", icon: "none" });
         return;
       }
       common_vendor.index.makePhoneCall({ phoneNumber: phone.replace(/\*/g, "") });
+    };
+    const openChat = () => {
+      var _a;
+      if (!((_a = task.value) == null ? void 0 : _a.id))
+        return;
+      common_vendor.index.navigateTo({
+        url: `/pages/common/chat/order?orderId=${encodeURIComponent(String(task.value.id))}&role=rider`
+      });
+    };
+    const loadOrderDetail = async (id) => {
+      try {
+        const res = await orderService.getOrderDetail(id);
+        if ((res == null ? void 0 : res.code) === 0 && res.data) {
+          orderDetail.value = res.data;
+        }
+      } catch (e) {
+        common_vendor.index.__f__("warn", "at pages/rider/tasks/detail.vue:231", "获取订单详情失败:", e);
+      }
     };
     const openCancelPopup = () => {
       if (!task.value)
@@ -123,6 +153,7 @@ const _sfc_main = {
               const updatedTask = store.getTaskById(task.value.id || task.value._id);
               if (updatedTask) {
                 task.value = updatedTask;
+                await loadOrderDetail(task.value.id);
               }
             } else {
               common_vendor.index.showToast({ title: result.msg || "抢单失败", icon: "none" });
@@ -152,6 +183,7 @@ const _sfc_main = {
               const updatedTask = store.myTasks.find((t) => t.id === task.value.id || t._id === task.value.id);
               if (updatedTask) {
                 task.value = updatedTask;
+                await loadOrderDetail(task.value.id);
               }
             }
           }
@@ -172,6 +204,7 @@ const _sfc_main = {
             const updatedTask = store.myTasks.find((t) => t.id === task.value.id || t._id === task.value.id);
             if (updatedTask) {
               task.value = updatedTask;
+              await loadOrderDetail(task.value.id);
             }
           }
           task.value = store.getTaskById(task.value.id);
@@ -180,7 +213,7 @@ const _sfc_main = {
       });
     };
     return (_ctx, _cache) => {
-      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
       return common_vendor.e({
         a: task.value
       }, task.value ? common_vendor.e({
@@ -190,7 +223,7 @@ const _sfc_main = {
         e: common_vendor.t(task.value.deliveryLocation || task.value.address || "未指定送达点"),
         f: common_vendor.t(task.value.id),
         g: common_vendor.t(task.value.typeLabel || "配送"),
-        h: common_vendor.t(Number(task.value.price || 0).toFixed(2)),
+        h: common_vendor.t(Number(task.value.displayPrice || task.value.price || 0).toFixed(2)),
         i: (_a = task.value.content) == null ? void 0 : _a.description
       }, ((_b = task.value.content) == null ? void 0 : _b.description) ? {
         j: common_vendor.t((_c = task.value.content) == null ? void 0 : _c.description)
@@ -211,44 +244,45 @@ const _sfc_main = {
           };
         })
       } : {}, {
-        p: ((_s = task.value.content) == null ? void 0 : _s.phone) || task.value.phone
-      }, ((_t = task.value.content) == null ? void 0 : _t.phone) || task.value.phone ? {
-        q: common_vendor.t(((_u = task.value.content) == null ? void 0 : _u.phone) || task.value.phone || ""),
-        r: common_vendor.o(handleCall, "48")
+        p: task.value && task.value.status !== "pending_accept"
+      }, task.value && task.value.status !== "pending_accept" ? {
+        q: common_vendor.t(displayUserPhone.value || "暂无电话"),
+        r: common_vendor.o(handleCall, "21"),
+        s: common_vendor.o(openChat, "6c")
       } : {}) : {
-        s: common_vendor.o(goBack, "49")
+        t: common_vendor.o(goBack, "64")
       }, {
-        t: task.value && task.value.status !== "completed"
+        v: task.value && task.value.status !== "completed"
       }, task.value && task.value.status !== "completed" ? common_vendor.e({
-        v: task.value.status === "pending_accept"
+        w: task.value.status === "pending_accept"
       }, task.value.status === "pending_accept" ? {
-        w: common_vendor.o(handleGrab, "61")
+        x: common_vendor.o(handleGrab, "90")
       } : {}, {
-        x: task.value.status === "pending_pickup"
+        y: task.value.status === "pending_pickup"
       }, task.value.status === "pending_pickup" ? {
-        y: common_vendor.o(handleConfirmPickup, "a9"),
-        z: common_vendor.o(openCancelPopup, "60")
+        z: common_vendor.o(handleConfirmPickup, "22"),
+        A: common_vendor.o(openCancelPopup, "c6")
       } : {}, {
-        A: task.value.status === "delivering"
+        B: task.value.status === "delivering"
       }, task.value.status === "delivering" ? {
-        B: common_vendor.o(handleConfirmDelivery, "41"),
-        C: common_vendor.o(openCancelPopup, "ea")
+        C: common_vendor.o(handleConfirmDelivery, "6d"),
+        D: common_vendor.o(openCancelPopup, "a8")
       } : {}, {
-        D: task.value.status === "abnormal"
+        E: task.value.status === "abnormal"
       }, task.value.status === "abnormal" ? {
-        E: common_vendor.o(handleConfirmDelivery, "90")
+        F: common_vendor.o(handleConfirmDelivery, "e8")
       } : {}) : {}, {
-        F: cancelPopupVisible.value
+        G: cancelPopupVisible.value
       }, cancelPopupVisible.value ? {
-        G: common_vendor.o(onChangeReasonMode, "07"),
-        H: cancelReasonType.value,
-        I: cancelReasonText.value,
-        J: common_vendor.o(($event) => cancelReasonText.value = $event.detail.value, "bd"),
-        K: common_vendor.o(closeCancelPopup, "80"),
-        L: common_vendor.o(confirmCancel, "7a"),
-        M: common_vendor.o(() => {
-        }, "17"),
-        N: common_vendor.o(closeCancelPopup, "56")
+        H: common_vendor.o(onChangeReasonMode, "75"),
+        I: cancelReasonType.value,
+        J: cancelReasonText.value,
+        K: common_vendor.o(($event) => cancelReasonText.value = $event.detail.value, "a2"),
+        L: common_vendor.o(closeCancelPopup, "ed"),
+        M: common_vendor.o(confirmCancel, "15"),
+        N: common_vendor.o(() => {
+        }, "4d"),
+        O: common_vendor.o(closeCancelPopup, "c1")
       } : {});
     };
   }

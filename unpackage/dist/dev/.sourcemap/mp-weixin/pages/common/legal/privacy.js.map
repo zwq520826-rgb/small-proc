@@ -1,0 +1,1 @@
+{"version":3,"file":"privacy.js","sources":["pages/common/legal/privacy.vue?type=page"],"sourcesContent":["import MiniProgramPage from '/Users/zwq/tmp/small-proc/pages/common/legal/privacy.vue'\nwx.createPage(MiniProgramPage)"],"names":[],"mappings":";;;;;;;AACA,GAAG,WAAW,eAAe;"}

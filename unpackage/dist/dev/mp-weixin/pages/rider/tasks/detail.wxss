@@ -75,6 +75,10 @@
 }
 .call-btn.data-v-163fccdb { background: #e3f2fd; color: #1976d2; font-size: 26rpx; border: none;
 }
+.contact-actions.data-v-163fccdb { display: flex; gap: 12rpx;
+}
+.chat-btn.data-v-163fccdb { background: #eef9f1; color: #2e7d32; font-size: 26rpx; border: none;
+}
 .bottom-bar.data-v-163fccdb {
   position: fixed;
   bottom: 0;

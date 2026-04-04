@@ -67,6 +67,24 @@
             }
 		},
 		{
+			"path": "pages/common/chat/order",
+			"style": {
+				"navigationBarTitleText": "订单沟通"
+			}
+		},
+		{
+			"path": "pages/common/legal/service",
+			"style": {
+				"navigationBarTitleText": "用户服务协议"
+			}
+		},
+		{
+			"path": "pages/common/legal/privacy",
+			"style": {
+				"navigationBarTitleText": "隐私政策"
+			}
+		},
+		{
 			"path": "pages/mine/index",
 			"style": {
 				"navigationBarTitleText": "我的"
@@ -264,6 +282,7 @@
 			"pages/common/address/edit",
 			"pages/common/wallet/index",
 			"pages/common/feedback/index",
+			"pages/common/chat/order",
 			"pages/mine/index",
 			"pages/rider/hall",
 			"pages/rider/tasks/list",

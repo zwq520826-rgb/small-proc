@@ -48,6 +48,10 @@ const _sfc_main = {
       url,
       title
     }) {
+      if (url && url.startsWith("/pages/")) {
+        common_vendor.index.navigateTo({ url });
+        return;
+      }
       common_vendor.index.navigateTo({
         url: "/uni_modules/uni-id-pages/pages/common/webview/webview?url=" + url + "&title=" + title,
         success: (res) => {

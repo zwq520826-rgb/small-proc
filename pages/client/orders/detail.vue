@@ -40,13 +40,16 @@
           <text class="avatar-text">{{ getRiderInitial() }}</text>
         </view>
         <view class="rider-info">
-          <text class="rider-name">{{ order.rider?.name || '未知骑手' }}</text>
-          <text class="rider-phone">{{ order.rider?.phone || '暂无电话' }}</text>
+          <text class="rider-name">{{ riderDisplayName || '未知骑手' }}</text>
+          <text class="rider-phone">{{ riderPhone || '暂无电话' }}</text>
         </view>
-        <button class="call-btn" @click="handleCallRider">
-          <text class="call-icon">📞</text>
-          <text>拨打电话</text>
-        </button>
+        <view class="rider-actions">
+          <button class="call-btn" @click="handleCallRider">
+            <text class="call-icon">📞</text>
+            <text>拨打电话</text>
+          </button>
+          <button class="chat-btn" @click="openOrderChat">在线沟通</button>
+        </view>
       </view>
     </view>
 
@@ -71,6 +74,10 @@
             mode="aspectFill"
             @click="previewImages(idx)"
           />
+        </view>
+        <view v-if="order?.content?.description || order?.content?.remark" class="remark-box">
+          <text v-if="order?.content?.description" class="remark-line">{{ order.content.description }}</text>
+          <text v-if="order?.content?.remark" class="remark-line">{{ order.content.remark }}</text>
         </view>
       </view>
 
@@ -197,11 +204,13 @@ import { useClientOrderStore } from '@/store/clientOrder'
 // 【修改点2】使用新的 store 名称
 const store = useClientOrderStore()
 const order = ref(null)
+const detailContact = ref(null)
 const illegalOrder = ref(null)
 const illegalOrderPromise = ref(null)
 const FEEDBACK_LIMIT = 3
 
 const db = uniCloud.database()
+const orderService = uniCloud.importObject('order-service')
 
 // Timeline steps
 const timelineSteps = [
@@ -214,8 +223,16 @@ const timelineSteps = [
 // Check if should show rider info
 const shouldShowRider = computed(() => {
   return order.value && 
-    (order.value.status === 'delivering' || order.value.status === 'completed' || order.value.status === 'abnormal') &&
+    (order.value.status === 'pending_pickup' || order.value.status === 'delivering' || order.value.status === 'completed' || order.value.status === 'abnormal') &&
     order.value.rider
+})
+
+const riderPhone = computed(() => {
+  return detailContact.value?.rider_contact?.phone || order.value?.rider?.phone || ''
+})
+
+const riderDisplayName = computed(() => {
+  return detailContact.value?.rider_contact?.name || order.value?.rider?.name || ''
 })
 
 const feedbackDisabled = computed(() => {
@@ -229,6 +246,7 @@ const getStatusTitle = () => {
   
   const statusMap = {
     pending_accept: '等待骑手接单',
+    pending_pickup: '骑手已接单，等待取货',
     delivering: '骑手正在配送中',
     completed: '订单已完成',
     abnormal: '异常单待处理',
@@ -243,6 +261,8 @@ const getStatusSubtitle = () => {
   
   if (order.value.status === 'delivering') {
     return '预计 10 分钟送达'
+  } else if (order.value.status === 'pending_pickup') {
+    return '骑手已接单，正在前往取件'
   } else if (order.value.status === 'pending_accept') {
     return '正在为您匹配骑手'
   } else if (order.value.status === 'completed') {
@@ -259,6 +279,7 @@ const isStepActive = (stepStatus) => {
   
   const statusMapping = {
     pending_accept: 'accepted',
+    pending_pickup: 'accepted',
     delivering: 'delivering',
     completed: 'completed',
     abnormal: 'completed'
@@ -277,6 +298,7 @@ const isStepCompleted = (stepStatus) => {
   const currentIndex = statusOrder.findIndex(s => {
     const mapping = {
       pending_accept: 'accepted',
+      pending_pickup: 'accepted',
       delivering: 'delivering',
       completed: 'completed',
       abnormal: 'completed'
@@ -327,18 +349,39 @@ const previewImages = (currentIndex) => {
 
 // Handle call rider
 const handleCallRider = () => {
-  if (!order.value?.rider?.phone) {
+  if (!riderPhone.value) {
     uni.showToast({ title: '暂无骑手电话', icon: 'none' })
     return
   }
   
   uni.makePhoneCall({
-    phoneNumber: order.value.rider.phone,
+    phoneNumber: riderPhone.value.replace(/\*/g, ''),
     fail: (err) => {
       console.error('拨打电话失败:', err)
       uni.showToast({ title: '拨打电话失败', icon: 'none' })
     }
   })
+}
+
+const openOrderChat = () => {
+  if (!order.value?.id) return
+  uni.navigateTo({
+    url: `/pages/common/chat/order?orderId=${encodeURIComponent(String(order.value.id))}&role=user`
+  })
+}
+
+const loadOrderDetailContact = async (orderId) => {
+  try {
+    const res = await orderService.getOrderDetail(orderId)
+    if (res?.code === 0 && res.data) {
+      detailContact.value = {
+        rider_contact: res.data.rider_contact || null,
+        user_contact: res.data.user_contact || null
+      }
+    }
+  } catch (e) {
+    console.warn('加载订单联系人失败:', e)
+  }
 }
 
 // Handle cancel order
@@ -434,7 +477,6 @@ const handleUrgent = () => {
 const doUrgentPay = async (method) => {
   uni.showLoading({ title: '处理中...' })
   try {
-    const orderService = uniCloud.importObject('order-service')
     let createRes
     try {
       createRes = await orderService.createUrgentOrder({
@@ -606,6 +648,7 @@ const loadOrder = async () => {
     const updatedOrder = store.getOrderById(order.value.id)
     if (updatedOrder) {
       order.value = updatedOrder
+      await loadOrderDetailContact(updatedOrder.id)
       await loadIllegalOrderForCurrentOrder()
     }
   }
@@ -620,6 +663,7 @@ onLoad(async (options) => {
     const foundOrder = store.getOrderById(options.id)
     if (foundOrder) {
       order.value = foundOrder
+      await loadOrderDetailContact(foundOrder.id)
       await loadIllegalOrderForCurrentOrder()
     } else {
       uni.showToast({ title: '订单不存在', icon: 'none' })
@@ -642,6 +686,7 @@ onShow(async () => {
     const updatedOrder = store.getOrderById(order.value.id)
     if (updatedOrder) {
       order.value = updatedOrder
+      await loadOrderDetailContact(updatedOrder.id)
       await loadIllegalOrderForCurrentOrder()
     }
   }
@@ -905,6 +950,12 @@ onShow(async () => {
   color: #666666;
 }
 
+.rider-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
 .call-btn {
   display: flex;
   align-items: center;
@@ -919,6 +970,15 @@ onShow(async () => {
 
 .call-icon {
   font-size: 28rpx;
+}
+
+.chat-btn {
+  padding: 12rpx 20rpx;
+  border-radius: 12rpx;
+  border: none;
+  background: #ecf8ef;
+  color: #2e7d32;
+  font-size: 24rpx;
 }
 
 /* Order Info Card */
@@ -964,6 +1024,21 @@ onShow(async () => {
 
 .content-section {
   margin-bottom: 24rpx;
+}
+
+.remark-box {
+  margin-top: 14rpx;
+  padding: 18rpx;
+  border-radius: 12rpx;
+  background: #f8fafc;
+  border: 1rpx solid #e5e7eb;
+}
+
+.remark-line {
+  display: block;
+  color: #374151;
+  font-size: 26rpx;
+  line-height: 1.6;
 }
 
 .image-grid {

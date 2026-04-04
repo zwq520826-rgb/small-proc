@@ -85,6 +85,10 @@
 				url,
 				title
 			}) {
+				if (url && url.startsWith('/pages/')) {
+					uni.navigateTo({ url })
+					return
+				}
 				uni.navigateTo({
 					url: '/uni_modules/uni-id-pages/pages/common/webview/webview?url=' + url + '&title=' + title,
 					success: res => {},

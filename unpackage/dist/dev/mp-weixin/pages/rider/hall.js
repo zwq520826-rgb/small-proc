@@ -219,7 +219,7 @@ const _sfc_main = {
             })
           } : {}, {
             c: common_vendor.t(task.delivery),
-            d: common_vendor.t(Number(task.price || 0).toFixed(2)),
+            d: common_vendor.t(Number(task.displayPrice || task.price || 0).toFixed(2)),
             e: common_vendor.o(($event) => viewPickupInfo(task), task.id),
             f: common_vendor.o(($event) => grab(task), task.id),
             g: task.id,

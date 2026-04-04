@@ -43,8 +43,10 @@ const _sfc_main = {
       return { primary, secondary };
     };
     const resolveRemark = (order) => {
-      var _a, _b;
-      return String(((_a = order == null ? void 0 : order.content) == null ? void 0 : _a.remark) || ((_b = order == null ? void 0 : order.content) == null ? void 0 : _b.description) || "").trim();
+      const content = (order == null ? void 0 : order.content) || {};
+      const remark = content.remark || "";
+      const desc = content.description || "";
+      return String(remark || desc || "").trim();
     };
     const displayList = common_vendor.computed(() => {
       const status = tabs[currentTab.value].status;
@@ -198,26 +200,23 @@ const _sfc_main = {
               });
             })
           } : {}, {
-            k: order.remarkText
-          }, order.remarkText ? {
-            l: common_vendor.t(order.remarkText)
-          } : {}, {
-            m: common_vendor.t(Number(order.price || 0).toFixed(2)),
-            n: common_vendor.t(order.publishedAt || order.createTime),
-            o: order.status === "completed"
+            k: common_vendor.t(order.remarkText || "无"),
+            l: common_vendor.t(Number(order.price || 0).toFixed(2)),
+            m: common_vendor.t(order.publishedAt || order.createTime),
+            n: order.status === "completed"
           }, order.status === "completed" ? {
-            p: common_vendor.o(($event) => handleViewPhotos(order), order.id)
+            o: common_vendor.o(($event) => handleViewPhotos(order), order.id)
           } : {}, {
-            q: order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering"
+            p: order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering"
           }, order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering" ? {
-            r: common_vendor.o(($event) => handleCancel(order.id), order.id)
+            q: common_vendor.o(($event) => handleCancel(order.id), order.id)
           } : {}, {
-            s: order.status === "completed"
+            r: order.status === "completed"
           }, order.status === "completed" ? {
-            t: common_vendor.o(($event) => handleDelete(order.id), order.id)
+            s: common_vendor.o(($event) => handleDelete(order.id), order.id)
           } : {}, {
-            v: order.id,
-            w: common_vendor.o(($event) => goDetail(order.id), order.id)
+            t: order.id,
+            v: common_vendor.o(($event) => goDetail(order.id), order.id)
           });
         }),
         e: loadStatus.value === "loading"

@@ -22,12 +22,17 @@ const MIN_REQ_INTERVAL_MS = 3000
  * 将数据库格式转换为前端格式
  */
 function formatTaskFromDB(task) {
+  const originalPrice = Number(task?.content?.original_price)
+  const fallbackPrice = Number(task?.price || 0)
+  const displayPrice = Number.isFinite(originalPrice) && originalPrice > 0 ? originalPrice : fallbackPrice
+
   return {
     id: task._id,
     _id: task._id,
     type: task.type,
     typeLabel: task.type_label || '',
-    price: task.price,
+    price: fallbackPrice,
+    displayPrice,
     pickupLocation: task.pickup_location || '',
     pickupDistance: task.pickup_distance || 0,
     deliveryLocation: task.delivery_location || '',
@@ -166,7 +171,7 @@ function hallTasksSorted(sortBy) {
 
     // 在同一优先级内再按原来的规则排序
   if (sortBy === 'price') {
-      return (b.price || 0) - (a.price || 0)
+      return (b.displayPrice || b.price || 0) - (a.displayPrice || a.price || 0)
   } else {
       return (a.pickupDistance || 0) - (b.pickupDistance || 0)
   }

@@ -70,6 +70,13 @@
           <text class="menu-text">设置</text>
         </view>
       </view>
+
+      <view class="menu-item" @click="goAgreements">
+        <view class="menu-left">
+          <image class="menu-icon-img" src="/static/tabbar/bangzhuzhonxin.png" mode="aspectFit" />
+          <text class="menu-text">协议与隐私</text>
+        </view>
+      </view>
     </view>
 
     <view class="menu-card" v-if="isRiderMode">
@@ -443,6 +450,15 @@ const riderService = uniCloud.importObject("rider-service")
       },
       goSettings() {
         uni.showToast({ title: '设置（待实现）', icon: 'none' })
+      },
+      goAgreements() {
+        uni.showActionSheet({
+          itemList: ['用户服务协议', '隐私政策'],
+          success: (res) => {
+            const url = res.tapIndex === 0 ? '/pages/common/legal/service' : '/pages/common/legal/privacy'
+            uni.navigateTo({ url })
+          }
+        })
       },
       /**
        * 切换到骑手端

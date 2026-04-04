@@ -15,6 +15,9 @@ if (!Math) {
   "./pages/common/address/edit.js";
   "./pages/common/wallet/index.js";
   "./pages/common/feedback/index.js";
+  "./pages/common/chat/order.js";
+  "./pages/common/legal/service.js";
+  "./pages/common/legal/privacy.js";
   "./pages/mine/index.js";
   "./pages/rider/hall.js";
   "./pages/rider/tasks/list.js";

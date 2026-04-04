@@ -7404,7 +7404,7 @@ function isConsoleWritable() {
   return isWritable;
 }
 function initRuntimeSocketService() {
-  const hosts = "127.0.0.1,192.168.135.185,198.18.0.1";
+  const hosts = "127.0.0.1,100.65.157.193";
   const port = "8090";
   const id = "mp-weixin_7ZTR9U";
   const lazy = typeof swan !== "undefined";
@@ -8420,6 +8420,24 @@ const pages = [
     }
   },
   {
+    path: "pages/common/chat/order",
+    style: {
+      navigationBarTitleText: "订单沟通"
+    }
+  },
+  {
+    path: "pages/common/legal/service",
+    style: {
+      navigationBarTitleText: "用户服务协议"
+    }
+  },
+  {
+    path: "pages/common/legal/privacy",
+    style: {
+      navigationBarTitleText: "隐私政策"
+    }
+  },
+  {
     path: "pages/mine/index",
     style: {
       navigationBarTitleText: "我的"
@@ -8602,6 +8620,7 @@ const uniIdRouter = {
     "pages/common/address/edit",
     "pages/common/wallet/index",
     "pages/common/feedback/index",
+    "pages/common/chat/order",
     "pages/mine/index",
     "pages/rider/hall",
     "pages/rider/tasks/list",
@@ -8908,7 +8927,7 @@ class v {
 function I(e2) {
   return e2 && "string" == typeof e2 ? JSON.parse(e2) : e2;
 }
-const S = true, b = "mp-weixin", A = I(define_process_env_UNI_SECURE_NETWORK_CONFIG_default), T = b, C = I('{"address":["127.0.0.1","192.168.135.185","198.18.0.1"],"servePort":7001,"debugPort":9000,"initialLaunchType":"remote","skipFiles":["<node_internals>/**","/Applications/HBuilderX.app/Contents/HBuilderX/plugins/unicloud/**/*.js"]}'), P = I('[{"provider":"aliyun","spaceName":"small-true","spaceId":"mp-329da9ff-ffd2-4e01-8444-a46a75a8da1c","clientSecret":"+upndBLbKgc5XDUfMLA6lA==","endpoint":"https://api.next.bspapp.com","failoverEndpoint":""}]') || [];
+const S = true, b = "mp-weixin", A = I(define_process_env_UNI_SECURE_NETWORK_CONFIG_default), T = b, C = I('{"address":["127.0.0.1","100.65.157.193"],"servePort":7001,"debugPort":9000,"initialLaunchType":"remote","skipFiles":["<node_internals>/**","/Applications/HBuilderX.app/Contents/HBuilderX/plugins/unicloud/**/*.js"]}'), P = I('[{"provider":"aliyun","spaceName":"small-true","spaceId":"mp-329da9ff-ffd2-4e01-8444-a46a75a8da1c","clientSecret":"+upndBLbKgc5XDUfMLA6lA==","endpoint":"https://api.next.bspapp.com","failoverEndpoint":""}]') || [];
 let E = "";
 try {
   E = "__UNI__F0BFB47";
@@ -11620,6 +11639,11 @@ const onLoad = /* @__PURE__ */ createLifeCycleHook(
   2
   /* HookFlags.PAGE */
 );
+const onUnload = /* @__PURE__ */ createLifeCycleHook(
+  ON_UNLOAD,
+  2
+  /* HookFlags.PAGE */
+);
 const onPullDownRefresh = /* @__PURE__ */ createLifeCycleHook(
   ON_PULL_DOWN_REFRESH,
   2
@@ -11640,6 +11664,7 @@ exports.onLoad = onLoad;
 exports.onMounted = onMounted;
 exports.onPullDownRefresh = onPullDownRefresh;
 exports.onShow = onShow;
+exports.onUnload = onUnload;
 exports.p = p$1;
 exports.pagesJson = pagesJson;
 exports.reactive = reactive;

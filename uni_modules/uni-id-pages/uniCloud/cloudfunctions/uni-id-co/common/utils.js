@@ -160,7 +160,7 @@ function coverMobile (mobile) {
   if (typeof mobile !== 'string') {
     return mobile
   }
-  return mobile.slice(0, 3) + '****' + mobile.slice(7)
+  return mobile
 }
 
 function getNonceStr (length = 16) {

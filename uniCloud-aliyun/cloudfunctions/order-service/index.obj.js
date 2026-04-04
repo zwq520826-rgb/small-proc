@@ -28,6 +28,9 @@ const HALL_TASK_FIELD_PROJECTION = {
 	'content.dormNumber': 1,
 	'content.isUrgent': 1,
 	'content.isDelivery': 1,
+	'content.description': 1,
+	'content.remark': 1,
+	'content.original_price': 1,
 	'content.requiredRiderGender': 1,
 	tags: 1,
 	rider_id: 1,
@@ -52,6 +55,9 @@ const MY_TASK_FIELD_PROJECTION = {
 	'content.dormNumber': 1,
 	'content.isUrgent': 1,
 	'content.isDelivery': 1,
+	'content.description': 1,
+	'content.remark': 1,
+	'content.original_price': 1,
 	'content.requiredRiderGender': 1,
 	'content.rider_income': 1,
 	'content.pending_redelivery_upload': 1,
@@ -180,6 +186,18 @@ function normalizeAmount(val) {
 	const n = Number(val || 0)
 	if (!Number.isFinite(n)) return 0
 	return Math.round(n * 100) / 100
+}
+
+function resolveOrderDisplayPrice(order = {}) {
+	const fromOriginal = Number(order && order.content && order.content.original_price)
+	if (Number.isFinite(fromOriginal) && fromOriginal > 0) {
+		return fromOriginal
+	}
+	const fromPrice = Number(order && order.price)
+	if (Number.isFinite(fromPrice) && fromPrice >= 0) {
+		return fromPrice
+	}
+	return 0
 }
 
 const RATE_LIMIT_RULES = {
@@ -652,10 +670,48 @@ module.exports = {
 				}
 			}
 
+			const detail = {
+				...order,
+				user_contact: {
+					name: (order.content && order.content.name) || '',
+					phone: (order.content && order.content.phone) || ''
+				},
+				rider_contact: {
+					name: '',
+					phone: ''
+				}
+			}
+
+			if (order.user_id && (!detail.user_contact.name || !detail.user_contact.phone)) {
+				const uRes = await db.collection('uni-id-users').doc(order.user_id).get()
+				const user = Array.isArray(uRes.data) ? uRes.data[0] : uRes.data
+				if (user) {
+					detail.user_contact.name = detail.user_contact.name || user.nickname || user.username || ''
+					detail.user_contact.phone = detail.user_contact.phone || user.mobile || ''
+				}
+			}
+
+			if (order.rider_id) {
+				const rpRes = await db.collection('rider_profiles').where({ user_id: order.rider_id }).limit(1).get()
+				const rp = rpRes.data && rpRes.data[0]
+				if (rp) {
+					detail.rider_contact.name = rp.name || ''
+					detail.rider_contact.phone = rp.mobile || ''
+				}
+				if (!detail.rider_contact.phone) {
+					const ruRes = await db.collection('uni-id-users').doc(order.rider_id).get()
+					const riderUser = Array.isArray(ruRes.data) ? ruRes.data[0] : ruRes.data
+					if (riderUser) {
+						detail.rider_contact.name = detail.rider_contact.name || riderUser.nickname || riderUser.username || ''
+						detail.rider_contact.phone = detail.rider_contact.phone || riderUser.mobile || ''
+					}
+				}
+			}
+
 			return {
 				code: 0,
 				message: '获取成功',
-				data: order
+				data: detail
 			}
 		} catch (error) {
 			console.error('获取订单详情失败:', error)
@@ -1572,7 +1628,7 @@ module.exports = {
 	 * @param {array} images 送达凭证图片
 	 * @returns {object} 确认结果
 	 */
-  async confirmDelivery(orderId, images = []) {
+	async confirmDelivery(orderId, images = []) {
     const authResult = checkAuth(this)
     if (authResult.code) {
       return authResult
@@ -1642,7 +1698,8 @@ module.exports = {
 				// 调用骑手服务，更新累计单数和等级抽成，并给骑手入账
 				try {
 					const riderService = uniCloud.importObject('rider-service')
-					await riderService.afterOrderCompleted(orderId, order.rider_id, order.price)
+					const settlePrice = resolveOrderDisplayPrice(order)
+					await riderService.afterOrderCompleted(orderId, order.rider_id, settlePrice)
 				} catch (e) {
 					console.error('调用骑手结算服务失败:', e)
 					// 不影响送达成功本身，只记录错误日志
@@ -2127,7 +2184,7 @@ module.exports = {
   /**
    * 首页内容：广告位 + 公告列表
    */
-  async getHomeContent () {
+	async getHomeContent () {
     try {
 			const flags = await securityKit.getRuntimeFlags()
 			if (flags.degrade_home_read) {
@@ -2176,10 +2233,110 @@ module.exports = {
           sort: row.sort != null ? row.sort : 0
         }))
 
-      return { code: 0, data: { heroes, announcements } }
-    } catch (error) {
-      console.error('getHomeContent', error)
-      return { code: 'DB_ERROR', message: '获取首页内容失败：' + error.message }
-    }
-  }
+			return { code: 0, data: { heroes, announcements } }
+		} catch (error) {
+			console.error('getHomeContent', error)
+			return { code: 'DB_ERROR', message: '获取首页内容失败：' + error.message }
+		}
+	},
+
+	async listOrderChatMessages({ orderId, page = 1, pageSize = 50 } = {}) {
+		const authResult = checkAuth(this)
+		if (authResult.code) return authResult
+		const uid = authResult.uid
+
+		if (!orderId) {
+			return { code: 'INVALID_PARAM', message: 'orderId 不能为空' }
+		}
+
+		const p = ensurePositiveInt(page, 1)
+		const ps = Math.min(100, ensurePositiveInt(pageSize, 50))
+
+		const orderRes = await db.collection('orders').doc(orderId).get()
+		if (!orderRes.data || !orderRes.data.length) {
+			return { code: 'NOT_FOUND', message: '订单不存在' }
+		}
+		const order = orderRes.data[0]
+		if (order.user_id !== uid && order.rider_id !== uid) {
+			return { code: 'NO_PERMISSION', message: '无权限查看聊天记录' }
+		}
+
+		const skip = (p - 1) * ps
+		const listRes = await db.collection('order_chat_messages')
+			.where({ order_id: orderId })
+			.orderBy('create_time', 'desc')
+			.skip(skip)
+			.limit(ps)
+			.get()
+
+		const messages = (listRes.data || [])
+			.reverse()
+			.map((row) => ({
+				_id: row._id,
+				order_id: row.order_id,
+				sender_id: row.sender_id,
+				sender_role: row.sender_role,
+				content: row.content,
+				create_time: row.create_time
+			}))
+
+		return {
+			code: 0,
+			message: '获取成功',
+			data: {
+				list: messages,
+				hasMore: (listRes.data || []).length >= ps
+			}
+		}
+	},
+
+	async sendOrderChatMessage({ orderId, content } = {}) {
+		const authResult = checkAuth(this)
+		if (authResult.code) return authResult
+		const uid = authResult.uid
+
+		if (!orderId) {
+			return { code: 'INVALID_PARAM', message: 'orderId 不能为空' }
+		}
+		const text = String(content || '').trim().slice(0, 300)
+		if (!text) {
+			return { code: 'INVALID_PARAM', message: '消息内容不能为空' }
+		}
+
+		const orderRes = await db.collection('orders').doc(orderId).get()
+		if (!orderRes.data || !orderRes.data.length) {
+			return { code: 'NOT_FOUND', message: '订单不存在' }
+		}
+		const order = orderRes.data[0]
+
+		let senderRole = ''
+		if (order.user_id === uid) senderRole = 'user'
+		if (order.rider_id === uid) senderRole = 'rider'
+		if (!senderRole) {
+			return { code: 'NO_PERMISSION', message: '无权限发送消息' }
+		}
+
+		const now = Date.now()
+		const addRes = await db.collection('order_chat_messages').add({
+			order_id: orderId,
+			sender_id: uid,
+			sender_role: senderRole,
+			content: text,
+			create_time: now,
+			update_time: now
+		})
+
+		return {
+			code: 0,
+			message: '发送成功',
+			data: {
+				_id: addRes.id,
+				order_id: orderId,
+				sender_id: uid,
+				sender_role: senderRole,
+				content: text,
+				create_time: now
+			}
+		}
+	}
 }

@@ -277,6 +277,15 @@ const _sfc_main = {
     goSettings() {
       common_vendor.index.showToast({ title: "设置（待实现）", icon: "none" });
     },
+    goAgreements() {
+      common_vendor.index.showActionSheet({
+        itemList: ["用户服务协议", "隐私政策"],
+        success: (res) => {
+          const url = res.tapIndex === 0 ? "/pages/common/legal/service" : "/pages/common/legal/privacy";
+          common_vendor.index.navigateTo({ url });
+        }
+      });
+    },
     /**
      * 切换到骑手端
      * - 如果未完成骑手实名认证，则先跳转到认证页面
@@ -424,55 +433,57 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     v: common_vendor.o((...args) => $options.goHelp && $options.goHelp(...args), "cc"),
     w: common_assets._imports_6,
     x: common_vendor.o((...args) => $options.goSettings && $options.goSettings(...args), "c8"),
-    y: $options.isRiderMode
+    y: common_assets._imports_5,
+    z: common_vendor.o((...args) => $options.goAgreements && $options.goAgreements(...args), "1a"),
+    A: $options.isRiderMode
   }, $options.isRiderMode ? {
-    z: common_vendor.o((...args) => $options.goClientMode && $options.goClientMode(...args), "e4")
+    B: common_vendor.o((...args) => $options.goClientMode && $options.goClientMode(...args), "c0")
   } : {}, {
-    A: $data.showLoginManage
+    C: $data.showLoginManage
   }, $data.showLoginManage ? common_vendor.e({
-    B: $options.userInfo._id
+    D: $options.userInfo._id
   }, $options.userInfo._id ? {
-    C: common_vendor.o((...args) => $options.logout && $options.logout(...args), "bc")
+    E: common_vendor.o((...args) => $options.logout && $options.logout(...args), "ad")
   } : {
-    D: common_vendor.o((...args) => $options.login && $options.login(...args), "f1")
+    F: common_vendor.o((...args) => $options.login && $options.login(...args), "33")
   }) : {}, {
-    E: common_vendor.o($options.setNickname, "1a"),
-    F: common_vendor.p({
+    G: common_vendor.o($options.setNickname, "74"),
+    H: common_vendor.p({
       mode: "input",
       value: $options.userInfo.nickname,
       inputType: $data.setNicknameIng ? "nickname" : "text",
       title: "设置昵称",
       placeholder: "请输入要设置的昵称"
     }),
-    G: common_vendor.sr("dialog", "569e925a-1"),
-    H: common_vendor.p({
+    I: common_vendor.sr("dialog", "569e925a-1"),
+    J: common_vendor.p({
       type: "dialog"
     }),
-    I: common_vendor.t($data.servicePhone),
-    J: common_vendor.o((...args) => $options.onContact && $options.onContact(...args), "10"),
-    K: common_vendor.o((...args) => $options.callServicePhone && $options.callServicePhone(...args), "2b"),
-    L: common_vendor.o((...args) => $options.closeServicePopup && $options.closeServicePopup(...args), "13"),
-    M: common_vendor.o(() => {
-    }, "2f"),
-    N: common_vendor.sr("servicePopup", "569e925a-3"),
-    O: common_vendor.p({
+    K: common_vendor.t($data.servicePhone),
+    L: common_vendor.o((...args) => $options.onContact && $options.onContact(...args), "a0"),
+    M: common_vendor.o((...args) => $options.callServicePhone && $options.callServicePhone(...args), "3d"),
+    N: common_vendor.o((...args) => $options.closeServicePopup && $options.closeServicePopup(...args), "4c"),
+    O: common_vendor.o(() => {
+    }, "1f"),
+    P: common_vendor.sr("servicePopup", "569e925a-3"),
+    Q: common_vendor.p({
       type: "center"
     }),
-    P: common_vendor.t($data.riderGuide.tip || "扫描二维码添加骑手群"),
-    Q: $data.riderGuide.qr_file_id
+    R: common_vendor.t($data.riderGuide.tip || "扫描二维码添加骑手群"),
+    S: $data.riderGuide.qr_file_id
   }, $data.riderGuide.qr_file_id ? {
-    R: $data.riderGuide.qr_file_id,
-    S: common_vendor.o((...args) => $options.previewRiderGuideQr && $options.previewRiderGuideQr(...args), "1a")
+    T: $data.riderGuide.qr_file_id,
+    U: common_vendor.o((...args) => $options.previewRiderGuideQr && $options.previewRiderGuideQr(...args), "19")
   } : {}, {
-    T: common_vendor.o((...args) => $options.closeRiderJoinPopup && $options.closeRiderJoinPopup(...args), "df"),
-    U: common_vendor.o(() => {
-    }, "3c"),
-    V: common_vendor.sr("riderJoinPopup", "569e925a-4"),
-    W: common_vendor.p({
+    V: common_vendor.o((...args) => $options.closeRiderJoinPopup && $options.closeRiderJoinPopup(...args), "58"),
+    W: common_vendor.o(() => {
+    }, "e0"),
+    X: common_vendor.sr("riderJoinPopup", "569e925a-4"),
+    Y: common_vendor.p({
       type: "center"
     }),
-    X: common_vendor.sr("bind-mobile-by-sms", "569e925a-5"),
-    Y: common_vendor.o($options.bindMobileSuccess, "34")
+    Z: common_vendor.sr("bind-mobile-by-sms", "569e925a-5"),
+    aa: common_vendor.o($options.bindMobileSuccess, "90")
   });
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-569e925a"]]);

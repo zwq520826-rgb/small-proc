@@ -332,6 +332,10 @@
 				"dorm_number": {
 					"bsonType": "string",
 					"description": "寝室号"
+				},
+				"remark": {
+					"bsonType": "string",
+					"description": "用户备注"
 				}
 			},
 			"title": "订单内容"

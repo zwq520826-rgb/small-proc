@@ -62,7 +62,7 @@
           </view>
         </view>
         <view class="footer">
-          <view class="price">¥{{ Number(task.price || 0).toFixed(2) }}</view>
+          <view class="price">¥{{ Number(task.displayPrice || task.price || 0).toFixed(2) }}</view>
           <view class="actions">
             <button
               type="default"

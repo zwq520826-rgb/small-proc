@@ -1,0 +1,1 @@
+{"version":3,"file":"service.js","sources":["pages/common/legal/service.vue?type=page"],"sourcesContent":["import MiniProgramPage from '/Users/zwq/tmp/small-proc/pages/common/legal/service.vue'\nwx.createPage(MiniProgramPage)"],"names":[],"mappings":";;;;;;;AACA,GAAG,WAAW,eAAe;"}

@@ -20,7 +20,7 @@
           <view class="route">
             <text class="delivery">{{ task.delivery }}</text>
           </view>
-          <text class="price">¥{{ task.price.toFixed(2) }}</text>
+          <text class="price">¥{{ Number(task.displayPrice || task.price || 0).toFixed(2) }}</text>
         </view>
         
         <view class="info-row">
@@ -67,7 +67,7 @@
           <view class="route">
             <text class="delivery">{{ task.delivery }}</text>
           </view>
-          <text class="price">¥{{ task.price.toFixed(2) }}</text>
+          <text class="price">¥{{ Number(task.displayPrice || task.price || 0).toFixed(2) }}</text>
         </view>
         
         <view class="info-row">
