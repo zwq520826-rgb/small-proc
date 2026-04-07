@@ -18,6 +18,13 @@ let lastLoadAt = 0
 const CACHE_TTL_MS = 20000
 const MIN_REQ_INTERVAL_MS = 3000
 
+function resolveTypeLabel(type, typeLabel) {
+  if (typeLabel) return typeLabel
+  if (type === 'pickup') return '快递代取'
+  if (type === 'errand') return '跑腿服务'
+  return '配送'
+}
+
 /**
  * 将数据库格式转换为前端格式
  */
@@ -30,7 +37,7 @@ function formatTaskFromDB(task) {
     id: task._id,
     _id: task._id,
     type: task.type,
-    typeLabel: task.type_label || '',
+    typeLabel: resolveTypeLabel(task.type, task.type_label),
     price: fallbackPrice,
     displayPrice,
     pickupLocation: task.pickup_location || '',

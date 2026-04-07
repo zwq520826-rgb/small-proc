@@ -2,6 +2,10 @@
 const common_vendor = require("../../../common/vendor.js");
 const uni_modules_uniIdPages_config = require("../config.js");
 const uniIdCo = common_vendor._r.importObject("uni-id-co");
+function getModeHomePath() {
+  const mode = common_vendor.index.getStorageSync("user_mode");
+  return mode === "rider" ? "/pages/rider/hall" : "/pages/client/home";
+}
 function getUsersTable() {
   try {
     if (typeof common_vendor._r === "undefined" || !common_vendor._r || typeof common_vendor._r.database !== "function") {
@@ -25,7 +29,7 @@ const mutations = {
   async updateUserInfo(data2 = false) {
     const usersTable = getUsersTable();
     if (!usersTable) {
-      common_vendor.index.__f__("error", "at uni_modules/uni-id-pages/common/store.js:39", "[uni-id-pages] uniCloud.database() 不可用：请检查是否已开通并绑定 uniCloud 云空间、并部署 uni-id-co/uni-id-users。");
+      common_vendor.index.__f__("error", "at uni_modules/uni-id-pages/common/store.js:44", "[uni-id-pages] uniCloud.database() 不可用：请检查是否已开通并绑定 uniCloud 云空间、并部署 uni-id-co/uni-id-users。");
       this.setUserInfo({}, { cover: true });
       return;
     }
@@ -59,7 +63,7 @@ const mutations = {
         });
       } catch (e) {
         this.setUserInfo({}, { cover: true });
-        common_vendor.index.__f__("error", "at uni_modules/uni-id-pages/common/store.js:81", e.message, e.errCode);
+        common_vendor.index.__f__("error", "at uni_modules/uni-id-pages/common/store.js:86", e.message, e.errCode);
       }
     }
   },
@@ -75,7 +79,7 @@ const mutations = {
       try {
         await uniIdCo.logout();
       } catch (e) {
-        common_vendor.index.__f__("error", "at uni_modules/uni-id-pages/common/store.js:100", e);
+        common_vendor.index.__f__("error", "at uni_modules/uni-id-pages/common/store.js:105", e);
       }
     }
     common_vendor.index.removeStorageSync("uni_id_token");
@@ -102,16 +106,15 @@ const mutations = {
           common_vendor.index.switchTab({
             url: uniIdRedirectUrl,
             fail: (err2) => {
-              common_vendor.index.__f__("log", "at uni_modules/uni-id-pages/common/store.js:130", err1, err2);
+              common_vendor.index.__f__("log", "at uni_modules/uni-id-pages/common/store.js:135", err1, err2);
             }
           });
         }
       });
     }
     if (delta) {
-      const page = common_vendor.pagesJson.pages[0];
       return common_vendor.index.reLaunch({
-        url: `/${page.path}`
+        url: getModeHomePath()
       });
     }
     common_vendor.index.navigateBack({
@@ -139,7 +142,7 @@ const mutations = {
       return common_vendor.index.redirectTo({
         url: uniIdRedirectUrl ? `/uni_modules/uni-id-pages/pages/userinfo/set-pwd/set-pwd?uniIdRedirectUrl=${uniIdRedirectUrl}&loginType=${e.loginType}` : `/uni_modules/uni-id-pages/pages/userinfo/set-pwd/set-pwd?loginType=${e.loginType}`,
         fail: (err) => {
-          common_vendor.index.__f__("log", "at uni_modules/uni-id-pages/common/store.js:174", err);
+          common_vendor.index.__f__("log", "at uni_modules/uni-id-pages/common/store.js:178", err);
         }
       });
     }

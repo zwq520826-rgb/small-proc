@@ -9,6 +9,7 @@ const db = uniCloud.database()
 const uniCaptcha = require('uni-captcha')
 
 const RIDER_SUBSCRIBE_CONFIG_ID = 'rider_subscribe_notify'
+const DEFAULT_RIDER_PASS_TEMPLATE_ID = 'dmeA7qwptd0UdkriDYG4jlQJZ5aJY1ljbOviR-3C6N0'
 let riderSubscribeConfigCache = { at: 0, value: null }
 
 function checkAuth(ctx) {
@@ -82,8 +83,8 @@ async function getCommissionByOrders(totalCompletedOrders) {
 }
 
 function normalizeRiderSubscribeConfig(row = {}) {
-  const submitTpl = String(row.template_submit_id || '').trim()
-  const passTpl = String(row.template_pass_id || '').trim()
+	const submitTpl = String(row.template_submit_id || '').trim()
+	const passTpl = String(row.template_pass_id || DEFAULT_RIDER_PASS_TEMPLATE_ID).trim()
   return {
     enable: row.enable !== false,
     template_submit_id: submitTpl,

@@ -1,7 +1,7 @@
 // 文档教程: https://uniapp.dcloud.net.cn/uniCloud/schema
 {
 	"bsonType": "object",
-	"required": ["order_id", "sender_id", "sender_role", "content", "create_time"],
+	"required": ["user_id", "order_id", "last_read_time"],
 	"permission": {
 		"read": false,
 		"create": false,
@@ -10,11 +10,18 @@
 	},
 	"indexes": [
 		{
-			"name": "idx_order_create_time",
+			"name": "idx_user_order",
+			"unique": true,
+			"field": [
+				{ "name": "user_id", "type": "asc" },
+				{ "name": "order_id", "type": "asc" }
+			]
+		},
+		{
+			"name": "idx_order",
 			"unique": false,
 			"field": [
-				{ "name": "order_id", "type": "asc" },
-				{ "name": "create_time", "type": "desc" }
+				{ "name": "order_id", "type": "asc" }
 			]
 		}
 	],
@@ -22,24 +29,19 @@
 		"_id": {
 			"description": "ID，系统自动生成"
 		},
+		"user_id": {
+			"bsonType": "string",
+			"description": "用户ID",
+			"foreignKey": "uni-id-users._id"
+		},
 		"order_id": {
 			"bsonType": "string",
 			"description": "订单ID",
 			"foreignKey": "orders._id"
 		},
-		"sender_id": {
-			"bsonType": "string",
-			"description": "发送者用户ID",
-			"foreignKey": "uni-id-users._id"
-		},
-		"sender_role": {
-			"bsonType": "string",
-			"description": "发送者角色",
-			"enum": ["user", "rider"]
-		},
-		"content": {
-			"bsonType": "string",
-			"description": "消息内容"
+		"last_read_time": {
+			"bsonType": "long",
+			"description": "最后已读时间戳（毫秒）"
 		},
 		"create_time": {
 			"bsonType": "long",

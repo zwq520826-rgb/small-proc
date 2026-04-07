@@ -58,13 +58,21 @@
       </view>
 
       <view v-if="task && task.status !== 'pending_accept'" class="card contact-card">
-        <view class="user-info">
-          <text class="name">客户电话</text>
-          <text class="phone-hint">{{ displayUserPhone || '暂无电话' }}</text>
+        <view class="contact-header">
+          <text class="card-title">客户信息</text>
         </view>
-        <view class="contact-actions">
-          <button class="call-btn" @click="handleCall">📞 拨打电话</button>
-          <button class="chat-btn" @click="openChat">在线沟通</button>
+        <view class="contact-content">
+          <view class="contact-avatar placeholder">
+            <text class="avatar-text">{{ getUserInitial() }}</text>
+          </view>
+          <view class="user-info">
+            <text class="name">{{ displayUserName || '未知客户' }}</text>
+            <text class="phone-hint">{{ displayUserPhone || '暂无电话' }}</text>
+          </view>
+          <view class="contact-actions">
+            <button class="call-btn" @click="handleCall">📞 拨打电话</button>
+            <button class="chat-btn" @click="openChat">在线沟通</button>
+          </view>
         </view>
       </view>
     </view>
@@ -202,6 +210,10 @@ const displayUserPhone = computed(() => {
   return orderDetail.value?.user_contact?.phone || task.value?.content?.phone || task.value?.phone || ''
 })
 
+const displayUserName = computed(() => {
+  return orderDetail.value?.user_contact?.name || task.value?.content?.name || ''
+})
+
 // 方法
 const goBack = () => uni.navigateBack()
 
@@ -219,6 +231,11 @@ const openChat = () => {
   uni.navigateTo({
     url: `/pages/common/chat/order?orderId=${encodeURIComponent(String(task.value.id))}&role=rider`
   })
+}
+
+const getUserInitial = () => {
+  if (!displayUserName.value) return '?'
+  return displayUserName.value.charAt(0).toUpperCase()
 }
 
 const loadOrderDetail = async (id) => {
@@ -428,12 +445,47 @@ const handleConfirmDelivery = () => {
 .imgs { display: flex; gap: 10rpx; margin-top: 10rpx; }
 .imgs image { width: 120rpx; height: 120rpx; border-radius: 8rpx; background: #eee; }
 
-.contact-card { display: flex; justify-content: space-between; align-items: center; }
-.user-info .name { font-size: 30rpx; font-weight: bold; display: block; }
-.user-info .phone-hint { font-size: 24rpx; color: #999; }
-.call-btn { background: #e3f2fd; color: #1976d2; font-size: 26rpx; border: none; }
-.contact-actions { display: flex; gap: 12rpx; }
-.chat-btn { background: #eef9f1; color: #2e7d32; font-size: 26rpx; border: none; }
+.contact-header { margin-bottom: 16rpx; }
+.card-title { font-size: 28rpx; font-weight: 700; color: #333; }
+.contact-content { display: flex; align-items: stretch; gap: 20rpx; }
+.contact-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.contact-avatar.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
+}
+.avatar-text { color: #fff; font-size: 36rpx; font-weight: 700; }
+.user-info { flex: 1; display: flex; flex-direction: column; gap: 8rpx; justify-content: center; }
+.user-info .name { font-size: 32rpx; font-weight: 600; color: #333; display: block; }
+.user-info .phone-hint { font-size: 24rpx; color: #666; }
+.contact-actions { display: flex; flex-direction: column; gap: 12rpx; width: 210rpx; }
+.call-btn,
+.chat-btn {
+  width: 100%;
+  height: 68rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  border: none;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+.call-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1976d2 0%, #1e88e5 100%);
+  color: #fff;
+}
+.chat-btn { background: #f8fbff; color: #1d4ed8; border: 1rpx solid #bfdbfe; }
+.call-btn::after,
+.chat-btn::after { border: none; }
 
 .bottom-bar {
   position: fixed;

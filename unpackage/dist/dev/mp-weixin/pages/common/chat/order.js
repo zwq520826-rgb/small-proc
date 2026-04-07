@@ -35,8 +35,9 @@ const _sfc_main = {
           return;
         messages.value = ((_a = res.data) == null ? void 0 : _a.list) || [];
         jumpToBottom();
+        await orderService.markOrderChatRead({ orderId: orderId.value });
       } catch (e) {
-        common_vendor.index.__f__("warn", "at pages/common/chat/order.vue:68", "加载聊天消息失败:", e);
+        common_vendor.index.__f__("warn", "at pages/common/chat/order.vue:69", "加载聊天消息失败:", e);
       }
     };
     const jumpToBottom = () => {
@@ -59,6 +60,7 @@ const _sfc_main = {
         draft.value = "";
         messages.value = [...messages.value, res.data];
         jumpToBottom();
+        await orderService.markOrderChatRead({ orderId: orderId.value });
       } catch (e) {
         common_vendor.index.showToast({ title: "发送失败，请重试", icon: "none" });
       } finally {

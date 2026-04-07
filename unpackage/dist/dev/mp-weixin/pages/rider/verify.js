@@ -34,6 +34,27 @@ const _sfc_main = {
         form.value.mobile = res.data.mobile || "";
       }
     };
+    const requestRiderSubscribeAuth = async () => {
+      try {
+        const cfgRes = await riderService.getSubscribeNotifyConfig();
+        const cfg = (cfgRes == null ? void 0 : cfgRes.data) || {};
+        if ((cfgRes == null ? void 0 : cfgRes.code) !== 0 || cfg.enable === false)
+          return {};
+        const tmplIds = [cfg.template_submit_id, cfg.template_pass_id].filter(Boolean);
+        if (!tmplIds.length)
+          return {};
+        const reqRes = await new Promise((resolve) => {
+          common_vendor.index.requestSubscribeMessage({
+            tmplIds,
+            success: (res) => resolve(res || {}),
+            fail: () => resolve({})
+          });
+        });
+        return reqRes || {};
+      } catch (e) {
+        return {};
+      }
+    };
     const submit = async () => {
       var _a;
       if (!form.value.captcha || form.value.captcha.length !== 4) {
@@ -42,8 +63,12 @@ const _sfc_main = {
         return;
       }
       try {
+        const subscribeResult = await requestRiderSubscribeAuth();
         common_vendor.index.showLoading({ title: "提交中..." });
-        const res = await riderService.submitApplication(form.value);
+        const res = await riderService.submitApplication({
+          ...form.value,
+          subscribeResult
+        });
         common_vendor.index.hideLoading();
         if (res.code === 0) {
           common_vendor.index.showToast({
@@ -70,7 +95,7 @@ const _sfc_main = {
         }
       } catch (e) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/rider/verify.vue:120", "提交失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/verify.vue:150", "提交失败:", e);
         common_vendor.index.showToast({ title: "提交失败", icon: "none" });
         form.value.captcha = "";
         if (captchaRef.value) {

@@ -7,6 +7,13 @@ const state = reactive({
   orders: []
 })
 
+function resolveTypeLabel(type, typeLabel) {
+  if (typeLabel) return typeLabel
+  if (type === 'pickup') return '快递代取'
+  if (type === 'errand') return '跑腿服务'
+  return '订单'
+}
+
 const pagingState = reactive({
   page: 1,
   pageSize: 20,
@@ -26,7 +33,7 @@ function formatOrderFromDB(order) {
     id: order._id,
     _id: order._id,
     type: order.type,
-    typeLabel: order.type_label || '',
+    typeLabel: resolveTypeLabel(order.type, order.type_label),
     pickupLocation: order.pickup_location || '',
     deliveryLocation: order.delivery_location || '',
     address: order.address || order.delivery_location || '',
@@ -62,6 +69,7 @@ function formatOrderToDB(orderData) {
   return {
     type: orderData.type,
     type_label: orderData.typeLabel || '',
+    subscribe_result: orderData.subscribeResult || orderData.subscribe_result || {},
     price: Number(orderData.price),
     pickup_location: orderData.pickupLocation || '',
     delivery_location: deliveryLocation,

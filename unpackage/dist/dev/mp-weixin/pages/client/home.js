@@ -1,6 +1,7 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
 const utils_auth = require("../../utils/auth.js");
+const store_user = require("../../store/user.js");
 if (!Math) {
   TheTabBar();
 }
@@ -124,7 +125,7 @@ const _sfc_main = {
         announcements.value = nextAnnouncements;
         saveFn({ heroes: nextHeroes, announcements: nextAnnouncements });
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/home.vue:284", "[home] loadHomeContent failed", e);
+        common_vendor.index.__f__("error", "at pages/client/home.vue:285", "[home] loadHomeContent failed", e);
         loadError.value = formatErrorMessage(e, "首页内容加载失败，请稍后重试");
         if (!showSkeleton) {
           common_vendor.index.showToast({ title: loadError.value, icon: "none" });
@@ -164,6 +165,10 @@ const _sfc_main = {
       await loadHomeContent({ showSkeleton: true });
     });
     common_vendor.onShow(() => {
+      if (store_user.isRiderMode()) {
+        common_vendor.index.reLaunch({ url: "/pages/rider/hall" });
+        return;
+      }
       common_vendor.index.hideHomeButton();
     });
     return (_ctx, _cache) => {

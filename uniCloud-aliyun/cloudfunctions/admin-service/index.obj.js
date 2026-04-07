@@ -7,6 +7,7 @@
 const uniIdCommon = require('uni-id-common')
 const crypto = require('crypto')
 const securityKit = require('./security-kit')
+const wechatSubscribe = require('./wechat-subscribe')
 const db = uniCloud.database()
 const dbCmd = db.command
 
@@ -15,6 +16,11 @@ const ORDER_ARCHIVE_COLLECTION = 'orders_archive'
 const ORDER_CLEANUP_SETTING_ID = 'order_cleanup'
 const DEFAULT_ORDER_TTL_DAYS = 7
 const DASHBOARD_COUNTERS_COLLECTION = 'dashboard_counters'
+const RIDER_SUBSCRIBE_CONFIG_ID = 'rider_subscribe_notify'
+const ORDER_SUBSCRIBE_CONFIG_ID = 'order_subscribe_notify'
+const DEFAULT_ORDER_ACCEPT_TEMPLATE_ID = 'PSEMI1JuVylugL_S4desPcoEpIwfjTV5TufCgQxylJw'
+const DEFAULT_ORDER_DELIVER_TEMPLATE_ID = 'd-epVcwVVoWk9ZuzGPUVUeE4Uy3DgixAEYetadc-2U8'
+const DEFAULT_RIDER_PASS_TEMPLATE_ID = 'dmeA7qwptd0UdkriDYG4jlQJZ5aJY1ljbOviR-3C6N0'
 
 const ADMIN_LOCAL_UID = 'admin-local-account'
 const ADMIN_REGISTER_LIMIT = 2
@@ -68,6 +74,63 @@ function normalizeAmount(num) {
 	const n = Number(num || 0)
 	if (!n || isNaN(n)) return 0
 	return Math.round(n * 100) / 100
+}
+
+function formatTimeLabel(ts) {
+	const d = new Date(Number(ts) || Date.now())
+	const y = d.getFullYear()
+	const m = String(d.getMonth() + 1).padStart(2, '0')
+	const day = String(d.getDate()).padStart(2, '0')
+	const hh = String(d.getHours()).padStart(2, '0')
+	const mm = String(d.getMinutes()).padStart(2, '0')
+	return `${y}-${m}-${day} ${hh}:${mm}`
+}
+
+function resolveUserOpenid(user = {}) {
+	const wxOpenid = user && user.wx_openid
+	if (!wxOpenid) return ''
+	if (typeof wxOpenid === 'string') return wxOpenid
+	return String(wxOpenid.mp || '').trim()
+}
+
+function normalizeOrderSubscribeConfig(row = {}) {
+	const acceptTpl = String(row.template_accept_id || DEFAULT_ORDER_ACCEPT_TEMPLATE_ID).trim()
+	const deliverTpl = String(row.template_deliver_id || DEFAULT_ORDER_DELIVER_TEMPLATE_ID).trim()
+	return {
+		enable: row.enable !== false,
+		template_accept_id: acceptTpl,
+		template_deliver_id: deliverTpl,
+		page_path_accept: String(row.page_path_accept || '/pages/client/orders/detail').trim() || '/pages/client/orders/detail',
+		page_path_deliver: String(row.page_path_deliver || '/pages/client/orders/detail').trim() || '/pages/client/orders/detail'
+	}
+}
+
+function normalizeRiderSubscribeConfig(row = {}) {
+	const passTpl = String(row.template_pass_id || DEFAULT_RIDER_PASS_TEMPLATE_ID).trim()
+	return {
+		enable: row.enable !== false,
+		template_pass_id: passTpl,
+		page_path: String(row.page_path || '/pages/mine/index').trim() || '/pages/mine/index'
+	}
+}
+
+async function getRiderSubscribeConfig() {
+	try {
+		const res = await db.collection('maintenance_settings').doc(RIDER_SUBSCRIBE_CONFIG_ID).get()
+		const row = Array.isArray(res.data) ? res.data[0] : res.data
+		return normalizeRiderSubscribeConfig(row || {})
+	} catch (e) {
+		return normalizeRiderSubscribeConfig({})
+	}
+}
+
+function buildRiderPassNotifyData(profile = {}, ts = Date.now()) {
+	return {
+		thing1: { value: String(profile.name || '骑手认证').slice(0, 20) },
+		time2: { value: formatTimeLabel(profile.create_time || ts) },
+		short_thing3: { value: '审核通过' },
+		thing4: { value: String(profile.remark || '恭喜通过骑手认证，可开始接单').slice(0, 20) }
+	}
 }
 
 /**
@@ -1175,6 +1238,41 @@ module.exports = {
 			update_time: now
 		})
 
+		if (status === 'approved' && row0.user_id) {
+			try {
+				const cfg = await getRiderSubscribeConfig()
+				const accepted = !!(row0.subscribe_notify && row0.subscribe_notify.tpl_pass_accept)
+				if (cfg.enable && cfg.template_pass_id && accepted) {
+					const uRes = await db.collection('uni-id-users').doc(row0.user_id).get()
+					const user0 = Array.isArray(uRes.data) ? uRes.data[0] : uRes.data
+					const openid = resolveUserOpenid(user0 || {})
+					if (openid) {
+						const sendRes = await wechatSubscribe.sendSubscribeMessage({
+							touser: openid,
+							template_id: cfg.template_pass_id,
+							page: cfg.page_path,
+							data: buildRiderPassNotifyData({ ...row0, status, remark: remark || '已通过' }, now)
+						})
+						if (sendRes.ok) {
+							await db.collection('rider_profiles').doc(id).update({
+								'subscribe_notify.last_pass_msgid': sendRes.msgid || '',
+								'subscribe_notify.last_pass_send_time': now,
+								'subscribe_notify.last_error': '',
+								update_time: now
+							})
+						} else {
+							await db.collection('rider_profiles').doc(id).update({
+								'subscribe_notify.last_error': `${sendRes.errcode || 'UNKNOWN'}:${sendRes.errmsg || ''}`.slice(0, 180),
+								update_time: now
+							})
+						}
+					}
+				}
+			} catch (e) {
+				console.warn('[admin-service] send rider pass notify failed:', e.message)
+			}
+		}
+
 		if (status !== 'approved' && row0.user_id) {
 			try {
 				const uRes = await db.collection('uni-id-users').doc(row0.user_id).get()
@@ -1582,6 +1680,111 @@ module.exports = {
 				price: rounded,
 				create_time: now,
 				update_time: now
+			})
+		}
+
+		return { code: 0, message: '已保存' }
+	},
+
+	/**
+	 * 订阅消息配置（订单接单/送达 + 骑手审核通过）
+	 */
+	async getSubscribeTemplateConfig() {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+
+		const [orderRes, riderRes] = await Promise.all([
+			db.collection('maintenance_settings').doc(ORDER_SUBSCRIBE_CONFIG_ID).get(),
+			db.collection('maintenance_settings').doc(RIDER_SUBSCRIBE_CONFIG_ID).get()
+		])
+		const orderRow = Array.isArray(orderRes.data) ? orderRes.data[0] : orderRes.data
+		const riderRow = Array.isArray(riderRes.data) ? riderRes.data[0] : riderRes.data
+		const orderCfg = normalizeOrderSubscribeConfig(orderRow || {})
+		const riderCfg = normalizeRiderSubscribeConfig(riderRow || {})
+
+		return {
+			code: 0,
+			data: {
+				order_enable: orderCfg.enable,
+				order_accept_template_id: orderCfg.template_accept_id,
+				order_deliver_template_id: orderCfg.template_deliver_id,
+				order_accept_page_path: orderCfg.page_path_accept,
+				order_deliver_page_path: orderCfg.page_path_deliver,
+				rider_enable: riderCfg.enable,
+				rider_pass_template_id: riderCfg.template_pass_id,
+				rider_page_path: riderCfg.page_path,
+				hint: '请填写微信公众平台中对应的一次性订阅模板ID；路径为小程序页面路径。'
+			}
+		}
+	},
+
+	async saveSubscribeTemplateConfig({
+		order_enable = true,
+		order_accept_template_id,
+		order_deliver_template_id,
+		order_accept_page_path,
+		order_deliver_page_path,
+		rider_enable = true,
+		rider_pass_template_id,
+		rider_page_path
+	} = {}) {
+		const auth = await assertAdmin(this.uid)
+		if (auth.code !== 0) return auth
+
+		const now = Date.now()
+		const orderDoc = normalizeOrderSubscribeConfig({
+			enable: order_enable,
+			template_accept_id: String(order_accept_template_id || '').trim() || DEFAULT_ORDER_ACCEPT_TEMPLATE_ID,
+			template_deliver_id: String(order_deliver_template_id || '').trim() || DEFAULT_ORDER_DELIVER_TEMPLATE_ID,
+			page_path_accept: String(order_accept_page_path || '').trim() || '/pages/client/orders/detail',
+			page_path_deliver: String(order_deliver_page_path || '').trim() || '/pages/client/orders/detail'
+		})
+
+		const riderDoc = normalizeRiderSubscribeConfig({
+			enable: rider_enable,
+			template_pass_id: String(rider_pass_template_id || '').trim() || DEFAULT_RIDER_PASS_TEMPLATE_ID,
+			page_path: String(rider_page_path || '').trim() || '/pages/mine/index'
+		})
+
+		const orderSave = {
+			enable: orderDoc.enable,
+			template_accept_id: orderDoc.template_accept_id,
+			template_deliver_id: orderDoc.template_deliver_id,
+			page_path_accept: orderDoc.page_path_accept,
+			page_path_deliver: orderDoc.page_path_deliver,
+			update_time: now
+		}
+		const riderSave = {
+			enable: riderDoc.enable,
+			template_pass_id: riderDoc.template_pass_id,
+			page_path: riderDoc.page_path,
+			update_time: now
+		}
+
+		const [orderCur, riderCur] = await Promise.all([
+			db.collection('maintenance_settings').doc(ORDER_SUBSCRIBE_CONFIG_ID).get(),
+			db.collection('maintenance_settings').doc(RIDER_SUBSCRIBE_CONFIG_ID).get()
+		])
+		const orderExisted = Array.isArray(orderCur.data) ? orderCur.data[0] : orderCur.data
+		const riderExisted = Array.isArray(riderCur.data) ? riderCur.data[0] : riderCur.data
+
+		if (orderExisted) {
+			await db.collection('maintenance_settings').doc(ORDER_SUBSCRIBE_CONFIG_ID).update(orderSave)
+		} else {
+			await db.collection('maintenance_settings').add({
+				_id: ORDER_SUBSCRIBE_CONFIG_ID,
+				...orderSave,
+				create_time: now
+			})
+		}
+
+		if (riderExisted) {
+			await db.collection('maintenance_settings').doc(RIDER_SUBSCRIBE_CONFIG_ID).update(riderSave)
+		} else {
+			await db.collection('maintenance_settings').add({
+				_id: RIDER_SUBSCRIBE_CONFIG_ID,
+				...riderSave,
+				create_time: now
 			})
 		}
 

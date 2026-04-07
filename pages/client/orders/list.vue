@@ -9,7 +9,8 @@
         :class="{ active: currentTab === index }"
         @click="onTabChange(index)"
       >
-        {{ tab.label }}
+        <text>{{ tab.label }}</text>
+        <text v-if="getTabUnread(tab.status) > 0" class="tab-unread">{{ formatUnread(getTabUnread(tab.status)) }}</text>
       </view>
     </view>
 
@@ -47,7 +48,10 @@
               </view>
             </view>
           </view>
-          <text class="badge" :class="order.status">{{ statusMap[order.status] }}</text>
+          <view class="right-badges">
+            <text v-if="getOrderUnread(order.id) > 0" class="chat-unread">{{ formatUnread(getOrderUnread(order.id)) }}</text>
+            <text class="badge" :class="order.status">{{ statusMap[order.status] }}</text>
+          </view>
         </view>
         <view class="row">
           <text class="place">{{ order.pickupLocation }}</text>
@@ -121,12 +125,13 @@
 <script setup>
 import TheTabBar from '@/components/TheTabBar.vue'
 import { ref, computed } from 'vue'
-import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
+import { onLoad, onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { useClientOrderStore } from '@/store/clientOrder'
 import { buildVisualTags } from '@/utils/orderTags'
 
 // 【修改点2】使用新的 store 名称
 const store = useClientOrderStore()
+const orderService = uniCloud.importObject('order-service')
 
 const tabs = [
   { label: '全部', status: 'all' },
@@ -148,6 +153,9 @@ const statusMap = {
 const currentTab = ref(0)
 const pageSize = ref(20)
 const loadStatus = ref('more') // 'more' | 'loading' | 'noMore'
+const unreadByOrder = ref({})
+const unreadByStatus = ref({})
+const unreadTotal = ref(0)
 const PRIMARY_TAG_TYPES = new Set(['urgent', 'delivery'])
 
 const splitTags = (tags = []) => {
@@ -205,7 +213,36 @@ const loadData = async () => {
   if (loadStatus.value === 'loading') return
   loadStatus.value = 'loading'
   await store.reloadOrders({ pageSize: pageSize.value })
+  await loadUnreadSummary()
   refreshLoadStatus()
+}
+
+const loadUnreadSummary = async () => {
+  try {
+    const res = await orderService.getMyOrderChatUnreadSummary({ role: 'user' })
+    if (res?.code !== 0 || !res.data) return
+    unreadByOrder.value = res.data.byOrder || {}
+    unreadByStatus.value = res.data.byStatus || {}
+    unreadTotal.value = Number(res.data.total || 0)
+  } catch (e) {
+    console.warn('加载聊天未读失败:', e)
+  }
+}
+
+const getOrderUnread = (orderId) => Number(unreadByOrder.value?.[orderId] || 0)
+
+const getTabUnread = (status) => {
+  if (status === 'all') return unreadTotal.value
+  if (status === 'delivering') {
+    return Number(unreadByStatus.value?.pending_pickup || 0) + Number(unreadByStatus.value?.delivering || 0)
+  }
+  return Number(unreadByStatus.value?.[status] || 0)
+}
+
+const formatUnread = (count) => {
+  const n = Number(count || 0)
+  if (n <= 0) return ''
+  return n > 99 ? '99+' : String(n)
 }
 
 const onTabChange = (index) => {
@@ -282,7 +319,12 @@ const goDetail = (id) => {
 
 onPullDownRefresh(async () => {
   await reloadCurrent()
+  await loadUnreadSummary()
   uni.stopPullDownRefresh()
+})
+
+onShow(async () => {
+  await loadUnreadSummary()
 })
 
 onLoad(async () => {
@@ -310,11 +352,27 @@ onLoad(async () => {
   padding: 18rpx 0;
   font-size: 28rpx;
   color: #666;
+  position: relative;
 }
 .tab.active {
   color: #1a73e8;
   font-weight: 700;
   background: #f0f7ff;
+}
+.tab-unread {
+  position: absolute;
+  right: 14rpx;
+  top: 8rpx;
+  min-width: 30rpx;
+  height: 30rpx;
+  line-height: 30rpx;
+  padding: 0 8rpx;
+  border-radius: 999rpx;
+  background: #ef4444;
+  color: #fff;
+  font-size: 20rpx;
+  text-align: center;
+  box-sizing: border-box;
 }
 .list-wrapper {
   height: calc(100vh - 140rpx);
@@ -346,6 +404,11 @@ onLoad(async () => {
   gap: 10rpx;
   flex-wrap: wrap;
 }
+.right-badges {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
 .inline-tags {
   display: flex;
   align-items: center;
@@ -371,6 +434,18 @@ onLoad(async () => {
   padding: 4rpx 10rpx;
   border-radius: 10rpx;
   background: #f0f0f0;
+}
+.chat-unread {
+  min-width: 34rpx;
+  height: 34rpx;
+  line-height: 34rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  background: #ef4444;
+  color: #fff;
+  font-size: 20rpx;
+  text-align: center;
+  box-sizing: border-box;
 }
 .badge.pending_accept {
   color: #ff8f00;

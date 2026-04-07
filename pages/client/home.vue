@@ -153,6 +153,7 @@ import TheTabBar from '@/components/TheTabBar.vue'
 import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { requireLogin } from '@/utils/auth.js'
+import { isRiderMode } from '@/store/user.js'
 
 const configService = uniCloud.importObject('order-service')
 
@@ -328,6 +329,10 @@ onLoad(async () => {
 })
 
 onShow(() => {
+  if (isRiderMode()) {
+    uni.reLaunch({ url: '/pages/rider/hall' })
+    return
+  }
   uni.hideHomeButton()
 })
 </script>

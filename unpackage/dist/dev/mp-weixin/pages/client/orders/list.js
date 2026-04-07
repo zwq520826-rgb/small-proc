@@ -11,6 +11,7 @@ const _sfc_main = {
   __name: "list",
   setup(__props) {
     const store = store_clientOrder.useClientOrderStore();
+    const orderService = common_vendor._r.importObject("order-service");
     const tabs = [
       { label: "全部", status: "all" },
       { label: "待接单", status: "pending_accept" },
@@ -29,6 +30,9 @@ const _sfc_main = {
     const currentTab = common_vendor.ref(0);
     const pageSize = common_vendor.ref(20);
     const loadStatus = common_vendor.ref("more");
+    const unreadByOrder = common_vendor.ref({});
+    const unreadByStatus = common_vendor.ref({});
+    const unreadTotal = common_vendor.ref(0);
     const PRIMARY_TAG_TYPES = /* @__PURE__ */ new Set(["urgent", "delivery"]);
     const splitTags = (tags = []) => {
       const primary = [];
@@ -80,7 +84,39 @@ const _sfc_main = {
         return;
       loadStatus.value = "loading";
       await store.reloadOrders({ pageSize: pageSize.value });
+      await loadUnreadSummary();
       refreshLoadStatus();
+    };
+    const loadUnreadSummary = async () => {
+      try {
+        const res = await orderService.getMyOrderChatUnreadSummary({ role: "user" });
+        if ((res == null ? void 0 : res.code) !== 0 || !res.data)
+          return;
+        unreadByOrder.value = res.data.byOrder || {};
+        unreadByStatus.value = res.data.byStatus || {};
+        unreadTotal.value = Number(res.data.total || 0);
+      } catch (e) {
+        common_vendor.index.__f__("warn", "at pages/client/orders/list.vue:228", "加载聊天未读失败:", e);
+      }
+    };
+    const getOrderUnread = (orderId) => {
+      var _a;
+      return Number(((_a = unreadByOrder.value) == null ? void 0 : _a[orderId]) || 0);
+    };
+    const getTabUnread = (status) => {
+      var _a, _b, _c;
+      if (status === "all")
+        return unreadTotal.value;
+      if (status === "delivering") {
+        return Number(((_a = unreadByStatus.value) == null ? void 0 : _a.pending_pickup) || 0) + Number(((_b = unreadByStatus.value) == null ? void 0 : _b.delivering) || 0);
+      }
+      return Number(((_c = unreadByStatus.value) == null ? void 0 : _c[status]) || 0);
+    };
+    const formatUnread = (count) => {
+      const n = Number(count || 0);
+      if (n <= 0)
+        return "";
+      return n > 99 ? "99+" : String(n);
     };
     const onTabChange = (index) => {
       currentTab.value = index;
@@ -145,7 +181,11 @@ const _sfc_main = {
     };
     common_vendor.onPullDownRefresh(async () => {
       await reloadCurrent();
+      await loadUnreadSummary();
       common_vendor.index.stopPullDownRefresh();
+    });
+    common_vendor.onShow(async () => {
+      await loadUnreadSummary();
     });
     common_vendor.onLoad(async () => {
       await loadData();
@@ -153,12 +193,16 @@ const _sfc_main = {
     return (_ctx, _cache) => {
       return common_vendor.e({
         a: common_vendor.f(tabs, (tab, index, i0) => {
-          return {
+          return common_vendor.e({
             a: common_vendor.t(tab.label),
-            b: index,
-            c: currentTab.value === index ? 1 : "",
-            d: common_vendor.o(($event) => onTabChange(index), index)
-          };
+            b: getTabUnread(tab.status) > 0
+          }, getTabUnread(tab.status) > 0 ? {
+            c: common_vendor.t(formatUnread(getTabUnread(tab.status)))
+          } : {}, {
+            d: index,
+            e: currentTab.value === index ? 1 : "",
+            f: common_vendor.o(($event) => onTabChange(index), index)
+          });
         }),
         b: displayList.value.length === 0
       }, displayList.value.length === 0 ? {
@@ -182,13 +226,17 @@ const _sfc_main = {
               });
             })
           } : {}, {
-            e: common_vendor.t(statusMap[order.status]),
-            f: common_vendor.n(order.status),
-            g: common_vendor.t(order.pickupLocation),
-            h: common_vendor.t(order.deliveryLocation || order.address),
-            i: order.secondaryTags && order.secondaryTags.length
+            e: getOrderUnread(order.id) > 0
+          }, getOrderUnread(order.id) > 0 ? {
+            f: common_vendor.t(formatUnread(getOrderUnread(order.id)))
+          } : {}, {
+            g: common_vendor.t(statusMap[order.status]),
+            h: common_vendor.n(order.status),
+            i: common_vendor.t(order.pickupLocation),
+            j: common_vendor.t(order.deliveryLocation || order.address),
+            k: order.secondaryTags && order.secondaryTags.length
           }, order.secondaryTags && order.secondaryTags.length ? {
-            j: common_vendor.f(order.secondaryTags, (tag, k1, i1) => {
+            l: common_vendor.f(order.secondaryTags, (tag, k1, i1) => {
               return common_vendor.e({
                 a: tag.icon
               }, tag.icon ? {
@@ -200,29 +248,29 @@ const _sfc_main = {
               });
             })
           } : {}, {
-            k: common_vendor.t(order.remarkText || "无"),
-            l: common_vendor.t(Number(order.price || 0).toFixed(2)),
-            m: common_vendor.t(order.publishedAt || order.createTime),
-            n: order.status === "completed"
+            m: common_vendor.t(order.remarkText || "无"),
+            n: common_vendor.t(Number(order.price || 0).toFixed(2)),
+            o: common_vendor.t(order.publishedAt || order.createTime),
+            p: order.status === "completed"
           }, order.status === "completed" ? {
-            o: common_vendor.o(($event) => handleViewPhotos(order), order.id)
+            q: common_vendor.o(($event) => handleViewPhotos(order), order.id)
           } : {}, {
-            p: order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering"
+            r: order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering"
           }, order.status === "pending_accept" || order.status === "pending_pickup" || order.status === "delivering" ? {
-            q: common_vendor.o(($event) => handleCancel(order.id), order.id)
+            s: common_vendor.o(($event) => handleCancel(order.id), order.id)
           } : {}, {
-            r: order.status === "completed"
+            t: order.status === "completed"
           }, order.status === "completed" ? {
-            s: common_vendor.o(($event) => handleDelete(order.id), order.id)
+            v: common_vendor.o(($event) => handleDelete(order.id), order.id)
           } : {}, {
-            t: order.id,
-            v: common_vendor.o(($event) => goDetail(order.id), order.id)
+            w: order.id,
+            x: common_vendor.o(($event) => goDetail(order.id), order.id)
           });
         }),
         e: loadStatus.value === "loading"
       }, loadStatus.value === "loading" ? {} : loadStatus.value === "noMore" ? {} : {}, {
         f: loadStatus.value === "noMore",
-        g: common_vendor.o(handleReachBottom, "3f")
+        g: common_vendor.o(handleReachBottom, "4a")
       });
     };
   }

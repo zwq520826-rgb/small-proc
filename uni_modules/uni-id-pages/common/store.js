@@ -3,6 +3,11 @@ import config from '@/uni_modules/uni-id-pages/config.js'
 
 const uniIdCo = uniCloud.importObject("uni-id-co")
 
+function getModeHomePath() {
+	const mode = uni.getStorageSync('user_mode')
+	return mode === 'rider' ? '/pages/rider/hall' : '/pages/client/home'
+}
+
 // 避免在模块加载阶段就访问 uniCloud（某些运行环境/未绑定云空间时 uniCloud.database 可能不可用，导致直接崩溃）
 function getUsersTable() {
 	// #ifdef MP
@@ -141,9 +146,8 @@ export const mutations = {
 		// #endif
 
 		if (delta) {
-			const page = pagesJson.pages[0]
 			return uni.reLaunch({
-				url: `/${page.path}`
+				url: getModeHomePath()
 			})
 		}
 

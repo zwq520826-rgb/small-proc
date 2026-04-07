@@ -82,7 +82,33 @@ const _sfc_main = {
         return "";
       return phone;
     };
-    const handlePayClick = () => {
+    const requestOrderSubscribeAuth = async () => {
+      try {
+        const cfgRes = await orderService.getSubscribeNotifyConfig();
+        const cfg = (cfgRes == null ? void 0 : cfgRes.data) || {};
+        if ((cfgRes == null ? void 0 : cfgRes.code) !== 0 || cfg.enable === false)
+          return {};
+        const tmplIds = [cfg.template_accept_id, cfg.template_deliver_id].filter(Boolean);
+        if (!tmplIds.length)
+          return {};
+        const reqRes = await new Promise((resolve) => {
+          common_vendor.index.requestSubscribeMessage({
+            tmplIds,
+            success: (res) => resolve(res || {}),
+            fail: () => resolve({})
+          });
+        });
+        const result = reqRes || {};
+        const accepted = tmplIds.some((id) => result[id] === "accept");
+        if (!accepted) {
+          common_vendor.index.showToast({ title: "未同意订阅，后续将收不到接单/送达通知", icon: "none" });
+        }
+        return result;
+      } catch (e) {
+        return {};
+      }
+    };
+    const handlePayClick = async () => {
       if (!currentAddress.value) {
         common_vendor.index.showToast({ title: "请选择收货地址", icon: "none" });
         return;
@@ -101,7 +127,8 @@ const _sfc_main = {
           return;
         }
       }
-      onPayConfirm("wechat");
+      const subscribeResult = await requestOrderSubscribeAuth();
+      onPayConfirm("wechat", subscribeResult);
     };
     const uploadImages = async (list = []) => {
       const uploaded = [];
@@ -122,7 +149,7 @@ const _sfc_main = {
       }
       return uploaded;
     };
-    const onPayConfirm = async (method = "wechat") => {
+    const onPayConfirm = async (method = "wechat", subscribeResult = {}) => {
       common_vendor.index.showLoading({ title: "处理中..." });
       try {
         const uploadedImages = await uploadImages(images.value || []);
@@ -133,6 +160,7 @@ const _sfc_main = {
         const payload = {
           type: "errand",
           typeLabel: "跑腿代购",
+          subscribeResult,
           price: amount,
           pickupLocation: "",
           // 不再使用“待指定”，改为由图片说明取件信息
@@ -190,7 +218,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:376", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/errand.vue:409", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };

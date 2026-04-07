@@ -18,11 +18,27 @@
   padding: 18rpx 0;
   font-size: 28rpx;
   color: #666;
+  position: relative;
 }
 .tab.active.data-v-5857953e {
   color: #1a73e8;
   font-weight: 700;
   background: #f0f7ff;
+}
+.tab-unread.data-v-5857953e {
+  position: absolute;
+  right: 14rpx;
+  top: 8rpx;
+  min-width: 30rpx;
+  height: 30rpx;
+  line-height: 30rpx;
+  padding: 0 8rpx;
+  border-radius: 999rpx;
+  background: #ef4444;
+  color: #fff;
+  font-size: 20rpx;
+  text-align: center;
+  box-sizing: border-box;
 }
 .list-wrapper.data-v-5857953e {
   height: calc(100vh - 140rpx);
@@ -54,6 +70,11 @@
   gap: 10rpx;
   flex-wrap: wrap;
 }
+.right-badges.data-v-5857953e {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
 .inline-tags.data-v-5857953e {
   display: flex;
   align-items: center;
@@ -79,6 +100,18 @@
   padding: 4rpx 10rpx;
   border-radius: 10rpx;
   background: #f0f0f0;
+}
+.chat-unread.data-v-5857953e {
+  min-width: 34rpx;
+  height: 34rpx;
+  line-height: 34rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  background: #ef4444;
+  color: #fff;
+  font-size: 20rpx;
+  text-align: center;
+  box-sizing: border-box;
 }
 .badge.pending_accept.data-v-5857953e {
   color: #ff8f00;

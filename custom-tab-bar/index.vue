@@ -53,7 +53,7 @@ function updateState() {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1] || {}
   state.route = (currentPage.route || '').replace(/^\//, '')
-  const savedMode = uni.getStorageSync('tab_mode')
+  const savedMode = uni.getStorageSync('user_mode')
   state.mode = savedMode === 'rider' ? 'rider' : 'client'
 }
 
@@ -119,7 +119,6 @@ onShow(() => {
   color: #007aff;
 }
 </style>
-
 
 
 

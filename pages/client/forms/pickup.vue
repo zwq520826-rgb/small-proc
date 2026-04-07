@@ -267,7 +267,38 @@ const onDeliveryToggle = (e) => {
   }
 }
 
-const handlePayClick = () => {
+const requestOrderSubscribeAuth = async () => {
+  // #ifndef MP-WEIXIN
+  return {}
+  // #endif
+
+  // #ifdef MP-WEIXIN
+  try {
+    const cfgRes = await orderService.getSubscribeNotifyConfig()
+    const cfg = cfgRes?.data || {}
+    if (cfgRes?.code !== 0 || cfg.enable === false) return {}
+    const tmplIds = [cfg.template_accept_id, cfg.template_deliver_id].filter(Boolean)
+    if (!tmplIds.length) return {}
+    const reqRes = await new Promise((resolve) => {
+      uni.requestSubscribeMessage({
+        tmplIds,
+        success: (res) => resolve(res || {}),
+        fail: () => resolve({})
+      })
+    })
+    const result = reqRes || {}
+    const accepted = tmplIds.some((id) => result[id] === 'accept')
+    if (!accepted) {
+      uni.showToast({ title: '未同意订阅，后续将收不到接单/送达通知', icon: 'none' })
+    }
+    return result
+  } catch (e) {
+    return {}
+  }
+  // #endif
+}
+
+const handlePayClick = async () => {
   if (!currentAddress.value) {
     uni.showToast({ title: '请选择收货地址', icon: 'none' })
     return
@@ -291,7 +322,8 @@ const handlePayClick = () => {
     }
   }
 
-  onPayConfirm('wechat')
+  const subscribeResult = await requestOrderSubscribeAuth()
+  onPayConfirm('wechat', subscribeResult)
 }
 
 // 上传取件凭证到云存储，返回可跨设备访问的 fileID
@@ -314,7 +346,7 @@ const uploadImages = async (list = []) => {
   return uploaded
 }
 
-const onPayConfirm = async (method = 'wechat') => {
+const onPayConfirm = async (method = 'wechat', subscribeResult = {}) => {
   uni.showLoading({ title: '处理中...' })
 
   try {
@@ -349,6 +381,7 @@ const onPayConfirm = async (method = 'wechat') => {
     const payload = {
       type: 'pickup',
       typeLabel: '快递代取',
+      subscribeResult,
       price: amount,
       pickupLocation: '',
       deliveryLocation: deliveryLocation,

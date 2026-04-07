@@ -19,7 +19,9 @@ const _sfc_main = {
       { label: "已送达", status: "completed" }
     ];
     const shouldShowRider = common_vendor.computed(() => {
-      return order.value && (order.value.status === "pending_pickup" || order.value.status === "delivering" || order.value.status === "completed" || order.value.status === "abnormal") && order.value.rider;
+      var _a, _b;
+      const hasRider = !!(((_a = order.value) == null ? void 0 : _a.rider) || ((_b = order.value) == null ? void 0 : _b.rider_id) || riderPhone.value || riderDisplayName.value);
+      return order.value && (order.value.status === "pending_pickup" || order.value.status === "delivering" || order.value.status === "completed" || order.value.status === "abnormal") && hasRider;
     });
     const riderPhone = common_vendor.computed(() => {
       var _a, _b, _c, _d;
@@ -121,7 +123,7 @@ const _sfc_main = {
       common_vendor.index.makePhoneCall({
         phoneNumber: riderPhone.value.replace(/\*/g, ""),
         fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/client/orders/detail.vue:360", "拨打电话失败:", err);
+          common_vendor.index.__f__("error", "at pages/client/orders/detail.vue:361", "拨打电话失败:", err);
           common_vendor.index.showToast({ title: "拨打电话失败", icon: "none" });
         }
       });
@@ -144,7 +146,7 @@ const _sfc_main = {
           };
         }
       } catch (e) {
-        common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:383", "加载订单联系人失败:", e);
+        common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:384", "加载订单联系人失败:", e);
       }
     };
     const handleCancelOrder = () => {
@@ -179,14 +181,14 @@ const _sfc_main = {
         illegalOrderPromise.value = db.collection("illegal-order").where({ order_id: orderId }).limit(1).get().then((res) => {
           illegalOrder.value = res.data && res.data.length ? res.data[0] : null;
         }).catch((e) => {
-          common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:432", "加载 illegal-order 失败:", e);
+          common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:433", "加载 illegal-order 失败:", e);
           illegalOrder.value = null;
         }).finally(() => {
           illegalOrderPromise.value = null;
         });
         return illegalOrderPromise.value;
       } catch (e) {
-        common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:441", "加载 illegal-order 异常:", e);
+        common_vendor.index.__f__("warn", "at pages/client/orders/detail.vue:442", "加载 illegal-order 异常:", e);
         illegalOrder.value = null;
         return null;
       }
@@ -280,7 +282,7 @@ const _sfc_main = {
         });
       } catch (e) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/orders/detail.vue:541", "加急支付异常:", e);
+        common_vendor.index.__f__("error", "at pages/client/orders/detail.vue:542", "加急支付异常:", e);
         common_vendor.index.showToast({ title: "加急失败，请稍后重试", icon: "none" });
       }
     };

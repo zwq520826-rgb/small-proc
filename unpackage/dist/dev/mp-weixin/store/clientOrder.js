@@ -4,6 +4,15 @@ const orderService = common_vendor._r.importObject("order-service");
 const state = common_vendor.reactive({
   orders: []
 });
+function resolveTypeLabel(type, typeLabel) {
+  if (typeLabel)
+    return typeLabel;
+  if (type === "pickup")
+    return "快递代取";
+  if (type === "errand")
+    return "跑腿服务";
+  return "订单";
+}
 const pagingState = common_vendor.reactive({
   page: 1,
   pageSize: 20,
@@ -18,7 +27,7 @@ function formatOrderFromDB(order) {
     id: order._id,
     _id: order._id,
     type: order.type,
-    typeLabel: order.type_label || "",
+    typeLabel: resolveTypeLabel(order.type, order.type_label),
     pickupLocation: order.pickup_location || "",
     deliveryLocation: order.delivery_location || "",
     address: order.address || order.delivery_location || "",
@@ -44,6 +53,7 @@ function formatOrderToDB(orderData) {
   return {
     type: orderData.type,
     type_label: orderData.typeLabel || "",
+    subscribe_result: orderData.subscribeResult || orderData.subscribe_result || {},
     price: Number(orderData.price),
     pickup_location: orderData.pickupLocation || "",
     delivery_location: deliveryLocation,
@@ -77,7 +87,7 @@ async function fetchOrdersFromCloud({ page = 1, pageSize = 20, append = false } 
       inited = true;
       return true;
     }
-    common_vendor.index.__f__("error", "at store/clientOrder.js:105", "加载订单失败:", res.message);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:113", "加载订单失败:", res.message);
     if (res.code !== "NO_LOGIN") {
       common_vendor.index.showToast({
         title: res.message || "加载失败",
@@ -86,7 +96,7 @@ async function fetchOrdersFromCloud({ page = 1, pageSize = 20, append = false } 
     }
     return false;
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:115", "加载订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:123", "加载订单失败:", error);
     return false;
   } finally {
     pagingState.loading = false;
@@ -137,7 +147,7 @@ async function addOrder(payload) {
       return null;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:176", "创建订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:184", "创建订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -169,7 +179,7 @@ async function cancelOrder(id) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:216", "取消订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:224", "取消订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -193,7 +203,7 @@ async function deleteOrder(id) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:245", "删除订单失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:253", "删除订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -228,7 +238,7 @@ async function reportDeliveryIssue(id, reason = "") {
     common_vendor.index.showToast({ title: res.message || "反馈失败", icon: "none" });
     return { success: false, data: res.data || {} };
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/clientOrder.js:281", "提交异常反馈失败:", error);
+    common_vendor.index.__f__("error", "at store/clientOrder.js:289", "提交异常反馈失败:", error);
     common_vendor.index.showToast({ title: "网络错误，请稍后重试", icon: "none" });
     return { success: false };
   }

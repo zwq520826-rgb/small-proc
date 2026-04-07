@@ -222,9 +222,10 @@ const timelineSteps = [
 
 // Check if should show rider info
 const shouldShowRider = computed(() => {
+  const hasRider = !!(order.value?.rider || order.value?.rider_id || riderPhone.value || riderDisplayName.value)
   return order.value && 
     (order.value.status === 'pending_pickup' || order.value.status === 'delivering' || order.value.status === 'completed' || order.value.status === 'abnormal') &&
-    order.value.rider
+    hasRider
 })
 
 const riderPhone = computed(() => {
@@ -908,7 +909,7 @@ onShow(async () => {
 
 .rider-content {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 20rpx;
 }
 
@@ -953,32 +954,45 @@ onShow(async () => {
 .rider-actions {
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
+  gap: 12rpx;
+  width: 210rpx;
 }
 
 .call-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8rpx;
-  padding: 16rpx 24rpx;
-  background: #1a73e8;
+  width: 100%;
+  height: 68rpx;
+  padding: 0 20rpx;
+  background: linear-gradient(135deg, #1976d2 0%, #1e88e5 100%);
   color: #ffffff;
-  border-radius: 12rpx;
-  font-size: 26rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 600;
   border: none;
 }
 
 .call-icon {
-  font-size: 28rpx;
+  font-size: 24rpx;
 }
 
 .chat-btn {
-  padding: 12rpx 20rpx;
-  border-radius: 12rpx;
-  border: none;
-  background: #ecf8ef;
-  color: #2e7d32;
+  width: 100%;
+  height: 68rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  border: 1rpx solid #bfdbfe;
+  background: #f8fbff;
+  color: #1d4ed8;
   font-size: 24rpx;
+  font-weight: 600;
+}
+
+.call-btn::after,
+.chat-btn::after {
+  border: none;
 }
 
 /* Order Info Card */

@@ -14,6 +14,15 @@ let refreshPromise = null;
 let lastLoadAt = 0;
 const CACHE_TTL_MS = 2e4;
 const MIN_REQ_INTERVAL_MS = 3e3;
+function resolveTypeLabel(type, typeLabel) {
+  if (typeLabel)
+    return typeLabel;
+  if (type === "pickup")
+    return "快递代取";
+  if (type === "errand")
+    return "跑腿服务";
+  return "配送";
+}
 function formatTaskFromDB(task) {
   var _a;
   const originalPrice = Number((_a = task == null ? void 0 : task.content) == null ? void 0 : _a.original_price);
@@ -23,7 +32,7 @@ function formatTaskFromDB(task) {
     id: task._id,
     _id: task._id,
     type: task.type,
-    typeLabel: task.type_label || "",
+    typeLabel: resolveTypeLabel(task.type, task.type_label),
     price: fallbackPrice,
     displayPrice,
     pickupLocation: task.pickup_location || "",
@@ -56,7 +65,7 @@ async function loadHallTasksFromCloud(sortBy = "distance") {
       state.hallTasks = (res.data || []).map(formatTaskFromDB);
       return true;
     } else {
-      common_vendor.index.__f__("error", "at store/riderTask.js:71", "加载大厅任务失败:", res.message);
+      common_vendor.index.__f__("error", "at store/riderTask.js:78", "加载大厅任务失败:", res.message);
       if (res.code !== "NO_LOGIN") {
         common_vendor.index.showToast({
           title: res.message || "加载失败",
@@ -66,7 +75,7 @@ async function loadHallTasksFromCloud(sortBy = "distance") {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:81", "加载大厅任务失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:88", "加载大厅任务失败:", error);
     common_vendor.index.hideLoading();
     return false;
   }
@@ -82,7 +91,7 @@ async function loadMyTasksFromCloud(status = "all") {
       state.myTasks = (res.data || []).map(formatTaskFromDB);
       return true;
     } else {
-      common_vendor.index.__f__("error", "at store/riderTask.js:103", "加载我的任务失败:", res.message);
+      common_vendor.index.__f__("error", "at store/riderTask.js:110", "加载我的任务失败:", res.message);
       if (res.code !== "NO_LOGIN") {
         common_vendor.index.showToast({
           title: res.message || "加载失败",
@@ -92,7 +101,7 @@ async function loadMyTasksFromCloud(status = "all") {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:113", "加载我的任务失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:120", "加载我的任务失败:", error);
     common_vendor.index.hideLoading();
     return false;
   }
@@ -114,14 +123,14 @@ async function loadRiderDashboardFromCloud(sortBy = "distance") {
       state.riderStats = ((_c = res.data) == null ? void 0 : _c.riderStats) || null;
       return true;
     }
-    common_vendor.index.__f__("warn", "at store/riderTask.js:141", "聚合接口失败，回退到分接口:", res.message);
+    common_vendor.index.__f__("warn", "at store/riderTask.js:148", "聚合接口失败，回退到分接口:", res.message);
     const [hallOk, myOk] = await Promise.all([
       loadHallTasksFromCloud(sortBy),
       loadMyTasksFromCloud("all")
     ]);
     return !!(hallOk || myOk);
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:148", "加载骑手聚合数据失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:155", "加载骑手聚合数据失败:", error);
     const [hallOk, myOk] = await Promise.all([
       loadHallTasksFromCloud(sortBy),
       loadMyTasksFromCloud("all")
@@ -172,7 +181,7 @@ async function grabTask(id) {
       };
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:213", "抢单失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:220", "抢单失败:", error);
     common_vendor.index.hideLoading();
     return {
       success: false,
@@ -216,7 +225,7 @@ async function confirmPickup(id, images = []) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:274", "确认取货失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:281", "确认取货失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -252,7 +261,7 @@ async function confirmDelivery(id, images) {
       return false;
     }
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:317", "确认送达失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:324", "确认送达失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"
@@ -285,7 +294,7 @@ async function riderCancelOrder(id, payload = {}) {
     }
     return { success: true };
   } catch (error) {
-    common_vendor.index.__f__("error", "at store/riderTask.js:361", "取消订单失败:", error);
+    common_vendor.index.__f__("error", "at store/riderTask.js:368", "取消订单失败:", error);
     common_vendor.index.showToast({
       title: "网络错误，请稍后重试",
       icon: "none"

@@ -64,6 +64,7 @@ const loadMessages = async () => {
     if (res?.code !== 0) return
     messages.value = res.data?.list || []
     jumpToBottom()
+    await orderService.markOrderChatRead({ orderId: orderId.value })
   } catch (e) {
     console.warn('加载聊天消息失败:', e)
   }
@@ -88,6 +89,7 @@ const send = async () => {
     draft.value = ''
     messages.value = [...messages.value, res.data]
     jumpToBottom()
+    await orderService.markOrderChatRead({ orderId: orderId.value })
   } catch (e) {
     uni.showToast({ title: '发送失败，请重试', icon: 'none' })
   } finally {

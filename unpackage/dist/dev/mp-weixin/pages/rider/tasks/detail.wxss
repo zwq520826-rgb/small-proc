@@ -67,17 +67,56 @@
 }
 .imgs image.data-v-163fccdb { width: 120rpx; height: 120rpx; border-radius: 8rpx; background: #eee;
 }
-.contact-card.data-v-163fccdb { display: flex; justify-content: space-between; align-items: center;
+.contact-header.data-v-163fccdb { margin-bottom: 16rpx;
 }
-.user-info .name.data-v-163fccdb { font-size: 30rpx; font-weight: bold; display: block;
+.card-title.data-v-163fccdb { font-size: 28rpx; font-weight: 700; color: #333;
 }
-.user-info .phone-hint.data-v-163fccdb { font-size: 24rpx; color: #999;
+.contact-content.data-v-163fccdb { display: flex; align-items: stretch; gap: 20rpx;
 }
-.call-btn.data-v-163fccdb { background: #e3f2fd; color: #1976d2; font-size: 26rpx; border: none;
+.contact-avatar.data-v-163fccdb {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
-.contact-actions.data-v-163fccdb { display: flex; gap: 12rpx;
+.contact-avatar.placeholder.data-v-163fccdb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a73e8 0%, #4285f4 100%);
 }
-.chat-btn.data-v-163fccdb { background: #eef9f1; color: #2e7d32; font-size: 26rpx; border: none;
+.avatar-text.data-v-163fccdb { color: #fff; font-size: 36rpx; font-weight: 700;
+}
+.user-info.data-v-163fccdb { flex: 1; display: flex; flex-direction: column; gap: 8rpx; justify-content: center;
+}
+.user-info .name.data-v-163fccdb { font-size: 32rpx; font-weight: 600; color: #333; display: block;
+}
+.user-info .phone-hint.data-v-163fccdb { font-size: 24rpx; color: #666;
+}
+.contact-actions.data-v-163fccdb { display: flex; flex-direction: column; gap: 12rpx; width: 210rpx;
+}
+.call-btn.data-v-163fccdb,
+.chat-btn.data-v-163fccdb {
+  width: 100%;
+  height: 68rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  border: none;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+.call-btn.data-v-163fccdb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1976d2 0%, #1e88e5 100%);
+  color: #fff;
+}
+.chat-btn.data-v-163fccdb { background: #f8fbff; color: #1d4ed8; border: 1rpx solid #bfdbfe;
+}
+.call-btn.data-v-163fccdb::after,
+.chat-btn.data-v-163fccdb::after { border: none;
 }
 .bottom-bar.data-v-163fccdb {
   position: fixed;

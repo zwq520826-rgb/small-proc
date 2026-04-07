@@ -44,6 +44,22 @@
   font-size: 28rpx;
   color: #666666;
   transition: all 0.3s;
+  position: relative;
+}
+.tab-unread.data-v-1cb17a62 {
+  position: absolute;
+  right: 12rpx;
+  top: 8rpx;
+  min-width: 30rpx;
+  height: 30rpx;
+  line-height: 30rpx;
+  padding: 0 8rpx;
+  border-radius: 999rpx;
+  background: #ef4444;
+  color: #fff;
+  font-size: 20rpx;
+  text-align: center;
+  box-sizing: border-box;
 }
 .tab.active.data-v-1cb17a62 {
   color: #1a73e8;
@@ -109,6 +125,23 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12rpx;
+}
+.right-meta.data-v-1cb17a62 {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+.chat-unread.data-v-1cb17a62 {
+  min-width: 34rpx;
+  height: 34rpx;
+  line-height: 34rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  background: #ef4444;
+  color: #fff;
+  font-size: 20rpx;
+  text-align: center;
+  box-sizing: border-box;
 }
 .route.data-v-1cb17a62 {
   display: flex;

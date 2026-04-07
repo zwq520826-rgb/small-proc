@@ -10,7 +10,10 @@ const _sfc_main = {
   __name: "list",
   setup(__props) {
     const store = store_riderTask.useRiderTaskStore();
+    const orderService = common_vendor._r.importObject("order-service");
     const currentTab = common_vendor.ref(0);
+    const unreadByOrder = common_vendor.ref({});
+    const unreadByStatus = common_vendor.ref({});
     const tabs = [
       { label: "待取货", value: "pending_pickup" },
       { label: "配送中", value: "delivering" },
@@ -30,12 +33,38 @@ const _sfc_main = {
         pageRefreshing = false;
       }
     };
+    const loadUnreadSummary = async () => {
+      try {
+        const res = await orderService.getMyOrderChatUnreadSummary({ role: "rider" });
+        if ((res == null ? void 0 : res.code) !== 0 || !res.data)
+          return;
+        unreadByOrder.value = res.data.byOrder || {};
+        unreadByStatus.value = res.data.byStatus || {};
+      } catch (e) {
+        common_vendor.index.__f__("warn", "at pages/rider/tasks/list.vue:232", "加载聊天未读失败:", e);
+      }
+    };
+    const getOrderUnread = (orderId) => {
+      var _a;
+      return Number(((_a = unreadByOrder.value) == null ? void 0 : _a[orderId]) || 0);
+    };
+    const getTabUnread = (status) => {
+      var _a;
+      return Number(((_a = unreadByStatus.value) == null ? void 0 : _a[status]) || 0);
+    };
+    const formatUnread = (count) => {
+      const n = Number(count || 0);
+      if (n <= 0)
+        return "";
+      return n > 99 ? "99+" : String(n);
+    };
     common_vendor.onShow(async () => {
       common_vendor.index.hideHomeButton();
       try {
         await refreshPageData(false);
+        await loadUnreadSummary();
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:214", "任务列表刷新失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:250", "任务列表刷新失败:", e);
       }
     });
     common_vendor.onPullDownRefresh(async () => {
@@ -44,8 +73,9 @@ const _sfc_main = {
       pulling = true;
       try {
         await refreshPageData(true);
+        await loadUnreadSummary();
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:225", "下拉刷新失败:", e);
+        common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:262", "下拉刷新失败:", e);
       } finally {
         pulling = false;
         common_vendor.index.stopPullDownRefresh();
@@ -120,7 +150,7 @@ const _sfc_main = {
           });
           urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
         } catch (e) {
-          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:326", "获取临时文件 URL 失败:", e);
+          common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:363", "获取临时文件 URL 失败:", e);
           common_vendor.index.showToast({ title: "图片加载失败，请稍后重试", icon: "none" });
           return;
         }
@@ -195,7 +225,7 @@ const _sfc_main = {
             } else {
             }
           } catch (e) {
-            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:424", "上传/送达确认失败:", e);
+            common_vendor.index.__f__("error", "at pages/rider/tasks/list.vue:461", "上传/送达确认失败:", e);
             common_vendor.index.hideLoading();
             common_vendor.index.showToast({ title: e.message || "上传失败，请重试", icon: "none" });
           }
@@ -244,14 +274,18 @@ const _sfc_main = {
         a: common_vendor.f(tabs, (item, index, i0) => {
           return common_vendor.e({
             a: common_vendor.t(item.label),
-            b: item.value === "abnormal" && abnormalCount.value > 0
-          }, item.value === "abnormal" && abnormalCount.value > 0 ? {
-            c: common_vendor.t(abnormalCount.value)
+            b: getTabUnread(item.value) > 0
+          }, getTabUnread(item.value) > 0 ? {
+            c: common_vendor.t(formatUnread(getTabUnread(item.value)))
           } : {}, {
-            d: item.value,
-            e: index === currentTab.value ? 1 : "",
-            f: item.value === "abnormal" ? 1 : "",
-            g: common_vendor.o(($event) => currentTab.value = index, item.value)
+            d: item.value === "abnormal" && abnormalCount.value > 0
+          }, item.value === "abnormal" && abnormalCount.value > 0 ? {
+            e: common_vendor.t(abnormalCount.value)
+          } : {}, {
+            f: item.value,
+            g: index === currentTab.value ? 1 : "",
+            h: item.value === "abnormal" ? 1 : "",
+            i: common_vendor.o(($event) => currentTab.value = index, item.value)
           });
         }),
         b: currentTab.value === 0
@@ -259,12 +293,16 @@ const _sfc_main = {
         c: common_vendor.f(taskList.value, (task, k0, i0) => {
           return common_vendor.e({
             a: common_vendor.t(task.delivery),
-            b: common_vendor.t(Number(task.displayPrice || task.price || 0).toFixed(2)),
-            c: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
-            d: common_vendor.t(statusMap[task.status]),
-            e: task.visualTags && task.visualTags.length
+            b: getOrderUnread(task.id) > 0
+          }, getOrderUnread(task.id) > 0 ? {
+            c: common_vendor.t(formatUnread(getOrderUnread(task.id)))
+          } : {}, {
+            d: common_vendor.t(Number(task.displayPrice || task.price || 0).toFixed(2)),
+            e: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
+            f: common_vendor.t(statusMap[task.status]),
+            g: task.visualTags && task.visualTags.length
           }, task.visualTags && task.visualTags.length ? {
-            f: common_vendor.f(task.visualTags, (tag, k1, i1) => {
+            h: common_vendor.f(task.visualTags, (tag, k1, i1) => {
               return common_vendor.e({
                 a: tag.icon
               }, tag.icon ? {
@@ -276,16 +314,16 @@ const _sfc_main = {
               });
             })
           } : {}, {
-            g: task.phone
+            i: task.phone
           }, task.phone ? {
-            h: common_vendor.t(task.phone),
-            i: common_vendor.o(($event) => callCustomer(task), task.id)
+            j: common_vendor.t(task.phone),
+            k: common_vendor.o(($event) => callCustomer(task), task.id)
           } : {}, {
-            j: common_vendor.o(($event) => viewPickupImages(task), task.id),
-            k: common_vendor.o(($event) => confirmPickup(task), task.id),
-            l: common_vendor.o(($event) => goDetailAndOpenCancel(task), task.id),
-            m: task.id,
-            n: common_vendor.o(($event) => goTaskDetail(task), task.id)
+            l: common_vendor.o(($event) => viewPickupImages(task), task.id),
+            m: common_vendor.o(($event) => confirmPickup(task), task.id),
+            n: common_vendor.o(($event) => goDetailAndOpenCancel(task), task.id),
+            o: task.id,
+            p: common_vendor.o(($event) => goTaskDetail(task), task.id)
           });
         })
       } : {}, {
@@ -294,11 +332,15 @@ const _sfc_main = {
         e: common_vendor.f(taskList.value, (task, k0, i0) => {
           return common_vendor.e({
             a: common_vendor.t(task.delivery),
-            b: common_vendor.t(Number(task.displayPrice || task.price || 0).toFixed(2)),
-            c: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
-            d: task.visualTags && task.visualTags.length
+            b: getOrderUnread(task.id) > 0
+          }, getOrderUnread(task.id) > 0 ? {
+            c: common_vendor.t(formatUnread(getOrderUnread(task.id)))
+          } : {}, {
+            d: common_vendor.t(Number(task.displayPrice || task.price || 0).toFixed(2)),
+            e: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
+            f: task.visualTags && task.visualTags.length
           }, task.visualTags && task.visualTags.length ? {
-            e: common_vendor.f(task.visualTags, (tag, k1, i1) => {
+            g: common_vendor.f(task.visualTags, (tag, k1, i1) => {
               return common_vendor.e({
                 a: tag.icon
               }, tag.icon ? {
@@ -310,15 +352,15 @@ const _sfc_main = {
               });
             })
           } : {}, {
-            f: task.phone
+            h: task.phone
           }, task.phone ? {
-            g: common_vendor.t(task.phone),
-            h: common_vendor.o(($event) => callCustomer(task), task.id)
+            i: common_vendor.t(task.phone),
+            j: common_vendor.o(($event) => callCustomer(task), task.id)
           } : {}, {
-            i: common_vendor.o(($event) => confirmDelivery(task), task.id),
-            j: common_vendor.o(($event) => goDetailAndOpenCancel(task), task.id),
-            k: task.id,
-            l: common_vendor.o(($event) => goTaskDetail(task), task.id)
+            k: common_vendor.o(($event) => confirmDelivery(task), task.id),
+            l: common_vendor.o(($event) => goDetailAndOpenCancel(task), task.id),
+            m: task.id,
+            n: common_vendor.o(($event) => goTaskDetail(task), task.id)
           });
         })
       } : {}, {
@@ -327,12 +369,16 @@ const _sfc_main = {
         g: common_vendor.f(taskList.value, (task, k0, i0) => {
           return common_vendor.e({
             a: common_vendor.t(task.delivery),
-            b: common_vendor.t(((task.content && task.content.rider_income) != null ? Number(task.content.rider_income) : Number(task.price || 0)).toFixed(2)),
-            c: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
-            d: common_vendor.t(formatTime(task.completedAt)),
-            e: task.visualTags && task.visualTags.length
+            b: getOrderUnread(task.id) > 0
+          }, getOrderUnread(task.id) > 0 ? {
+            c: common_vendor.t(formatUnread(getOrderUnread(task.id)))
+          } : {}, {
+            d: common_vendor.t(((task.content && task.content.rider_income) != null ? Number(task.content.rider_income) : Number(task.price || 0)).toFixed(2)),
+            e: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
+            f: common_vendor.t(formatTime(task.completedAt)),
+            g: task.visualTags && task.visualTags.length
           }, task.visualTags && task.visualTags.length ? {
-            f: common_vendor.f(task.visualTags, (tag, k1, i1) => {
+            h: common_vendor.f(task.visualTags, (tag, k1, i1) => {
               return common_vendor.e({
                 a: tag.icon
               }, tag.icon ? {
@@ -344,30 +390,34 @@ const _sfc_main = {
               });
             })
           } : {}, {
-            g: task.deliveryImage
+            i: task.deliveryImage
           }, task.deliveryImage ? {
-            h: task.deliveryImage,
-            i: common_vendor.o(($event) => _ctx.previewDeliveryImage(task), task.id),
-            j: common_vendor.o(() => {
+            j: task.deliveryImage,
+            k: common_vendor.o(($event) => _ctx.previewDeliveryImage(task), task.id),
+            l: common_vendor.o(() => {
             }, task.id)
           } : {}, {
-            k: task.id,
-            l: common_vendor.o(($event) => goTaskDetail(task), task.id)
+            m: task.id,
+            n: common_vendor.o(($event) => goTaskDetail(task), task.id)
           });
         })
       } : {}, {
         h: currentTab.value === 3
       }, currentTab.value === 3 ? {
         i: common_vendor.f(taskList.value, (task, k0, i0) => {
-          return {
+          return common_vendor.e({
             a: common_vendor.t(task.delivery),
-            b: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
-            c: common_vendor.t(Number(task.photo_feedback_count || 0)),
-            d: common_vendor.t(task.abnormal_remark ? `用户反馈：${task.abnormal_remark}` : "用户提交了异常反馈，请处理并重新上传送达凭证。"),
-            e: common_vendor.o(($event) => confirmDelivery(task), task.id),
-            f: task.id,
-            g: common_vendor.o(($event) => goTaskDetail(task), task.id)
-          };
+            b: getOrderUnread(task.id) > 0
+          }, getOrderUnread(task.id) > 0 ? {
+            c: common_vendor.t(formatUnread(getOrderUnread(task.id)))
+          } : {}, {
+            d: common_vendor.t(task.type === "pickup" ? "快递代取" : "跑腿服务"),
+            e: common_vendor.t(Number(task.photo_feedback_count || 0)),
+            f: common_vendor.t(task.abnormal_remark ? `用户反馈：${task.abnormal_remark}` : "用户提交了异常反馈，请处理并重新上传送达凭证。"),
+            g: common_vendor.o(($event) => confirmDelivery(task), task.id),
+            h: task.id,
+            i: common_vendor.o(($event) => goTaskDetail(task), task.id)
+          });
         })
       } : {});
     };

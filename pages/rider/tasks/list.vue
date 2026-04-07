@@ -8,7 +8,8 @@
       :class="{ active: index === currentTab, danger: item.value === 'abnormal' }"
       @click="currentTab = index"
     >
-      {{ item.label }}
+      <text>{{ item.label }}</text>
+      <text v-if="getTabUnread(item.value) > 0" class="tab-unread">{{ formatUnread(getTabUnread(item.value)) }}</text>
       <text v-if="item.value === 'abnormal' && abnormalCount > 0" class="danger-count">{{ abnormalCount }}</text>
     </view>
   </view>
@@ -20,7 +21,10 @@
           <view class="route">
             <text class="delivery">{{ task.delivery }}</text>
           </view>
-          <text class="price">¥{{ Number(task.displayPrice || task.price || 0).toFixed(2) }}</text>
+          <view class="right-meta">
+            <text v-if="getOrderUnread(task.id) > 0" class="chat-unread">{{ formatUnread(getOrderUnread(task.id)) }}</text>
+            <text class="price">¥{{ Number(task.displayPrice || task.price || 0).toFixed(2) }}</text>
+          </view>
         </view>
         
         <view class="info-row">
@@ -67,7 +71,10 @@
           <view class="route">
             <text class="delivery">{{ task.delivery }}</text>
           </view>
-          <text class="price">¥{{ Number(task.displayPrice || task.price || 0).toFixed(2) }}</text>
+          <view class="right-meta">
+            <text v-if="getOrderUnread(task.id) > 0" class="chat-unread">{{ formatUnread(getOrderUnread(task.id)) }}</text>
+            <text class="price">¥{{ Number(task.displayPrice || task.price || 0).toFixed(2) }}</text>
+          </view>
         </view>
         
         <view class="info-row">
@@ -111,9 +118,12 @@
           <view class="route">
             <text class="delivery">{{ task.delivery }}</text>
           </view>
-          <text class="income">
-            收入 ¥{{ ((task.content && task.content.rider_income) != null ? Number(task.content.rider_income) : Number(task.price || 0)).toFixed(2) }}
-          </text>
+          <view class="right-meta">
+            <text v-if="getOrderUnread(task.id) > 0" class="chat-unread">{{ formatUnread(getOrderUnread(task.id)) }}</text>
+            <text class="income">
+              收入 ¥{{ ((task.content && task.content.rider_income) != null ? Number(task.content.rider_income) : Number(task.price || 0)).toFixed(2) }}
+            </text>
+          </view>
         </view>
         
         <view class="info-row">
@@ -152,7 +162,10 @@
           <view class="route">
             <text class="delivery">{{ task.delivery }}</text>
           </view>
-          <text class="abnormal-text">异常单</text>
+          <view class="right-meta">
+            <text v-if="getOrderUnread(task.id) > 0" class="chat-unread">{{ formatUnread(getOrderUnread(task.id)) }}</text>
+            <text class="abnormal-text">异常单</text>
+          </view>
         </view>
 
         <view class="info-row">
@@ -182,7 +195,10 @@ import { buildVisualTags } from '@/utils/orderTags'
 
 // 【修改点2】初始化 store
 const store = useRiderTaskStore()
+const orderService = uniCloud.importObject('order-service')
 const currentTab = ref(0) // 0: 待取货, 1: 配送中, 2: 已送达, 3: 异常单
+const unreadByOrder = ref({})
+const unreadByStatus = ref({})
 
 const tabs = [
   { label: '待取货', value: 'pending_pickup' },
@@ -206,10 +222,30 @@ const refreshPageData = async (force = false) => {
   }
 }
 
+const loadUnreadSummary = async () => {
+  try {
+    const res = await orderService.getMyOrderChatUnreadSummary({ role: 'rider' })
+    if (res?.code !== 0 || !res.data) return
+    unreadByOrder.value = res.data.byOrder || {}
+    unreadByStatus.value = res.data.byStatus || {}
+  } catch (e) {
+    console.warn('加载聊天未读失败:', e)
+  }
+}
+
+const getOrderUnread = (orderId) => Number(unreadByOrder.value?.[orderId] || 0)
+const getTabUnread = (status) => Number(unreadByStatus.value?.[status] || 0)
+const formatUnread = (count) => {
+  const n = Number(count || 0)
+  if (n <= 0) return ''
+  return n > 99 ? '99+' : String(n)
+}
+
 onShow(async () => {
   uni.hideHomeButton()
   try {
     await refreshPageData(false)
+    await loadUnreadSummary()
   } catch (e) {
     console.error('任务列表刷新失败:', e)
   }
@@ -221,6 +257,7 @@ onPullDownRefresh(async () => {
   try {
     // 下拉刷新：强制刷新大厅/我的任务（页面仅展示，不额外触发 stats）
     await refreshPageData(true)
+    await loadUnreadSummary()
   } catch (e) {
     console.error('下拉刷新失败:', e)
   } finally {
@@ -494,6 +531,23 @@ const formatTime = (timestamp) => {
   font-size: 28rpx;
   color: #666666;
   transition: all 0.3s;
+  position: relative;
+}
+
+.tab-unread {
+  position: absolute;
+  right: 12rpx;
+  top: 8rpx;
+  min-width: 30rpx;
+  height: 30rpx;
+  line-height: 30rpx;
+  padding: 0 8rpx;
+  border-radius: 999rpx;
+  background: #ef4444;
+  color: #fff;
+  font-size: 20rpx;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .tab.active {
@@ -570,6 +624,25 @@ const formatTime = (timestamp) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12rpx;
+}
+
+.right-meta {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.chat-unread {
+  min-width: 34rpx;
+  height: 34rpx;
+  line-height: 34rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  background: #ef4444;
+  color: #fff;
+  font-size: 20rpx;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .route {

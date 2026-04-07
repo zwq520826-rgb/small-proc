@@ -3,6 +3,7 @@
 // 引入 uni-id-common
 const uniID = require('uni-id-common')
 const securityKit = require('./security-kit')
+const wechatSubscribe = require('./wechat-subscribe')
 const db = uniCloud.database()
 const dbCmd = db.command
 const ORDER_CLASS = {
@@ -14,6 +15,10 @@ const ORDER_STATUS = {
 	ABNORMAL: 'abnormal'
 }
 const FEEDBACK_LIMIT = 3
+const ORDER_SUBSCRIBE_CONFIG_ID = 'order_subscribe_notify'
+const DEFAULT_ORDER_ACCEPT_TEMPLATE_ID = 'PSEMI1JuVylugL_S4desPcoEpIwfjTV5TufCgQxylJw'
+const DEFAULT_ORDER_DELIVER_TEMPLATE_ID = 'd-epVcwVVoWk9ZuzGPUVUeE4Uy3DgixAEYetadc-2U8'
+let orderSubscribeConfigCache = { at: 0, value: null }
 const HALL_TASK_FIELD_PROJECTION = {
 	_id: 1,
 	type: 1,
@@ -198,6 +203,112 @@ function resolveOrderDisplayPrice(order = {}) {
 		return fromPrice
 	}
 	return 0
+}
+
+function formatTimeLabel(ts) {
+	const d = new Date(Number(ts) || Date.now())
+	const y = d.getFullYear()
+	const m = String(d.getMonth() + 1).padStart(2, '0')
+	const day = String(d.getDate()).padStart(2, '0')
+	const hh = String(d.getHours()).padStart(2, '0')
+	const mm = String(d.getMinutes()).padStart(2, '0')
+	return `${y}-${m}-${day} ${hh}:${mm}`
+}
+
+function resolveUserOpenid(user = {}) {
+	const wxOpenid = user && user.wx_openid
+	if (!wxOpenid) return ''
+	if (typeof wxOpenid === 'string') return wxOpenid
+	return String(wxOpenid.mp || '').trim()
+}
+
+function normalizeOrderSubscribeConfig(row = {}) {
+	const acceptTpl = String(row.template_accept_id || DEFAULT_ORDER_ACCEPT_TEMPLATE_ID).trim()
+	const deliverTpl = String(row.template_deliver_id || DEFAULT_ORDER_DELIVER_TEMPLATE_ID).trim()
+	return {
+		enable: row.enable !== false,
+		template_accept_id: acceptTpl,
+		template_deliver_id: deliverTpl,
+		page_path_accept: String(row.page_path_accept || '/pages/client/orders/detail').trim() || '/pages/client/orders/detail',
+		page_path_deliver: String(row.page_path_deliver || '/pages/client/orders/detail').trim() || '/pages/client/orders/detail'
+	}
+}
+
+async function getOrderSubscribeConfig() {
+	const now = Date.now()
+	if (orderSubscribeConfigCache.at && now - orderSubscribeConfigCache.at < 3000 && orderSubscribeConfigCache.value) {
+		return orderSubscribeConfigCache.value
+	}
+	try {
+		const res = await db.collection('maintenance_settings').doc(ORDER_SUBSCRIBE_CONFIG_ID).get()
+		const row = Array.isArray(res.data) ? res.data[0] : res.data
+		const cfg = normalizeOrderSubscribeConfig(row || {})
+		orderSubscribeConfigCache = { at: now, value: cfg }
+		return cfg
+	} catch (e) {
+		const fallback = normalizeOrderSubscribeConfig({})
+		orderSubscribeConfigCache = { at: now, value: fallback }
+		return fallback
+	}
+}
+
+function resolveSubscribeAccept(result = {}, templateId = '') {
+	if (!templateId || !result || typeof result !== 'object') return false
+	return result[templateId] === 'accept'
+}
+
+function buildOrderAcceptedNotifyData(order = {}, riderName = '', ts = Date.now()) {
+	const amountText = `¥${Number(resolveOrderDisplayPrice(order) || 0).toFixed(2)}`
+	return {
+		character_string1: { value: String(order.order_no || order._id || '').slice(0, 32) },
+		amount2: { value: amountText },
+		thing8: { value: String(riderName || '骑手').slice(0, 20) },
+		thing20: { value: String(order.delivery_location || order.address || '校内地址').slice(0, 20) },
+		time4: { value: formatTimeLabel(ts) }
+	}
+}
+
+function buildOrderDeliveredNotifyData(order = {}, ts = Date.now()) {
+	const typeText = order.type === 'pickup' ? '快递代取' : order.type === 'errand' ? '跑腿服务' : '校园订单'
+	const amountText = `¥${Number(resolveOrderDisplayPrice(order) || 0).toFixed(2)}`
+	return {
+		time2: { value: formatTimeLabel(ts) },
+		character_string1: { value: String(order.order_no || order._id || '').slice(0, 32) },
+		thing4: { value: String(typeText).slice(0, 20) },
+		time6: { value: formatTimeLabel(ts) },
+		amount7: { value: amountText }
+	}
+}
+
+function chunkArray(arr = [], size = 100) {
+	if (!Array.isArray(arr) || arr.length === 0) return []
+	const out = []
+	for (let i = 0; i < arr.length; i += size) {
+		out.push(arr.slice(i, i + size))
+	}
+	return out
+}
+
+async function upsertChatReadState({ uid, orderId, ts }) {
+	if (!uid || !orderId) return
+	const now = Number(ts) || Date.now()
+	const col = db.collection('order_chat_read_states')
+	const whereRes = await col.where({ user_id: uid, order_id: orderId }).limit(1).get()
+	const old = whereRes.data && whereRes.data[0]
+	if (old) {
+		await col.doc(old._id).update({
+			last_read_time: now,
+			update_time: Date.now()
+		})
+		return
+	}
+	await col.add({
+		user_id: uid,
+		order_id: orderId,
+		last_read_time: now,
+		create_time: Date.now(),
+		update_time: Date.now()
+	})
 }
 
 const RATE_LIMIT_RULES = {
@@ -503,6 +614,25 @@ module.exports = {
 			}
 		}
 	},
+
+	/**
+	 * 读取用户端订阅通知配置（用于前端发起授权）
+	 */
+	async getSubscribeNotifyConfig() {
+		const authResult = checkAuth(this)
+		if (authResult.code) return authResult
+		const cfg = await getOrderSubscribeConfig()
+		return {
+			code: 0,
+			data: {
+				enable: cfg.enable,
+				template_accept_id: cfg.template_accept_id,
+				template_deliver_id: cfg.template_deliver_id,
+				page_path_accept: cfg.page_path_accept,
+				page_path_deliver: cfg.page_path_deliver
+			}
+		}
+	},
 	// ==================== 用户端功能 ====================
 
 	/**
@@ -531,6 +661,15 @@ module.exports = {
 			}
 		}
 
+		const subscribeCfg = await getOrderSubscribeConfig()
+		const subscribeResult = orderData.subscribe_result || orderData.subscribeResult || {}
+		const subscribeNotify = {
+			tpl_accept_accept: resolveSubscribeAccept(subscribeResult, subscribeCfg.template_accept_id),
+			tpl_deliver_accept: resolveSubscribeAccept(subscribeResult, subscribeCfg.template_deliver_id),
+			auth_time: Date.now(),
+			update_time: Date.now()
+		}
+
 		// 构建订单数据
 		// 关键：订单创建后默认“待支付”，且不进入骑手大厅；支付成功后再推进到待接单并放到大厅
 		const order = {
@@ -548,7 +687,10 @@ module.exports = {
 			pickup_location: orderData.pickup_location || '',
 			delivery_location: orderData.delivery_location || orderData.address || '',
 			address: orderData.address || orderData.delivery_location || '',
-			content: orderData.content || {},
+			content: {
+				...(orderData.content || {}),
+				subscribe_notify: subscribeNotify
+			},
 			tags: orderData.tags || [],
 			pickup_distance: orderData.pickup_distance || 0,
 			create_time: Date.now()
@@ -1490,6 +1632,40 @@ module.exports = {
 				}
 			}
 
+			try {
+				const subscribeCfg = await getOrderSubscribeConfig()
+				const canSend = !!(subscribeCfg.enable && subscribeCfg.template_accept_id)
+				const accepted = !!(order.content && order.content.subscribe_notify && order.content.subscribe_notify.tpl_accept_accept)
+				if (canSend && accepted && order.user_id) {
+					const uRes = await db.collection('uni-id-users').doc(order.user_id).get()
+					const user = Array.isArray(uRes.data) ? uRes.data[0] : uRes.data
+					const openid = resolveUserOpenid(user || {})
+					if (openid) {
+						const ts = Date.now()
+						const sendRes = await wechatSubscribe.sendSubscribeMessage({
+							touser: openid,
+							template_id: subscribeCfg.template_accept_id,
+							page: `${subscribeCfg.page_path_accept}?id=${encodeURIComponent(String(orderId))}`,
+							data: buildOrderAcceptedNotifyData(order, riderProfile.name || '', ts)
+						})
+						const setData = sendRes.ok
+							? {
+								'content.subscribe_notify.last_accept_msgid': sendRes.msgid || '',
+								'content.subscribe_notify.last_accept_send_time': ts,
+								'content.subscribe_notify.last_error': '',
+								update_time: ts
+							}
+							: {
+								'content.subscribe_notify.last_error': `${sendRes.errcode || 'UNKNOWN'}:${sendRes.errmsg || ''}`.slice(0, 180),
+								update_time: ts
+							}
+						await db.collection('orders').doc(orderId).update(setData)
+					}
+				}
+			} catch (e) {
+				console.warn('发送接单订阅通知失败:', e.message)
+			}
+
 			return {
 				code: 0,
 				message: '抢单成功'
@@ -1703,6 +1879,39 @@ module.exports = {
 				} catch (e) {
 					console.error('调用骑手结算服务失败:', e)
 					// 不影响送达成功本身，只记录错误日志
+				}
+
+				try {
+					const subscribeCfg = await getOrderSubscribeConfig()
+					const canSend = !!(subscribeCfg.enable && subscribeCfg.template_deliver_id)
+					const accepted = !!(order.content && order.content.subscribe_notify && order.content.subscribe_notify.tpl_deliver_accept)
+					if (canSend && accepted && order.user_id) {
+						const uRes = await db.collection('uni-id-users').doc(order.user_id).get()
+						const user = Array.isArray(uRes.data) ? uRes.data[0] : uRes.data
+						const openid = resolveUserOpenid(user || {})
+						if (openid) {
+							const sendRes = await wechatSubscribe.sendSubscribeMessage({
+								touser: openid,
+								template_id: subscribeCfg.template_deliver_id,
+								page: `${subscribeCfg.page_path_deliver}?id=${encodeURIComponent(String(orderId))}`,
+								data: buildOrderDeliveredNotifyData(order, now)
+							})
+							const setData = sendRes.ok
+								? {
+									'content.subscribe_notify.last_deliver_msgid': sendRes.msgid || '',
+									'content.subscribe_notify.last_deliver_send_time': now,
+									'content.subscribe_notify.last_error': '',
+									update_time: now
+								}
+								: {
+									'content.subscribe_notify.last_error': `${sendRes.errcode || 'UNKNOWN'}:${sendRes.errmsg || ''}`.slice(0, 180),
+									update_time: now
+								}
+							await db.collection('orders').doc(orderId).update(setData)
+						}
+					}
+				} catch (e) {
+					console.warn('发送送达订阅通知失败:', e.message)
 				}
 			} else {
 				// 异常单重传送达图：恢复为已完成，不重复结算
@@ -2326,6 +2535,8 @@ module.exports = {
 			update_time: now
 		})
 
+		await upsertChatReadState({ uid, orderId, ts: now })
+
 		return {
 			code: 0,
 			message: '发送成功',
@@ -2336,6 +2547,109 @@ module.exports = {
 				sender_role: senderRole,
 				content: text,
 				create_time: now
+			}
+		}
+	},
+
+	async markOrderChatRead({ orderId, readTime } = {}) {
+		const authResult = checkAuth(this)
+		if (authResult.code) return authResult
+		const uid = authResult.uid
+
+		if (!orderId) {
+			return { code: 'INVALID_PARAM', message: 'orderId 不能为空' }
+		}
+
+		const orderRes = await db.collection('orders').doc(orderId).get()
+		if (!orderRes.data || !orderRes.data.length) {
+			return { code: 'NOT_FOUND', message: '订单不存在' }
+		}
+		const order = orderRes.data[0]
+		if (order.user_id !== uid && order.rider_id !== uid) {
+			return { code: 'NO_PERMISSION', message: '无权限操作' }
+		}
+
+		await upsertChatReadState({
+			uid,
+			orderId,
+			ts: Number(readTime) || Date.now()
+		})
+
+		return { code: 0, message: '已标记已读' }
+	},
+
+	async getMyOrderChatUnreadSummary({ role = 'auto' } = {}) {
+		const authResult = checkAuth(this)
+		if (authResult.code) return authResult
+		const uid = authResult.uid
+
+		const roleKey = String(role || 'auto')
+		let whereExpr = dbCmd.or([{ user_id: uid }, { rider_id: uid }])
+		if (roleKey === 'user') whereExpr = { user_id: uid }
+		if (roleKey === 'rider') whereExpr = { rider_id: uid }
+
+		const ordersRes = await db.collection('orders')
+			.where(whereExpr)
+			.field({ _id: 1, status: 1 })
+			.limit(200)
+			.get()
+
+		const orders = ordersRes.data || []
+		const orderIds = orders.map((o) => o._id).filter(Boolean)
+		if (!orderIds.length) {
+			return {
+				code: 0,
+				data: { byOrder: {}, byStatus: {}, total: 0 }
+			}
+		}
+
+		const readTimeMap = {}
+		for (const ids of chunkArray(orderIds, 100)) {
+			const readRes = await db.collection('order_chat_read_states')
+				.where({ user_id: uid, order_id: dbCmd.in(ids) })
+				.field({ order_id: 1, last_read_time: 1 })
+				.get()
+			for (const row of (readRes.data || [])) {
+				readTimeMap[row.order_id] = Number(row.last_read_time || 0)
+			}
+		}
+
+		const byOrder = {}
+		for (const id of orderIds) byOrder[id] = 0
+
+		for (const ids of chunkArray(orderIds, 100)) {
+			const msgRes = await db.collection('order_chat_messages')
+				.where({ order_id: dbCmd.in(ids), sender_id: dbCmd.neq(uid) })
+				.field({ order_id: 1, create_time: 1 })
+				.limit(2000)
+				.get()
+			for (const msg of (msgRes.data || [])) {
+				const oid = msg.order_id
+				const lastRead = Number(readTimeMap[oid] || 0)
+				const ts = Number(msg.create_time || 0)
+				if (ts > lastRead) {
+					byOrder[oid] = Number(byOrder[oid] || 0) + 1
+				}
+			}
+		}
+
+		const byStatus = {}
+		let total = 0
+		for (const o of orders) {
+			const count = Number(byOrder[o._id] || 0)
+			if (count <= 0) continue
+			const status = String(o.status || '')
+			byStatus[status] = Number(byStatus[status] || 0) + count
+			total += count
+		}
+
+		return {
+			code: 0,
+			message: '获取成功',
+			data: {
+				byOrder,
+				byStatus,
+				total
 			}
 		}
 	}

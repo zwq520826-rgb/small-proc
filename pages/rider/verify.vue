@@ -73,6 +73,32 @@ const loadProfile = async () => {
   }
 }
 
+const requestRiderSubscribeAuth = async () => {
+  // #ifndef MP-WEIXIN
+  return {}
+  // #endif
+
+  // #ifdef MP-WEIXIN
+  try {
+    const cfgRes = await riderService.getSubscribeNotifyConfig()
+    const cfg = cfgRes?.data || {}
+    if (cfgRes?.code !== 0 || cfg.enable === false) return {}
+    const tmplIds = [cfg.template_submit_id, cfg.template_pass_id].filter(Boolean)
+    if (!tmplIds.length) return {}
+    const reqRes = await new Promise((resolve) => {
+      uni.requestSubscribeMessage({
+        tmplIds,
+        success: (res) => resolve(res || {}),
+        fail: () => resolve({})
+      })
+    })
+    return reqRes || {}
+  } catch (e) {
+    return {}
+  }
+  // #endif
+}
+
 
 const submit = async () => {
   // 验证图形验证码
@@ -83,8 +109,12 @@ const submit = async () => {
   }
   
   try {
+    const subscribeResult = await requestRiderSubscribeAuth()
     uni.showLoading({ title: '提交中...' })
-    const res = await riderService.submitApplication(form.value)
+    const res = await riderService.submitApplication({
+      ...form.value,
+      subscribeResult
+    })
     uni.hideLoading()
     
     if (res.code === 0) {
@@ -193,4 +223,3 @@ onLoad(() => {
   color: #e74c3c;
 }
 </style>
-

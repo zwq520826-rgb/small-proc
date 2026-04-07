@@ -93,7 +93,33 @@ const _sfc_main = {
         deliveryDormType.value = "";
       }
     };
-    const handlePayClick = () => {
+    const requestOrderSubscribeAuth = async () => {
+      try {
+        const cfgRes = await orderService.getSubscribeNotifyConfig();
+        const cfg = (cfgRes == null ? void 0 : cfgRes.data) || {};
+        if ((cfgRes == null ? void 0 : cfgRes.code) !== 0 || cfg.enable === false)
+          return {};
+        const tmplIds = [cfg.template_accept_id, cfg.template_deliver_id].filter(Boolean);
+        if (!tmplIds.length)
+          return {};
+        const reqRes = await new Promise((resolve) => {
+          common_vendor.index.requestSubscribeMessage({
+            tmplIds,
+            success: (res) => resolve(res || {}),
+            fail: () => resolve({})
+          });
+        });
+        const result = reqRes || {};
+        const accepted = tmplIds.some((id) => result[id] === "accept");
+        if (!accepted) {
+          common_vendor.index.showToast({ title: "未同意订阅，后续将收不到接单/送达通知", icon: "none" });
+        }
+        return result;
+      } catch (e) {
+        return {};
+      }
+    };
+    const handlePayClick = async () => {
       if (!currentAddress.value) {
         common_vendor.index.showToast({ title: "请选择收货地址", icon: "none" });
         return;
@@ -116,7 +142,8 @@ const _sfc_main = {
           return;
         }
       }
-      onPayConfirm("wechat");
+      const subscribeResult = await requestOrderSubscribeAuth();
+      onPayConfirm("wechat", subscribeResult);
     };
     const uploadImages = async (list = []) => {
       const uploaded = [];
@@ -137,7 +164,7 @@ const _sfc_main = {
       }
       return uploaded;
     };
-    const onPayConfirm = async (method = "wechat") => {
+    const onPayConfirm = async (method = "wechat", subscribeResult = {}) => {
       common_vendor.index.showLoading({ title: "处理中..." });
       try {
         const uploadedImages = await uploadImages(images.value);
@@ -166,6 +193,7 @@ const _sfc_main = {
         const payload = {
           type: "pickup",
           typeLabel: "快递代取",
+          subscribeResult,
           price: amount,
           pickupLocation: "",
           deliveryLocation,
@@ -206,7 +234,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:404", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:437", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -265,7 +293,7 @@ ${deliveryLocation}`,
           }
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:476", "加载快递代取价格失败，将使用默认价格:", e);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:509", "加载快递代取价格失败，将使用默认价格:", e);
       } finally {
         pickupRatesPromise = null;
       }
