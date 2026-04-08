@@ -135,12 +135,12 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     f: $options.placeholderText,
     g: $data.focus,
     h: $data.val,
-    i: common_vendor.o(($event) => $data.val = $event.detail.value, "4f")
+    i: common_vendor.o(($event) => $data.val = $event.detail.value)
   }, {
     j: common_vendor.t($options.closeText),
-    k: common_vendor.o((...args) => $options.closeDialog && $options.closeDialog(...args), "2b"),
+    k: common_vendor.o((...args) => $options.closeDialog && $options.closeDialog(...args)),
     l: common_vendor.t($options.okText),
-    m: common_vendor.o((...args) => $options.onOk && $options.onOk(...args), "6b")
+    m: common_vendor.o((...args) => $options.onOk && $options.onOk(...args))
   });
 }
 const Component = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render]]);

@@ -8,5 +8,22 @@
 	"uni-id-log":{},
 	"uni-id-permissions":{},
 	"uni-id-roles":{},
-	"uni-id-users":{}
+	"uni-id-users":{},
+	"maintenance_settings": [
+		{
+			"_id": "order_subscribe_notify",
+			"enable": true,
+			"template_accept_id": "PSEMI1JuVylugL_S4desPcoEpIwfjTV5TufCgQxylJw",
+			"template_deliver_id": "d-epVcwVVoWk9ZuzGPUVUeE4Uy3DgixAEYetadc-2U8",
+			"page_path_accept": "/pages/client/orders/detail",
+			"page_path_deliver": "/pages/client/orders/detail"
+		},
+		{
+			"_id": "rider_subscribe_notify",
+			"enable": true,
+			"template_submit_id": "",
+			"template_pass_id": "",
+			"page_path": "/pages/mine/index"
+		}
+	]
 }

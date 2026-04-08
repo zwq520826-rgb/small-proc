@@ -15,7 +15,7 @@ const _sfc_main = {
         content: "已经仔细阅读注销提示，知晓可能带来的后果，并确认要注销",
         complete: (e) => {
           if (e.confirm) {
-            const uniIdco = common_vendor._r.importObject("uni-id-co");
+            const uniIdco = common_vendor.tr.importObject("uni-id-co");
             uniIdco.closeAccount().then((e2) => {
               common_vendor.index.showToast({
                 title: "注销成功",
@@ -37,8 +37,8 @@ const _sfc_main = {
 };
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
-    a: common_vendor.o((...args) => $options.nextStep && $options.nextStep(...args), "97"),
-    b: common_vendor.o((...args) => $options.cancel && $options.cancel(...args), "bd")
+    a: common_vendor.o((...args) => $options.nextStep && $options.nextStep(...args)),
+    b: common_vendor.o((...args) => $options.cancel && $options.cancel(...args))
   };
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render]]);

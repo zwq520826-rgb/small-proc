@@ -17,7 +17,7 @@ const _sfc_main = {
     const deliveryDormType = common_vendor.ref("");
     const addressStore = store_address.useAddressStore();
     const store = store_clientOrder.useClientOrderStore();
-    const orderService = common_vendor._r.importObject("order-service");
+    const orderService = common_vendor.tr.importObject("order-service");
     const discountPreview = common_vendor.ref({ canUse: false, amount: 0 });
     const currentAddress = common_vendor.computed(() => {
       return addressStore.selectedAddress || null;
@@ -139,7 +139,7 @@ const _sfc_main = {
           uploaded.push(path);
           continue;
         }
-        const res = await common_vendor._r.uploadFile({
+        const res = await common_vendor.tr.uploadFile({
           filePath: path,
           cloudPath: `orders/errand/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
         });
@@ -251,9 +251,9 @@ ${deliveryLocation}`,
         d: common_vendor.t(currentAddress.value.name),
         e: common_vendor.t(formatPhone(currentAddress.value.phone))
       } : {}, {
-        f: common_vendor.o(goSelectAddress, "f8"),
+        f: common_vendor.o(goSelectAddress),
         g: description.value,
-        h: common_vendor.o(($event) => description.value = $event.detail.value, "55"),
+        h: common_vendor.o(($event) => description.value = $event.detail.value),
         i: common_vendor.f(images.value, (img, idx, i0) => {
           return {
             a: img,
@@ -263,32 +263,32 @@ ${deliveryLocation}`,
         }),
         j: images.value.length < 9
       }, images.value.length < 9 ? {
-        k: common_vendor.o(chooseImage, "e9")
+        k: common_vendor.o(chooseImage)
       } : {}, {
-        l: common_vendor.o(decreaseFee, "f4"),
-        m: common_vendor.o(normalizeRunnerFee, "fb"),
+        l: common_vendor.o(decreaseFee),
+        m: common_vendor.o(normalizeRunnerFee),
         n: runnerFee.value,
         o: common_vendor.o(common_vendor.m(($event) => runnerFee.value = $event.detail.value, {
           number: true
-        }), "e5"),
-        p: common_vendor.o(increaseFee, "1b"),
+        })),
+        p: common_vendor.o(increaseFee),
         q: common_assets._imports_0$1,
         r: isUrgent.value,
-        s: common_vendor.o((e) => isUrgent.value = e.detail.value, "c7"),
+        s: common_vendor.o((e) => isUrgent.value = e.detail.value),
         t: common_assets._imports_1,
         v: isDelivery.value,
-        w: common_vendor.o(onDeliveryToggle, "ce"),
+        w: common_vendor.o(onDeliveryToggle),
         x: isDelivery.value
       }, isDelivery.value ? {
         y: deliveryDormType.value === "male" ? 1 : "",
-        z: common_vendor.o(($event) => deliveryDormType.value = "male", "0d"),
+        z: common_vendor.o(($event) => deliveryDormType.value = "male"),
         A: deliveryDormType.value === "female" ? 1 : "",
-        B: common_vendor.o(($event) => deliveryDormType.value = "female", "77"),
+        B: common_vendor.o(($event) => deliveryDormType.value = "female"),
         C: dormNumber.value,
-        D: common_vendor.o(($event) => dormNumber.value = $event.detail.value, "43")
+        D: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
       } : {}, {
         E: extraRemark.value,
-        F: common_vendor.o(($event) => extraRemark.value = $event.detail.value, "15"),
+        F: common_vendor.o(($event) => extraRemark.value = $event.detail.value),
         G: discountPreview.value.canUse
       }, discountPreview.value.canUse ? {
         H: common_vendor.t(totalPrice.value)
@@ -298,7 +298,7 @@ ${deliveryLocation}`,
       }, discountPreview.value.canUse ? {
         K: common_vendor.t(discountPreview.value.amount.toFixed(2))
       } : {}, {
-        L: common_vendor.o(handlePayClick, "ec")
+        L: common_vendor.o(handlePayClick)
       });
     };
   }

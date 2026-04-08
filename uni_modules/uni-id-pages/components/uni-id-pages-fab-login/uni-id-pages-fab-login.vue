@@ -460,6 +460,7 @@
 					customUI:true
 				})
 				uniIdCo[action](params).then(result => {
+					console.log('登录成功，返回结果:', result)
 					uni.showToast({
 						title: '登录成功',
 						icon: 'none',
@@ -471,8 +472,11 @@
 					mutations.loginSuccess(result)
 				})
 				.catch(e=>{
+					console.error('登录失败详细信息:', e)
+					console.error('错误类型:', typeof e)
+					console.error('错误对象:', JSON.stringify(e))
 					uni.showModal({
-						content: e.message,
+						content: e.message || JSON.stringify(e),
 						confirmText:"知道了",
 						showCancel: false
 					});

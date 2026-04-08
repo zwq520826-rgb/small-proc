@@ -95,7 +95,7 @@ const _sfc_main = {
       const hasCloudFile = urls.some((url) => url && url.startsWith("cloud://"));
       if (hasCloudFile) {
         try {
-          const res = await common_vendor._r.getTempFileURL({
+          const res = await common_vendor.tr.getTempFileURL({
             fileList: urls
           });
           urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
@@ -181,11 +181,11 @@ const _sfc_main = {
         })
       } : loadError.value ? {
         d: common_vendor.t(loadError.value),
-        e: common_vendor.o(retryHall, "c7")
+        e: common_vendor.o(retryHall)
       } : common_vendor.e({
         f: displayLevel.value
       }, displayLevel.value ? common_vendor.e({
-        g: common_vendor.o(goLevelTable, "67"),
+        g: common_vendor.o(goLevelTable),
         h: common_vendor.t(displayLevel.value.name),
         i: common_vendor.t(displayLevel.value.totalOrders),
         j: displayLevel.value.needMore > 0

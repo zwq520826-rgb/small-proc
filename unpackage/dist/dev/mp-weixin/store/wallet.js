@@ -1,6 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-const walletService = common_vendor._r.importObject("wallet-service");
+const walletService = common_vendor.tr.importObject("wallet-service");
 const state = common_vendor.reactive({
   balance: 0,
   frozenBalance: 0,

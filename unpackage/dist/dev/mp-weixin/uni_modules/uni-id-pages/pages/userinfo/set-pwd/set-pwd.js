@@ -3,7 +3,7 @@ const common_vendor = require("../../../../../common/vendor.js");
 const uni_modules_uniIdPages_common_password = require("../../../common/password.js");
 const uni_modules_uniIdPages_common_store = require("../../../common/store.js");
 const uni_modules_uniIdPages_config = require("../../../config.js");
-const uniIdCo = common_vendor._r.importObject("uni-id-co", {
+const uniIdCo = common_vendor.tr.importObject("uni-id-co", {
   customUI: true
 });
 const _sfc_main = {
@@ -108,8 +108,8 @@ if (!Math) {
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return common_vendor.e({
     a: $data.logo,
-    b: common_vendor.o(($event) => $data.focusNewPassword = false, "a1"),
-    c: common_vendor.o(($event) => $data.formData.newPassword = $event, "33"),
+    b: common_vendor.o(($event) => $data.focusNewPassword = false),
+    c: common_vendor.o(($event) => $data.formData.newPassword = $event),
     d: common_vendor.p({
       focus: $data.focusNewPassword,
       type: "password",
@@ -120,8 +120,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     e: common_vendor.p({
       name: "newPassword"
     }),
-    f: common_vendor.o(($event) => $data.focusNewPassword2 = false, "e0"),
-    g: common_vendor.o(($event) => $data.formData.newPassword2 = $event, "99"),
+    f: common_vendor.o(($event) => $data.focusNewPassword2 = false),
+    g: common_vendor.o(($event) => $data.formData.newPassword2 = $event),
     h: common_vendor.p({
       focus: $data.focusNewPassword2,
       type: "password",
@@ -133,16 +133,16 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       name: "newPassword2"
     }),
     j: common_vendor.sr("smsCode", "e5e1f63f-5,e5e1f63f-0"),
-    k: common_vendor.o(($event) => $data.formData.code = $event, "cd"),
+    k: common_vendor.o(($event) => $data.formData.code = $event),
     l: common_vendor.p({
       type: "set-pwd-by-sms",
       phone: $options.userInfo.mobile,
       modelValue: $data.formData.code
     }),
-    m: common_vendor.o((...args) => $options.submit && $options.submit(...args), "e6"),
+    m: common_vendor.o((...args) => $options.submit && $options.submit(...args)),
     n: $data.allowSkip
   }, $data.allowSkip ? {
-    o: common_vendor.o((...args) => $options.skip && $options.skip(...args), "0f")
+    o: common_vendor.o((...args) => $options.skip && $options.skip(...args))
   } : {}, {
     p: common_vendor.sr("form", "e5e1f63f-0"),
     q: common_vendor.p({
@@ -150,8 +150,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       ["err-show-type"]: "toast"
     }),
     r: common_vendor.sr("popup", "e5e1f63f-6"),
-    s: common_vendor.o($options.submit, "92"),
-    t: common_vendor.o(($event) => $data.formData.captcha = $event, "b0"),
+    s: common_vendor.o($options.submit),
+    t: common_vendor.o(($event) => $data.formData.captcha = $event),
     v: common_vendor.p({
       scene: "set-pwd-by-sms",
       modelValue: $data.formData.captcha

@@ -10,8 +10,8 @@ const _sfc_main = {
     const detailContact = common_vendor.ref(null);
     const illegalOrder = common_vendor.ref(null);
     const illegalOrderPromise = common_vendor.ref(null);
-    const db = common_vendor._r.database();
-    const orderService = common_vendor._r.importObject("order-service");
+    const db = common_vendor.tr.database();
+    const orderService = common_vendor.tr.importObject("order-service");
     const timelineSteps = [
       { label: "已支付", status: "paid" },
       { label: "已接单", status: "accepted" },
@@ -245,7 +245,7 @@ const _sfc_main = {
           return;
         }
         const urgentOrderId = (_a = createRes.data) == null ? void 0 : _a.orderId;
-        const paymentService = common_vendor._r.importObject("payment-service");
+        const paymentService = common_vendor.tr.importObject("payment-service");
         const payRes = await paymentService.createJsapiOrder({ orderId: urgentOrderId });
         if (payRes.code !== 0) {
           common_vendor.index.hideLoading();
@@ -444,8 +444,8 @@ const _sfc_main = {
       }, {
         i: common_vendor.t(riderDisplayName.value || "未知骑手"),
         j: common_vendor.t(riderPhone.value || "暂无电话"),
-        k: common_vendor.o(handleCallRider, "d3"),
-        l: common_vendor.o(openOrderChat, "7c")
+        k: common_vendor.o(handleCallRider),
+        l: common_vendor.o(openOrderChat)
       }) : {}, {
         m: common_vendor.t(((_d = order.value) == null ? void 0 : _d.typeLabel) || "订单"),
         n: common_vendor.n((_e = order.value) == null ? void 0 : _e.type),
@@ -495,26 +495,26 @@ const _sfc_main = {
       } : {}) : {}, {
         M: ((_Z = order.value) == null ? void 0 : _Z.status) === "pending_accept"
       }, ((__ = order.value) == null ? void 0 : __.status) === "pending_accept" ? common_vendor.e({
-        N: common_vendor.o(handleCancelOrder, "aa"),
+        N: common_vendor.o(handleCancelOrder),
         O: !((_aa = (_$ = order.value) == null ? void 0 : _$.content) == null ? void 0 : _aa.isUrgent)
       }, !((_ca = (_ba = order.value) == null ? void 0 : _ba.content) == null ? void 0 : _ca.isUrgent) ? {
-        P: common_vendor.o(handleUrgent, "3c")
+        P: common_vendor.o(handleUrgent)
       } : {}) : {}, {
         Q: ((_da = order.value) == null ? void 0 : _da.status) === "pending_pickup"
       }, ((_ea = order.value) == null ? void 0 : _ea.status) === "pending_pickup" ? {
-        R: common_vendor.o(handleCancelOrder, "c1")
+        R: common_vendor.o(handleCancelOrder)
       } : {}, {
         S: ((_fa = order.value) == null ? void 0 : _fa.status) === "delivering"
       }, ((_ga = order.value) == null ? void 0 : _ga.status) === "delivering" ? {
-        T: common_vendor.o(handleConfirmDelivery, "a1"),
-        U: common_vendor.o(handleCancelOrder, "20")
+        T: common_vendor.o(handleConfirmDelivery),
+        U: common_vendor.o(handleCancelOrder)
       } : {}, {
         V: ((_ha = order.value) == null ? void 0 : _ha.status) === "completed" || ((_ia = order.value) == null ? void 0 : _ia.status) === "abnormal"
       }, ((_ja = order.value) == null ? void 0 : _ja.status) === "completed" || ((_ka = order.value) == null ? void 0 : _ka.status) === "abnormal" ? {
-        W: common_vendor.o(handleDeleteOrder, "c0"),
+        W: common_vendor.o(handleDeleteOrder),
         X: common_vendor.t(feedbackDisabled.value ? "请联系客服" : "异常反馈"),
         Y: feedbackDisabled.value,
-        Z: common_vendor.o(handleWrongPhotoFeedback, "d4")
+        Z: common_vendor.o(handleWrongPhotoFeedback)
       } : {});
     };
   }

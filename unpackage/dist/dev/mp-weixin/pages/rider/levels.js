@@ -6,8 +6,8 @@ const _sfc_main = {
     const levels = common_vendor.ref([]);
     const loading = common_vendor.ref(false);
     const errorMsg = common_vendor.ref("");
-    const riderService = common_vendor._r.importObject("rider-service");
-    const db = common_vendor._r.database();
+    const riderService = common_vendor.tr.importObject("rider-service");
+    const db = common_vendor.tr.database();
     const normalizeLevels = (list = []) => {
       return list.map((item) => {
         const commission = Number(item.commission_rate ?? item.commissionRate ?? 0);

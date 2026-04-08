@@ -4,8 +4,8 @@ const uni_modules_uniIdPages_common_store = require("../../uni_modules/uni-id-pa
 const store_user = require("../../store/user.js");
 const store_wallet = require("../../store/wallet.js");
 const common_assets = require("../../common/assets.js");
-const uniIdCo = common_vendor._r.importObject("uni-id-co");
-const riderService = common_vendor._r.importObject("rider-service");
+const uniIdCo = common_vendor.tr.importObject("uni-id-co");
+const riderService = common_vendor.tr.importObject("rider-service");
 const TheTabBar = () => "../../components/TheTabBar.js";
 const _sfc_main = {
   components: {
@@ -346,7 +346,7 @@ const _sfc_main = {
       });
     },
     async bindThirdAccount(provider) {
-      const uniIdCo2 = common_vendor._r.importObject("uni-id-co");
+      const uniIdCo2 = common_vendor.tr.importObject("uni-id-co");
       const bindField = {
         weixin: "wx_openid",
         alipay: "ali_openid",
@@ -414,40 +414,40 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   } : !$options.userInfo._id ? {} : {}, {
     e: !$options.userInfo._id,
     f: common_vendor.t($options.userInfo._id ? "编辑名称" : "登录"),
-    g: common_vendor.o(($event) => $options.userInfo._id ? $options.setNickname("") : $options.login(), "77"),
+    g: common_vendor.o(($event) => $options.userInfo._id ? $options.setNickname("") : $options.login()),
     h: !$options.isRiderMode
   }, !$options.isRiderMode ? {
     i: common_assets._imports_0$2,
-    j: common_vendor.o((...args) => $options.goBecomeRider && $options.goBecomeRider(...args), "39")
+    j: common_vendor.o((...args) => $options.goBecomeRider && $options.goBecomeRider(...args))
   } : {}, {
     k: common_assets._imports_1$1,
     l: common_vendor.t($options.walletAmount),
-    m: common_vendor.o((...args) => $options.goWallet && $options.goWallet(...args), "64"),
+    m: common_vendor.o((...args) => $options.goWallet && $options.goWallet(...args)),
     n: common_assets._imports_2,
-    o: common_vendor.o((...args) => $options.goAddress && $options.goAddress(...args), "74"),
+    o: common_vendor.o((...args) => $options.goAddress && $options.goAddress(...args)),
     p: common_assets._imports_3,
-    q: common_vendor.o((...args) => $options.goMessages && $options.goMessages(...args), "b0"),
+    q: common_vendor.o((...args) => $options.goMessages && $options.goMessages(...args)),
     r: common_assets._imports_4,
-    s: common_vendor.o((...args) => $options.goService && $options.goService(...args), "8c"),
+    s: common_vendor.o((...args) => $options.goService && $options.goService(...args)),
     t: common_assets._imports_5,
-    v: common_vendor.o((...args) => $options.goHelp && $options.goHelp(...args), "cc"),
+    v: common_vendor.o((...args) => $options.goHelp && $options.goHelp(...args)),
     w: common_assets._imports_6,
-    x: common_vendor.o((...args) => $options.goSettings && $options.goSettings(...args), "c8"),
+    x: common_vendor.o((...args) => $options.goSettings && $options.goSettings(...args)),
     y: common_assets._imports_5,
-    z: common_vendor.o((...args) => $options.goAgreements && $options.goAgreements(...args), "1a"),
+    z: common_vendor.o((...args) => $options.goAgreements && $options.goAgreements(...args)),
     A: $options.isRiderMode
   }, $options.isRiderMode ? {
-    B: common_vendor.o((...args) => $options.goClientMode && $options.goClientMode(...args), "c0")
+    B: common_vendor.o((...args) => $options.goClientMode && $options.goClientMode(...args))
   } : {}, {
     C: $data.showLoginManage
   }, $data.showLoginManage ? common_vendor.e({
     D: $options.userInfo._id
   }, $options.userInfo._id ? {
-    E: common_vendor.o((...args) => $options.logout && $options.logout(...args), "ad")
+    E: common_vendor.o((...args) => $options.logout && $options.logout(...args))
   } : {
-    F: common_vendor.o((...args) => $options.login && $options.login(...args), "33")
+    F: common_vendor.o((...args) => $options.login && $options.login(...args))
   }) : {}, {
-    G: common_vendor.o($options.setNickname, "74"),
+    G: common_vendor.o($options.setNickname),
     H: common_vendor.p({
       mode: "input",
       value: $options.userInfo.nickname,
@@ -460,11 +460,11 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       type: "dialog"
     }),
     K: common_vendor.t($data.servicePhone),
-    L: common_vendor.o((...args) => $options.onContact && $options.onContact(...args), "a0"),
-    M: common_vendor.o((...args) => $options.callServicePhone && $options.callServicePhone(...args), "3d"),
-    N: common_vendor.o((...args) => $options.closeServicePopup && $options.closeServicePopup(...args), "4c"),
+    L: common_vendor.o((...args) => $options.onContact && $options.onContact(...args)),
+    M: common_vendor.o((...args) => $options.callServicePhone && $options.callServicePhone(...args)),
+    N: common_vendor.o((...args) => $options.closeServicePopup && $options.closeServicePopup(...args)),
     O: common_vendor.o(() => {
-    }, "1f"),
+    }),
     P: common_vendor.sr("servicePopup", "569e925a-3"),
     Q: common_vendor.p({
       type: "center"
@@ -473,17 +473,17 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     S: $data.riderGuide.qr_file_id
   }, $data.riderGuide.qr_file_id ? {
     T: $data.riderGuide.qr_file_id,
-    U: common_vendor.o((...args) => $options.previewRiderGuideQr && $options.previewRiderGuideQr(...args), "19")
+    U: common_vendor.o((...args) => $options.previewRiderGuideQr && $options.previewRiderGuideQr(...args))
   } : {}, {
-    V: common_vendor.o((...args) => $options.closeRiderJoinPopup && $options.closeRiderJoinPopup(...args), "58"),
+    V: common_vendor.o((...args) => $options.closeRiderJoinPopup && $options.closeRiderJoinPopup(...args)),
     W: common_vendor.o(() => {
-    }, "e0"),
+    }),
     X: common_vendor.sr("riderJoinPopup", "569e925a-4"),
     Y: common_vendor.p({
       type: "center"
     }),
     Z: common_vendor.sr("bind-mobile-by-sms", "569e925a-5"),
-    aa: common_vendor.o($options.bindMobileSuccess, "90")
+    aa: common_vendor.o($options.bindMobileSuccess)
   });
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-569e925a"]]);

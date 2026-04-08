@@ -1,0 +1,37 @@
+{
+  "passwordSecret": "passwordSecret-demo",
+  "tokenSecret": "tokenSecret-demo",
+  "tokenExpiresIn": 7200,
+  "passwordErrorLimit": 6,
+  "bindTokenToDevice": false,
+  "passwordErrorRetryTime": 3600,
+  "app": {
+    "oauth": {
+      "weixin": {
+        "appid": "你的APP微信开放平台appid",
+        "appsecret": "你的APP微信开放平台appsecret"
+      }
+    }
+  },
+  "mp-weixin": {
+    "oauth": {
+      "weixin": {
+        "appid": "wxca61ef4bea4c9884",
+        "appsecret": "774e1e2a6d3c087ad9e42df277b09575"
+      }
+    }
+  },
+  "service": {
+    "sms": {
+      "name": "your-sms-name",
+      "codeExpiresIn": 180,
+      "smsKey": "your-sms-key",
+      "smsSecret": "your-sms-secret"
+    },
+    "univerify": {
+      "appid": "your-univerify-appid",
+      "apiKey": "your-univerify-apiKey",
+      "apiSecret": "your-univerify-apiSecret"
+    }
+  }
+}

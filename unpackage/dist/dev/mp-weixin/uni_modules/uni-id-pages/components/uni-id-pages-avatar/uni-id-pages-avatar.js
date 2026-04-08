@@ -79,7 +79,7 @@ const _sfc_main = {
         });
         let {
           fileID
-        } = await common_vendor._r.uploadFile({
+        } = await common_vendor.tr.uploadFile({
           filePath: avatarUrl,
           cloudPath,
           fileType: "image"
@@ -130,7 +130,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       color: "#dddddd"
     })
   }, {
-    g: common_vendor.o((...args) => $options.bindchooseavatar && $options.bindchooseavatar(...args), "3f"),
+    g: common_vendor.o((...args) => $options.bindchooseavatar && $options.bindchooseavatar(...args)),
     h: $props.border ? 1 : "",
     i: $props.width,
     j: $props.height,

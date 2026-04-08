@@ -1,3 +1,4 @@
+// 强制更新配置 - 2026-04-08
 const uniIdCommon = require('uni-id-common')
 const uniCaptcha = require('uni-captcha')
 const {

@@ -10,7 +10,7 @@ const _sfc_main = {
   __name: "list",
   setup(__props) {
     const store = store_riderTask.useRiderTaskStore();
-    const orderService = common_vendor._r.importObject("order-service");
+    const orderService = common_vendor.tr.importObject("order-service");
     const currentTab = common_vendor.ref(0);
     const unreadByOrder = common_vendor.ref({});
     const unreadByStatus = common_vendor.ref({});
@@ -145,7 +145,7 @@ const _sfc_main = {
       const hasCloudFile = urls.some((url) => url && url.startsWith("cloud://"));
       if (hasCloudFile) {
         try {
-          const res = await common_vendor._r.getTempFileURL({
+          const res = await common_vendor.tr.getTempFileURL({
             fileList: urls
           });
           urls = (res.fileList || []).map((item) => item.tempFileURL || item.download_url || item.fileID).filter(Boolean);
@@ -205,7 +205,7 @@ const _sfc_main = {
           const tempFilePath = res.tempFilePaths[0];
           common_vendor.index.showLoading({ title: "上传中..." });
           try {
-            const uploadRes = await common_vendor._r.uploadFile({
+            const uploadRes = await common_vendor.tr.uploadFile({
               filePath: tempFilePath,
               cloudPath: `delivery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
             });

@@ -1634,20 +1634,27 @@ module.exports = {
 
 			try {
 				const subscribeCfg = await getOrderSubscribeConfig()
+				console.log('[订阅消息] 配置:', subscribeCfg)
 				const canSend = !!(subscribeCfg.enable && subscribeCfg.template_accept_id)
+				console.log('[订阅消息] 是否可发送:', canSend)
 				const accepted = !!(order.content && order.content.subscribe_notify && order.content.subscribe_notify.tpl_accept_accept)
+				console.log('[订阅消息] 用户是否授权:', accepted)
+				console.log('[订阅消息] 订单内容:', order.content)
 				if (canSend && accepted && order.user_id) {
 					const uRes = await db.collection('uni-id-users').doc(order.user_id).get()
 					const user = Array.isArray(uRes.data) ? uRes.data[0] : uRes.data
 					const openid = resolveUserOpenid(user || {})
+					console.log('[订阅消息] 用户openid:', openid)
 					if (openid) {
 						const ts = Date.now()
+						console.log('[订阅消息] 准备发送接单通知...')
 						const sendRes = await wechatSubscribe.sendSubscribeMessage({
 							touser: openid,
 							template_id: subscribeCfg.template_accept_id,
 							page: `${subscribeCfg.page_path_accept}?id=${encodeURIComponent(String(orderId))}`,
 							data: buildOrderAcceptedNotifyData(order, riderProfile.name || '', ts)
 						})
+						console.log('[订阅消息] 发送结果:', sendRes)
 						const setData = sendRes.ok
 							? {
 								'content.subscribe_notify.last_accept_msgid': sendRes.msgid || '',
@@ -1660,7 +1667,11 @@ module.exports = {
 								update_time: ts
 							}
 						await db.collection('orders').doc(orderId).update(setData)
+					} else {
+						console.log('[订阅消息] 用户openid为空，无法发送')
 					}
+				} else {
+					console.log('[订阅消息] 不满足发送条件')
 				}
 			} catch (e) {
 				console.warn('发送接单订阅通知失败:', e.message)

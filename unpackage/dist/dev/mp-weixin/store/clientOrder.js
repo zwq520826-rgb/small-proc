@@ -1,6 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-const orderService = common_vendor._r.importObject("order-service");
+const orderService = common_vendor.tr.importObject("order-service");
 const state = common_vendor.reactive({
   orders: []
 });

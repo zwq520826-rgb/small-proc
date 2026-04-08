@@ -99,7 +99,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     b: $data.needAgreements
   }, $data.needAgreements ? {
     c: $data.isAgree,
-    d: common_vendor.o((...args) => $options.setAgree && $options.setAgree(...args), "2b"),
+    d: common_vendor.o((...args) => $options.setAgree && $options.setAgree(...args)),
     e: common_vendor.f($options.agreements, (agreement, index, i0) => {
       return common_vendor.e({
         a: common_vendor.t(agreement.title),
@@ -121,7 +121,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
         d: index
       });
     }),
-    h: common_vendor.o($options.popupConfirm, "c1"),
+    h: common_vendor.o($options.popupConfirm),
     i: common_vendor.p({
       confirmText: "同意"
     }),

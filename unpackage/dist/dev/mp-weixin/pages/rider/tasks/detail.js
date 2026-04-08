@@ -5,7 +5,7 @@ const _sfc_main = {
   __name: "detail",
   setup(__props) {
     const store = store_riderTask.useRiderTaskStore();
-    const orderService = common_vendor._r.importObject("order-service");
+    const orderService = common_vendor.tr.importObject("order-service");
     const task = common_vendor.ref(null);
     const orderDetail = common_vendor.ref(null);
     const cancelPopupVisible = common_vendor.ref(false);
@@ -258,42 +258,42 @@ const _sfc_main = {
         q: common_vendor.t(getUserInitial()),
         r: common_vendor.t(displayUserName.value || "未知客户"),
         s: common_vendor.t(displayUserPhone.value || "暂无电话"),
-        t: common_vendor.o(handleCall, "bd"),
-        v: common_vendor.o(openChat, "07")
+        t: common_vendor.o(handleCall),
+        v: common_vendor.o(openChat)
       } : {}) : {
-        w: common_vendor.o(goBack, "cb")
+        w: common_vendor.o(goBack)
       }, {
         x: task.value && task.value.status !== "completed"
       }, task.value && task.value.status !== "completed" ? common_vendor.e({
         y: task.value.status === "pending_accept"
       }, task.value.status === "pending_accept" ? {
-        z: common_vendor.o(handleGrab, "2f")
+        z: common_vendor.o(handleGrab)
       } : {}, {
         A: task.value.status === "pending_pickup"
       }, task.value.status === "pending_pickup" ? {
-        B: common_vendor.o(handleConfirmPickup, "c5"),
-        C: common_vendor.o(openCancelPopup, "a1")
+        B: common_vendor.o(handleConfirmPickup),
+        C: common_vendor.o(openCancelPopup)
       } : {}, {
         D: task.value.status === "delivering"
       }, task.value.status === "delivering" ? {
-        E: common_vendor.o(handleConfirmDelivery, "cd"),
-        F: common_vendor.o(openCancelPopup, "73")
+        E: common_vendor.o(handleConfirmDelivery),
+        F: common_vendor.o(openCancelPopup)
       } : {}, {
         G: task.value.status === "abnormal"
       }, task.value.status === "abnormal" ? {
-        H: common_vendor.o(handleConfirmDelivery, "a3")
+        H: common_vendor.o(handleConfirmDelivery)
       } : {}) : {}, {
         I: cancelPopupVisible.value
       }, cancelPopupVisible.value ? {
-        J: common_vendor.o(onChangeReasonMode, "34"),
+        J: common_vendor.o(onChangeReasonMode),
         K: cancelReasonType.value,
         L: cancelReasonText.value,
-        M: common_vendor.o(($event) => cancelReasonText.value = $event.detail.value, "54"),
-        N: common_vendor.o(closeCancelPopup, "da"),
-        O: common_vendor.o(confirmCancel, "00"),
+        M: common_vendor.o(($event) => cancelReasonText.value = $event.detail.value),
+        N: common_vendor.o(closeCancelPopup),
+        O: common_vendor.o(confirmCancel),
         P: common_vendor.o(() => {
-        }, "1d"),
-        Q: common_vendor.o(closeCancelPopup, "00")
+        }),
+        Q: common_vendor.o(closeCancelPopup)
       } : {});
     };
   }

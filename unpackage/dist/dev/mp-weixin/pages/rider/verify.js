@@ -11,7 +11,7 @@ if (!Math) {
 const _sfc_main = {
   __name: "verify",
   setup(__props) {
-    const riderService = common_vendor._r.importObject("rider-service");
+    const riderService = common_vendor.tr.importObject("rider-service");
     const form = common_vendor.ref({
       name: "",
       student_no: "",
@@ -109,19 +109,19 @@ const _sfc_main = {
     return (_ctx, _cache) => {
       return common_vendor.e({
         a: form.value.name,
-        b: common_vendor.o(($event) => form.value.name = $event.detail.value, "2f"),
+        b: common_vendor.o(($event) => form.value.name = $event.detail.value),
         c: form.value.student_no,
-        d: common_vendor.o(($event) => form.value.student_no = $event.detail.value, "4d"),
+        d: common_vendor.o(($event) => form.value.student_no = $event.detail.value),
         e: form.value.college_class,
-        f: common_vendor.o(($event) => form.value.college_class = $event.detail.value, "31"),
+        f: common_vendor.o(($event) => form.value.college_class = $event.detail.value),
         g: form.value.id_card,
-        h: common_vendor.o(($event) => form.value.id_card = $event.detail.value, "92"),
+        h: common_vendor.o(($event) => form.value.id_card = $event.detail.value),
         i: form.value.mobile,
-        j: common_vendor.o(($event) => form.value.mobile = $event.detail.value, "f8"),
+        j: common_vendor.o(($event) => form.value.mobile = $event.detail.value),
         k: common_vendor.sr(captchaRef, "df7b148f-0", {
           "k": "captchaRef"
         }),
-        l: common_vendor.o(($event) => form.value.captcha = $event, "fc"),
+        l: common_vendor.o(($event) => form.value.captcha = $event),
         m: common_vendor.p({
           scene: "rider-verify",
           focus: focusCaptchaInput.value,
@@ -133,7 +133,7 @@ const _sfc_main = {
       }, profile.value.status === "approved" ? {} : profile.value.status === "pending" ? {} : {}, {
         p: profile.value.status === "pending"
       }) : {}, {
-        q: common_vendor.o(submit, "03")
+        q: common_vendor.o(submit)
       });
     };
   }

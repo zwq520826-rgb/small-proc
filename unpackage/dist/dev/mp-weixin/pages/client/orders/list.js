@@ -11,7 +11,7 @@ const _sfc_main = {
   __name: "list",
   setup(__props) {
     const store = store_clientOrder.useClientOrderStore();
-    const orderService = common_vendor._r.importObject("order-service");
+    const orderService = common_vendor.tr.importObject("order-service");
     const tabs = [
       { label: "全部", status: "all" },
       { label: "待接单", status: "pending_accept" },
@@ -270,7 +270,7 @@ const _sfc_main = {
         e: loadStatus.value === "loading"
       }, loadStatus.value === "loading" ? {} : loadStatus.value === "noMore" ? {} : {}, {
         f: loadStatus.value === "noMore",
-        g: common_vendor.o(handleReachBottom, "4a")
+        g: common_vendor.o(handleReachBottom)
       });
     };
   }

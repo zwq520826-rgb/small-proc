@@ -1,6 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-const paymentService = common_vendor._r.importObject("payment-service");
+const paymentService = common_vendor.tr.importObject("payment-service");
 async function payForOrder({ method, orderId, amount }) {
   if (!method || !orderId) {
     return {

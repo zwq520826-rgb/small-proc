@@ -342,7 +342,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   }, $data.showPopup ? common_vendor.e({
     b: $data.maskShow
   }, $data.maskShow ? {
-    c: common_vendor.o($options.onTap, "34"),
+    c: common_vendor.o($options.onTap),
     d: common_vendor.p({
       name: "mask",
       ["mode-class"]: "fade",
@@ -353,8 +353,8 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   } : {}, {
     e: $options.bg,
     f: common_vendor.n($data.popupstyle),
-    g: common_vendor.o((...args) => $options.clear && $options.clear(...args), "6e"),
-    h: common_vendor.o($options.onTap, "e1"),
+    g: common_vendor.o((...args) => $options.clear && $options.clear(...args)),
+    h: common_vendor.o($options.onTap),
     i: common_vendor.p({
       ["mode-class"]: $data.ani,
       name: "content",
@@ -362,7 +362,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       duration: $data.duration,
       show: $data.showTrans
     }),
-    j: common_vendor.o((...args) => $options.touchstart && $options.touchstart(...args), "28"),
+    j: common_vendor.o((...args) => $options.touchstart && $options.touchstart(...args)),
     k: common_vendor.n($data.popupstyle),
     l: common_vendor.n($options.isDesktop ? "fixforpc-z-index" : "")
   }) : {});

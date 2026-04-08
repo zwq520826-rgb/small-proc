@@ -1,8 +1,8 @@
 "use strict";
 const common_vendor = require("../../../../common/vendor.js");
-const db = common_vendor._r.database();
+const db = common_vendor.tr.database();
 db.collection("uni-id-users");
-const uniIdCo = common_vendor._r.importObject("uni-id-co");
+const uniIdCo = common_vendor.tr.importObject("uni-id-co");
 const _sfc_main = {
   emits: ["success"],
   computed: {},
@@ -23,7 +23,7 @@ const _sfc_main = {
               success({
                 code
               }) {
-                common_vendor._r.importObject("uni-id-co", {
+                common_vendor.tr.importObject("uni-id-co", {
                   customUI: true
                 }).loginByWeixin({ code }).then((e) => {
                   resolve();
@@ -73,8 +73,8 @@ if (!Math) {
 }
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
-    a: common_vendor.o((...args) => $options.closeMe && $options.closeMe(...args), "eb"),
-    b: common_vendor.o((...args) => $options.bindMobileByMpWeixin && $options.bindMobileByMpWeixin(...args), "35"),
+    a: common_vendor.o((...args) => $options.closeMe && $options.closeMe(...args)),
+    b: common_vendor.o((...args) => $options.bindMobileByMpWeixin && $options.bindMobileByMpWeixin(...args)),
     c: common_vendor.sr("popup", "e0127e04-0"),
     d: common_vendor.p({
       type: "bottom"

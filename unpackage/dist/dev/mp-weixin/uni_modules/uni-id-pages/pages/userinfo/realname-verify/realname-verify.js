@@ -3,7 +3,7 @@ const common_vendor = require("../../../../../common/vendor.js");
 const uni_modules_uniIdPages_common_loginPage_mixin = require("../../../common/login-page.mixin.js");
 const uni_modules_uniIdPages_common_store = require("../../../common/store.js");
 const common_assets = require("../../../../../common/assets.js");
-common_vendor._r.importObject("uni-id-co");
+common_vendor.tr.importObject("uni-id-co");
 const tempFrvInfoKey = "uni-id-pages-temp-frv";
 const _sfc_main = {
   mixins: [uni_modules_uniIdPages_common_loginPage_mixin.mixin],
@@ -51,7 +51,7 @@ const _sfc_main = {
     startFacialRecognitionVerify() {
     },
     async getFrvAuthResult() {
-      const uniIdCo2 = common_vendor._r.importObject("uni-id-co", {
+      const uniIdCo2 = common_vendor.tr.importObject("uni-id-co", {
         customUI: true
       });
       try {
@@ -137,13 +137,13 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     g: common_vendor.t($data.verifyFailContent),
     h: $data.verifyFailCode !== 10013
   }, $data.verifyFailCode !== 10013 ? {
-    i: common_vendor.o((...args) => $options.retry && $options.retry(...args), "d6")
+    i: common_vendor.o((...args) => $options.retry && $options.retry(...args))
   } : {
-    j: common_vendor.o((...args) => $options.retry && $options.retry(...args), "1f")
+    j: common_vendor.o((...args) => $options.retry && $options.retry(...args))
   }, {
     k: $options.isDev
   }, $options.isDev ? {} : {}) : {
-    l: common_vendor.o(($event) => $data.realName = $event, "95"),
+    l: common_vendor.o(($event) => $data.realName = $event),
     m: common_vendor.p({
       placeholder: "姓名",
       clearable: false,
@@ -152,7 +152,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     n: common_vendor.p({
       name: "realName"
     }),
-    o: common_vendor.o(($event) => $data.idCard = $event, "ec"),
+    o: common_vendor.o(($event) => $data.idCard = $event),
     p: common_vendor.p({
       placeholder: "身份证号码",
       clearable: false,
@@ -161,12 +161,12 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     q: common_vendor.p({
       name: "idCard"
     }),
-    r: common_vendor.sr("agreements", "6b1d1d3e-8"),
+    r: common_vendor.sr("agreements", "75eafb80-8"),
     s: common_vendor.p({
       scope: "realNameVerify"
     }),
     t: !$options.certifyIdNext,
-    v: common_vendor.o((...args) => $options.getCertifyId && $options.getCertifyId(...args), "1d")
+    v: common_vendor.o((...args) => $options.getCertifyId && $options.getCertifyId(...args))
   }));
 }
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render]]);

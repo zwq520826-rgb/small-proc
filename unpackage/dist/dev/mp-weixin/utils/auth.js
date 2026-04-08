@@ -1,6 +1,6 @@
 "use strict";
 const common_vendor = require("../common/vendor.js");
-const uniIdCo = common_vendor._r.importObject("uni-id-co", { customUI: true });
+const uniIdCo = common_vendor.tr.importObject("uni-id-co", { customUI: true });
 let checkingPromise = null;
 const LOGIN_PAGE = "/uni_modules/uni-id-pages/pages/login/login-withoutpwd";
 function hasLoginToken() {

@@ -288,6 +288,16 @@ const requestOrderSubscribeAuth = async () => {
     })
     const result = reqRes || {}
     const accepted = tmplIds.some((id) => result[id] === 'accept')
+
+    // 调试：显示授权结果
+    console.log('订阅授权结果:', result)
+    console.log('模板ID:', tmplIds)
+    uni.showToast({
+      title: `授权结果: ${accepted ? '已授权' : '未授权'}`,
+      icon: 'none',
+      duration: 3000
+    })
+
     if (!accepted) {
       uni.showToast({ title: '未同意订阅，后续将收不到接单/送达通知', icon: 'none' })
     }

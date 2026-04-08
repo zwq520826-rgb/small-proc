@@ -13,7 +13,7 @@ if (!Math) {
 const _sfc_main = {
   __name: "index",
   setup(__props) {
-    const riderService = common_vendor._r.importObject("rider-service");
+    const riderService = common_vendor.tr.importObject("rider-service");
     const walletStore = store_wallet.useWalletStore();
     const withdrawPopup = common_vendor.ref(null);
     const guidePopup = common_vendor.ref(null);
@@ -177,17 +177,17 @@ const _sfc_main = {
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: common_vendor.o(refreshBalance, "f8"),
+        a: common_vendor.o(refreshBalance),
         b: common_vendor.t(balance.value.toFixed(2)),
         c: common_vendor.t(totalIncome.value.toFixed(2)),
         d: common_vendor.t(totalExpense.value.toFixed(2)),
-        e: common_vendor.o(showWithdrawPopup, "10"),
+        e: common_vendor.o(showWithdrawPopup),
         f: withdrawGuide.value.enable
       }, withdrawGuide.value.enable ? {
         g: common_vendor.t(withdrawGuide.value.title || "提现请点我的"),
-        h: common_vendor.o(openWithdrawGuide, "4a")
+        h: common_vendor.o(openWithdrawGuide)
       } : {}, {
-        i: common_vendor.o(loadMoreTransactions, "54"),
+        i: common_vendor.o(loadMoreTransactions),
         j: transactions.value.length === 0
       }, transactions.value.length === 0 ? {} : {
         k: common_vendor.f(transactions.value, (item, k0, i0) => {
@@ -220,7 +220,7 @@ const _sfc_main = {
           });
         })
       }, {
-        l: common_vendor.o(closeWithdrawPopup, "27"),
+        l: common_vendor.o(closeWithdrawPopup),
         m: common_vendor.t(balance.value.toFixed(2)),
         n: common_vendor.f(withdrawAmounts, (amt, k0, i0) => {
           return {
@@ -231,10 +231,10 @@ const _sfc_main = {
             e: common_vendor.o(($event) => selectWithdrawAmount(amt), amt)
           };
         }),
-        o: common_vendor.o([($event) => customWithdrawAmount.value = $event.detail.value, ($event) => onCustomAmountInput("withdraw")], "6a"),
+        o: common_vendor.o([($event) => customWithdrawAmount.value = $event.detail.value, ($event) => onCustomAmountInput("withdraw")]),
         p: customWithdrawAmount.value,
         q: common_vendor.t(withdrawAmount.value || customWithdrawAmount.value || 0),
-        r: common_vendor.o(handleWithdraw, "36"),
+        r: common_vendor.o(handleWithdraw),
         s: common_vendor.sr(withdrawPopup, "2e9d1a34-0", {
           "k": "withdrawPopup"
         }),
@@ -245,9 +245,9 @@ const _sfc_main = {
         w: withdrawGuide.value.qr_file_id
       }, withdrawGuide.value.qr_file_id ? {
         x: withdrawGuide.value.qr_file_id,
-        y: common_vendor.o(previewGuideQr, "fc")
+        y: common_vendor.o(previewGuideQr)
       } : {}, {
-        z: common_vendor.o(closeWithdrawGuide, "38"),
+        z: common_vendor.o(closeWithdrawGuide),
         A: common_vendor.sr(guidePopup, "2e9d1a34-1", {
           "k": "guidePopup"
         }),

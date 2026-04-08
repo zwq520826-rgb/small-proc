@@ -12,7 +12,7 @@ const contactPhone = "18608945191";
 const _sfc_main = {
   __name: "home",
   setup(__props) {
-    const configService = common_vendor._r.importObject("order-service");
+    const configService = common_vendor.tr.importObject("order-service");
     const isLoading = common_vendor.ref(true);
     const heroes = common_vendor.ref([]);
     const announcements = common_vendor.ref([]);
@@ -182,9 +182,9 @@ const _sfc_main = {
         })
       } : loadError.value ? {
         d: common_vendor.t(loadError.value),
-        e: common_vendor.o(retryHome, "8d")
+        e: common_vendor.o(retryHome)
       } : common_vendor.e({
-        f: common_vendor.o(openManualModal, "48"),
+        f: common_vendor.o(openManualModal),
         g: heroes.value.length
       }, heroes.value.length ? {
         h: common_vendor.f(heroes.value, (hero, k0, i0) => {
@@ -210,7 +210,7 @@ const _sfc_main = {
         k: heroes.value.length > 1,
         l: heroes.value.length > 1
       } : {
-        m: common_vendor.o(($event) => onHeroCta(null), "91")
+        m: common_vendor.o(($event) => onHeroCta(null))
       }, {
         n: common_vendor.f(features, (item, k0, i0) => {
           return {
@@ -240,21 +240,21 @@ const _sfc_main = {
         c: loadError.value,
         t: showContactModal.value
       }, showContactModal.value ? {
-        v: common_vendor.o(closeContactModal, "3f"),
+        v: common_vendor.o(closeContactModal),
         w: common_vendor.t(contactPhone),
-        x: common_vendor.o(copyPhone, "95"),
-        y: common_vendor.o(closeContactModal, "95"),
+        x: common_vendor.o(copyPhone),
+        y: common_vendor.o(closeContactModal),
         z: common_vendor.o(() => {
-        }, "d2"),
-        A: common_vendor.o(closeContactModal, "15")
+        }),
+        A: common_vendor.o(closeContactModal)
       } : {}, {
         B: showManualModal.value
       }, showManualModal.value ? {
-        C: common_vendor.o(closeManualModal, "d0"),
-        D: common_vendor.o(closeManualModal, "5b"),
+        C: common_vendor.o(closeManualModal),
+        D: common_vendor.o(closeManualModal),
         E: common_vendor.o(() => {
-        }, "83"),
-        F: common_vendor.o(closeManualModal, "d4")
+        }),
+        F: common_vendor.o(closeManualModal)
       } : {});
     };
   }

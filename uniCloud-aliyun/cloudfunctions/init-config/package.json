@@ -1,0 +1,7 @@
+{
+	"name": "init-config",
+	"version": "1.0.0",
+	"description": "初始化订阅消息配置",
+	"main": "index.js",
+	"dependencies": {}
+}

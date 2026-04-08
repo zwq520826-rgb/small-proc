@@ -23,7 +23,7 @@ const _sfc_main = {
     const deliveryDormType = common_vendor.ref("");
     const addressStore = store_address.useAddressStore();
     const store = store_clientOrder.useClientOrderStore();
-    const orderService = common_vendor._r.importObject("order-service");
+    const orderService = common_vendor.tr.importObject("order-service");
     const discountPreview = common_vendor.ref({ canUse: false, amount: 0 });
     const toFen = (yuan) => Math.round(Number(yuan || 0) * 100);
     const fromFen = (fen) => Number(fen || 0) / 100;
@@ -111,6 +111,13 @@ const _sfc_main = {
         });
         const result = reqRes || {};
         const accepted = tmplIds.some((id) => result[id] === "accept");
+        common_vendor.index.__f__("log", "at pages/client/forms/pickup.vue:293", "订阅授权结果:", result);
+        common_vendor.index.__f__("log", "at pages/client/forms/pickup.vue:294", "模板ID:", tmplIds);
+        common_vendor.index.showToast({
+          title: `授权结果: ${accepted ? "已授权" : "未授权"}`,
+          icon: "none",
+          duration: 3e3
+        });
         if (!accepted) {
           common_vendor.index.showToast({ title: "未同意订阅，后续将收不到接单/送达通知", icon: "none" });
         }
@@ -154,7 +161,7 @@ const _sfc_main = {
           uploaded.push(path);
           continue;
         }
-        const res = await common_vendor._r.uploadFile({
+        const res = await common_vendor.tr.uploadFile({
           filePath: path,
           cloudPath: `orders/pickup/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
         });
@@ -234,7 +241,7 @@ ${deliveryLocation}`,
         }
       } catch (error) {
         common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:437", "支付流程失败:", error);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:447", "支付流程失败:", error);
         common_vendor.index.showToast({ title: "支付失败，请重试", icon: "none" });
       }
     };
@@ -275,7 +282,7 @@ ${deliveryLocation}`,
     }
     async function refreshPickupRates() {
       try {
-        const configService = common_vendor._r.importObject("order-service");
+        const configService = common_vendor.tr.importObject("order-service");
         const res = await configService.getPickupRates();
         if (res && res.code === 0 && res.data) {
           const nextRates = {
@@ -293,7 +300,7 @@ ${deliveryLocation}`,
           }
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:509", "加载快递代取价格失败，将使用默认价格:", e);
+        common_vendor.index.__f__("error", "at pages/client/forms/pickup.vue:519", "加载快递代取价格失败，将使用默认价格:", e);
       } finally {
         pickupRatesPromise = null;
       }
@@ -325,7 +332,7 @@ ${deliveryLocation}`,
         d: common_vendor.t(currentAddress.value.name),
         e: common_vendor.t(formatPhone(currentAddress.value.phone))
       } : {}, {
-        f: common_vendor.o(goSelectAddress, "f8"),
+        f: common_vendor.o(goSelectAddress),
         g: common_vendor.f(images.value, (img, idx, i0) => {
           return {
             a: img,
@@ -335,7 +342,7 @@ ${deliveryLocation}`,
         }),
         h: images.value.length < 9
       }, images.value.length < 9 ? {
-        i: common_vendor.o(chooseImage, "e2")
+        i: common_vendor.o(chooseImage)
       } : {}, {
         j: common_vendor.f(sizeOptions.value, (item, k0, i0) => {
           return {
@@ -349,21 +356,21 @@ ${deliveryLocation}`,
         }),
         k: common_assets._imports_0$1,
         l: isUrgent.value,
-        m: common_vendor.o((e) => isUrgent.value = e.detail.value, "9c"),
+        m: common_vendor.o((e) => isUrgent.value = e.detail.value),
         n: common_assets._imports_1,
         o: isDelivery.value,
-        p: common_vendor.o(onDeliveryToggle, "e9"),
+        p: common_vendor.o(onDeliveryToggle),
         q: isDelivery.value
       }, isDelivery.value ? {
         r: deliveryDormType.value === "male" ? 1 : "",
-        s: common_vendor.o(($event) => deliveryDormType.value = "male", "28"),
+        s: common_vendor.o(($event) => deliveryDormType.value = "male"),
         t: deliveryDormType.value === "female" ? 1 : "",
-        v: common_vendor.o(($event) => deliveryDormType.value = "female", "aa"),
+        v: common_vendor.o(($event) => deliveryDormType.value = "female"),
         w: dormNumber.value,
-        x: common_vendor.o(($event) => dormNumber.value = $event.detail.value, "38")
+        x: common_vendor.o(($event) => dormNumber.value = $event.detail.value)
       } : {}, {
         y: remark.value,
-        z: common_vendor.o(($event) => remark.value = $event.detail.value, "e2"),
+        z: common_vendor.o(($event) => remark.value = $event.detail.value),
         A: discountPreview.value.canUse
       }, discountPreview.value.canUse ? {
         B: common_vendor.t(totalPrice.value)
@@ -373,7 +380,7 @@ ${deliveryLocation}`,
       }, discountPreview.value.canUse ? {
         E: common_vendor.t(discountPreview.value.amount.toFixed(2))
       } : {}, {
-        F: common_vendor.o(handlePayClick, "eb")
+        F: common_vendor.o(handlePayClick)
       });
     };
   }

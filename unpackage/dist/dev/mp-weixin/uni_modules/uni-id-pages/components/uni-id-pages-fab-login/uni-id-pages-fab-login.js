@@ -280,10 +280,11 @@ const _sfc_main = {
     login(params, type) {
       common_vendor.index.__f__("log", "at uni_modules/uni-id-pages/components/uni-id-pages-fab-login/uni-id-pages-fab-login.vue:456", { params, type });
       let action = "loginBy" + type.trim().replace(type[0], type[0].toUpperCase());
-      const uniIdCo = common_vendor._r.importObject("uni-id-co", {
+      const uniIdCo = common_vendor.tr.importObject("uni-id-co", {
         customUI: true
       });
       uniIdCo[action](params).then((result) => {
+        common_vendor.index.__f__("log", "at uni_modules/uni-id-pages/components/uni-id-pages-fab-login/uni-id-pages-fab-login.vue:463", "登录成功，返回结果:", result);
         common_vendor.index.showToast({
           title: "登录成功",
           icon: "none",
@@ -291,8 +292,11 @@ const _sfc_main = {
         });
         uni_modules_uniIdPages_common_store.mutations.loginSuccess(result);
       }).catch((e) => {
+        common_vendor.index.__f__("error", "at uni_modules/uni-id-pages/components/uni-id-pages-fab-login/uni-id-pages-fab-login.vue:475", "登录失败详细信息:", e);
+        common_vendor.index.__f__("error", "at uni_modules/uni-id-pages/components/uni-id-pages-fab-login/uni-id-pages-fab-login.vue:476", "错误类型:", typeof e);
+        common_vendor.index.__f__("error", "at uni_modules/uni-id-pages/components/uni-id-pages-fab-login/uni-id-pages-fab-login.vue:477", "错误对象:", JSON.stringify(e));
         common_vendor.index.showModal({
-          content: e.message,
+          content: e.message || JSON.stringify(e),
           confirmText: "知道了",
           showCancel: false
         });

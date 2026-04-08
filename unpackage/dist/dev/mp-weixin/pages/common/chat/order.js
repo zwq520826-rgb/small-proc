@@ -3,7 +3,7 @@ const common_vendor = require("../../../common/vendor.js");
 const _sfc_main = {
   __name: "order",
   setup(__props) {
-    const orderService = common_vendor._r.importObject("order-service");
+    const orderService = common_vendor.tr.importObject("order-service");
     const orderId = common_vendor.ref("");
     const role = common_vendor.ref("user");
     const messages = common_vendor.ref([]);
@@ -89,11 +89,11 @@ const _sfc_main = {
           };
         }),
         c: scrollToId.value,
-        d: common_vendor.o(send, "8a"),
+        d: common_vendor.o(send),
         e: draft.value,
-        f: common_vendor.o(($event) => draft.value = $event.detail.value, "f2"),
+        f: common_vendor.o(($event) => draft.value = $event.detail.value),
         g: sending.value,
-        h: common_vendor.o(send, "0f")
+        h: common_vendor.o(send)
       });
     };
   }

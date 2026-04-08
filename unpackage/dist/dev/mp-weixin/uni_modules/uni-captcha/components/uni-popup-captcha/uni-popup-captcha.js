@@ -67,14 +67,14 @@ if (!Math) {
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
   return {
     a: common_vendor.t($props.title),
-    b: common_vendor.o(($event) => $options.val = $event, "cf"),
+    b: common_vendor.o(($event) => $options.val = $event),
     c: common_vendor.p({
       focus: $data.focus,
       scene: $props.scene,
       modelValue: $options.val
     }),
-    d: common_vendor.o((...args) => $options.close && $options.close(...args), "12"),
-    e: common_vendor.o((...args) => $options.confirm && $options.confirm(...args), "e8"),
+    d: common_vendor.o((...args) => $options.close && $options.close(...args)),
+    e: common_vendor.o((...args) => $options.confirm && $options.confirm(...args)),
     f: common_vendor.sr("popup", "d021b99b-0"),
     g: common_vendor.p({
       type: "center"
